@@ -1,0 +1,39 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+PROJECT="$ROOT_DIR/TrainyIOS/Trainy.xcodeproj"
+XCODE_APP="${XCODE_APP:-/Applications/Xcode-26.5.0.app}"
+DEVELOPER_DIR="${DEVELOPER_DIR:-$XCODE_APP/Contents/Developer}"
+DESTINATION="${DESTINATION:-generic/platform=iOS Simulator}"
+DERIVED_DATA_PATH="${DERIVED_DATA_PATH:-/private/tmp/trainy-derived}"
+CODE_SIGNING_ALLOWED="${CODE_SIGNING_ALLOWED:-NO}"
+ODPT_ENV_FILE="${ODPT_ENV_FILE:-$ROOT_DIR/TrainyIOS/Config/odpt.env}"
+
+# shellcheck source=scripts/lib/odpt-env.sh
+source "$ROOT_DIR/scripts/lib/odpt-env.sh"
+load_trainy_odpt_env "$ODPT_ENV_FILE"
+
+ODPT_CONSUMER_KEY="${ODPT_CONSUMER_KEY:-}"
+
+if [[ ! -d "$DEVELOPER_DIR" ]]; then
+  echo "Xcode developer directory not found: $DEVELOPER_DIR" >&2
+  exit 1
+fi
+
+export DEVELOPER_DIR
+
+if ! xcodebuild -version >/dev/null 2>&1; then
+  echo "xcodebuild is not ready. If this is a license issue, run:" >&2
+  echo "  sudo DEVELOPER_DIR=\"$DEVELOPER_DIR\" xcodebuild -license accept" >&2
+  exit 1
+fi
+
+xcodebuild \
+  -project "$PROJECT" \
+  -scheme Trainy \
+  -destination "$DESTINATION" \
+  -derivedDataPath "$DERIVED_DATA_PATH" \
+  CODE_SIGNING_ALLOWED="$CODE_SIGNING_ALLOWED" \
+  ODPT_CONSUMER_KEY="$ODPT_CONSUMER_KEY" \
+  build

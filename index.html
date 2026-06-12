@@ -1,0 +1,212 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="Trainy is a Japan-first Shinkansen tracker prototype with platform, delay, transfer, and journey intelligence."
+    />
+    <title>Trainy - Shinkansen Tracking</title>
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='10' fill='%23d84a3a'/%3E%3Cpath d='M18 14h28v25H18z' fill='%23fff'/%3E%3Cpath d='M23 45h18' stroke='%23101419' stroke-width='5' stroke-linecap='round'/%3E%3C/svg%3E"
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="topbar">
+        <a class="brand" href="#main" aria-label="Trainy home">
+          <span class="brand-mark" aria-hidden="true">T</span>
+          <span>
+            <strong>Trainy</strong>
+            <small>Shinkansen intelligence</small>
+          </span>
+        </a>
+
+        <div class="topbar-center" role="search">
+          <label class="search-field">
+            <span class="sr-only">Search Shinkansen trains, cities, or operators</span>
+            <input id="trip-search" type="search" placeholder="Search Shinkansen, station, train, operator" />
+          </label>
+        </div>
+
+        <div class="topbar-actions">
+          <button class="icon-button" id="refresh-button" type="button" title="Refresh live data" aria-label="Refresh live data">
+            <span aria-hidden="true">R</span>
+          </button>
+          <button class="text-button" id="share-button" type="button">Share Trip</button>
+        </div>
+      </header>
+
+      <main class="layout" id="main">
+        <aside class="panel trip-panel" aria-label="Tracked trains">
+          <div class="panel-heading">
+            <div>
+              <p class="eyebrow">Today</p>
+              <h1>Tracked Trains</h1>
+            </div>
+            <button class="icon-button" type="button" id="compact-toggle" title="Toggle compact mode" aria-label="Toggle compact mode">
+              <span aria-hidden="true">C</span>
+            </button>
+          </div>
+
+          <div class="segmented" role="tablist" aria-label="Trip filters">
+            <button class="segment active" type="button" data-filter="all" role="tab" aria-selected="true">All</button>
+            <button class="segment" type="button" data-filter="departing" role="tab" aria-selected="false">Departing</button>
+            <button class="segment" type="button" data-filter="attention" role="tab" aria-selected="false">Needs Watch</button>
+          </div>
+
+          <div class="trip-list" id="trip-list" aria-live="polite"></div>
+
+          <section class="station-brief" aria-label="Station readiness">
+            <div>
+              <p class="eyebrow">Station Mode</p>
+              <h2>Departure board</h2>
+            </div>
+            <dl class="brief-grid">
+              <div>
+                <dt>Platforms watched</dt>
+                <dd id="platform-count">0</dd>
+              </div>
+              <div>
+                <dt>Connections at risk</dt>
+                <dd id="risk-count">0</dd>
+              </div>
+            </dl>
+          </section>
+        </aside>
+
+        <section class="panel live-panel" aria-label="Selected train live view">
+          <div class="status-strip">
+            <div>
+              <p class="eyebrow" id="selected-service">Service</p>
+              <h2 id="selected-title">Select a train</h2>
+            </div>
+            <div class="status-cluster">
+              <span class="status-pill" id="selected-status">Live</span>
+              <span class="live-dot" aria-hidden="true"></span>
+            </div>
+          </div>
+
+          <div class="route-board">
+            <div class="station-endpoint">
+              <span class="station-code" id="from-code">---</span>
+              <strong id="from-name">Origin</strong>
+              <small id="depart-time">--:--</small>
+            </div>
+
+            <div class="route-visual" aria-label="Route progress">
+              <div class="rail-line">
+                <span class="rail-progress" id="rail-progress"></span>
+                <span class="train-marker" id="train-marker" aria-hidden="true"></span>
+              </div>
+              <div class="route-meta">
+                <span id="duration-label">Duration</span>
+                <span id="progress-label">0% complete</span>
+              </div>
+            </div>
+
+            <div class="station-endpoint align-right">
+              <span class="station-code" id="to-code">---</span>
+              <strong id="to-name">Destination</strong>
+              <small id="arrive-time">--:--</small>
+            </div>
+          </div>
+
+          <div class="metric-row" aria-label="Trip metrics">
+            <article class="metric">
+              <span>Platform</span>
+              <strong id="platform-value">-</strong>
+            </article>
+            <article class="metric">
+              <span>Next stop</span>
+              <strong id="next-stop-value">-</strong>
+            </article>
+            <article class="metric">
+              <span>ETA</span>
+              <strong id="eta-value">-</strong>
+            </article>
+            <article class="metric">
+              <span>Speed</span>
+              <strong id="speed-value">-</strong>
+            </article>
+          </div>
+
+          <section class="timeline-section" aria-label="Station timeline">
+            <div class="section-title">
+              <div>
+                <p class="eyebrow">Live Run</p>
+                <h2>Station timeline</h2>
+              </div>
+              <span id="updated-label">Updated now</span>
+            </div>
+            <ol class="station-timeline" id="station-timeline"></ol>
+          </section>
+
+          <section class="train-composition" aria-label="Train composition">
+            <div class="section-title">
+              <div>
+                <p class="eyebrow">Boarding</p>
+                <h2>Where to stand</h2>
+              </div>
+              <span id="car-label">Car information</span>
+            </div>
+            <div class="platform-map" id="platform-map"></div>
+          </section>
+        </section>
+
+        <aside class="panel intelligence-panel" aria-label="Train intelligence">
+          <section class="next-action">
+            <p class="eyebrow">Trainy Call</p>
+            <h2 id="action-title">Best next move</h2>
+            <p id="action-copy">Pick a train to see what matters before departure.</p>
+            <div class="action-buttons">
+              <button class="text-button primary" id="notify-button" type="button">Notify Me</button>
+              <button class="text-button" id="pin-button" type="button">Pin Train</button>
+            </div>
+          </section>
+
+          <section class="signal-card" aria-label="Reliability signal">
+            <div class="section-title">
+              <div>
+                <p class="eyebrow">Confidence</p>
+                <h2>Signal quality</h2>
+              </div>
+              <strong id="signal-score">--</strong>
+            </div>
+            <div class="signal-meter" aria-hidden="true">
+              <span id="signal-fill"></span>
+            </div>
+            <p id="signal-copy">Confirmed platform and running data will show here.</p>
+          </section>
+
+          <section class="alerts-section" aria-label="Trip alerts">
+            <div class="section-title">
+              <div>
+                <p class="eyebrow">Watchlist</p>
+                <h2>Alerts</h2>
+              </div>
+              <span id="alert-count">0</span>
+            </div>
+            <div class="alert-list" id="alert-list"></div>
+          </section>
+
+          <section class="network-board" aria-label="Network board">
+            <div class="section-title">
+              <div>
+                <p class="eyebrow">Network</p>
+                <h2>Rail pulse</h2>
+              </div>
+            </div>
+            <div class="network-list" id="network-list"></div>
+          </section>
+        </aside>
+      </main>
+    </div>
+
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+    <script src="app.js"></script>
+  </body>
+</html>
