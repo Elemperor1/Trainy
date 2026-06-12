@@ -589,7 +589,7 @@ private struct RailSegmentedPicker: View {
                             if selection == bucket {
                                 Capsule()
                                     .fill(RailDesign.Palette.accent.opacity(0.10))
-                                    .matchedGeometryEffect(id: bucket.id, in: namespace)
+                                    .matchedGeometryEffect(id: "\(bucket.id)-selection", in: namespace)
                                     .railLiquidGlass(cornerRadius: 18, tint: RailDesign.Palette.accent.opacity(0.22), interactive: true)
                             }
                         }
