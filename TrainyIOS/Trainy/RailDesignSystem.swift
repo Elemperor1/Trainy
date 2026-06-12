@@ -235,18 +235,14 @@ private struct RailLiquidGlassModifier: ViewModifier {
                     RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
                         .stroke(RailDesign.Palette.hairline.opacity(0.95), lineWidth: 1.2)
                 )
-        } else if interactive {
-            content
-                .glassEffect(
-                    .regular.tint(tint).interactive(),
-                    in: .rect(cornerRadius: cornerRadius)
-                )
-                .overlay(glassStroke)
         } else {
             content
-                .glassEffect(
-                    .regular.tint(tint),
-                    in: .rect(cornerRadius: cornerRadius)
+                .background(
+                    ZStack {
+                        RailDesign.Palette.panel
+                        tint.opacity(interactive ? 0.26 : 0.20)
+                    },
+                    in: RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
                 )
                 .overlay(glassStroke)
         }

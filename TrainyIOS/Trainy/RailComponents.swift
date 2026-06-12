@@ -19,12 +19,10 @@ struct GlassPanel<Content: View>: View {
     }
 
     var body: some View {
-        GlassEffectContainer(spacing: RailDesign.Spacing.m) {
-            content
-                .padding(padding)
-                .railLiquidGlass(cornerRadius: cornerRadius, tint: tint)
-                .railPanelShadow()
-        }
+        content
+            .padding(padding)
+            .railLiquidGlass(cornerRadius: cornerRadius, tint: tint)
+            .railPanelShadow()
     }
 }
 

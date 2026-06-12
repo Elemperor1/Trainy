@@ -575,33 +575,31 @@ private struct RailSegmentedPicker: View {
     @Namespace private var namespace
 
     var body: some View {
-        GlassEffectContainer(spacing: RailDesign.Spacing.xs) {
-            HStack(spacing: RailDesign.Spacing.xs) {
-                ForEach(TripBucket.allCases) { bucket in
-                    Button {
-                        selection = bucket
-                    } label: {
-                        Text(bucket.title)
-                            .font(.subheadline.weight(.semibold))
-                            .foregroundStyle(selection == bucket ? RailDesign.Palette.ink : RailDesign.Palette.secondaryText)
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, RailDesign.Spacing.s)
-                            .background {
-                                if selection == bucket {
-                                    Capsule()
-                                        .fill(RailDesign.Palette.accent.opacity(0.10))
-                                        .glassEffectID(bucket.id, in: namespace)
-                                        .railLiquidGlass(cornerRadius: 18, tint: RailDesign.Palette.accent.opacity(0.22), interactive: true)
-                                }
+        HStack(spacing: RailDesign.Spacing.xs) {
+            ForEach(TripBucket.allCases) { bucket in
+                Button {
+                    selection = bucket
+                } label: {
+                    Text(bucket.title)
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(selection == bucket ? RailDesign.Palette.ink : RailDesign.Palette.secondaryText)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, RailDesign.Spacing.s)
+                        .background {
+                            if selection == bucket {
+                                Capsule()
+                                    .fill(RailDesign.Palette.accent.opacity(0.10))
+                                    .matchedGeometryEffect(id: bucket.id, in: namespace)
+                                    .railLiquidGlass(cornerRadius: 18, tint: RailDesign.Palette.accent.opacity(0.22), interactive: true)
                             }
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityAddTraits(selection == bucket ? .isSelected : [])
+                        }
                 }
+                .buttonStyle(.plain)
+                .accessibilityAddTraits(selection == bucket ? .isSelected : [])
             }
-            .padding(6)
-            .railLiquidGlass(cornerRadius: 24, tint: .white.opacity(0.12), interactive: true)
         }
+        .padding(6)
+        .railLiquidGlass(cornerRadius: 24, tint: .white.opacity(0.12), interactive: true)
     }
 }
 
