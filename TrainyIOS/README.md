@@ -9,16 +9,16 @@ Open `Trainy.xcodeproj` in Xcode, select an iPhone simulator, then run the `Trai
 ## Current scope
 
 - Shinkansen starter data for Tokaido, Sanyo-Kyushu, Tohoku, Hokuriku, Joetsu, Hokkaido, Akita, and Yamagata services.
-- Live-style train cards with search, filters, persisted tracked trains, persisted pins, and persisted notification toggles.
+- Source-labeled train cards with search, filters, persisted tracked trains, persisted pins, and persisted notification toggles.
 - Native train finder sheet for discovering and adding Shinkansen services to the tracked list.
 - Selected train dashboard with platform, ETA, route progress, speed, next stop, station timeline, car positioning, alerts, signal confidence, and rail network pulse.
 - Journey Guard panel for connection risk, backup-route status, platform watch, and exit-car cues.
-- Lock-screen style live activity preview card for the selected train.
+- Lock-screen style activity preview card for the selected train.
 - Share sheet support for the selected trip summary.
 
 ## Data provider direction
 
-`TrainDataProvider.swift` now contains the Shinkansen-first provider boundary. When `ODPT_CONSUMER_KEY` is configured, Trainy requests ODPT `odpt:TrainTimetable` and `odpt:TrainInformation` data for mapped Shinkansen railways and converts those records into `TrainTrip` cards. If ODPT exposes route metadata but no timetable rows for a Shinkansen railway, Trainy uses official JR timetable pages for real schedule/platform data. Without a key, it falls back to the curated starter catalog with route/station coordinates.
+`TrainDataProvider.swift` now contains the Shinkansen-first provider boundary. When `ODPT_CONSUMER_KEY` is configured, Trainy requests ODPT `odpt:TrainTimetable` and `odpt:TrainInformation` data for mapped Shinkansen railways and converts those records into scheduled `TrainTrip` cards. If ODPT exposes route metadata but no timetable rows for a Shinkansen railway, Trainy uses official JR timetable pages for scheduled times and platform data. Without a key, it falls back to the curated starter catalog with route/station coordinates.
 
 The ODPT key is read from either the app `Info.plist` value `ODPTConsumerKey` or the `ODPT_CONSUMER_KEY` environment/build setting. For local builds:
 
@@ -41,7 +41,7 @@ For a repeatable ODPT-backed search check:
 scripts/smoke-odpt.sh
 ```
 
-The smoke compiles the Trainy provider code and requires both `Tokyo to Shin-Osaka` and `JR East` searches to return ODPT-backed or official timetable trips instead of starter data.
+The smoke compiles the Trainy provider code and requires both `Tokyo to Shin-Osaka` and `JR East` searches to return ODPT-backed or scheduled timetable trips instead of starter data.
 
 ## Local tooling note
 

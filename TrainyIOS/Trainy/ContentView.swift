@@ -275,7 +275,7 @@ private enum TripBucket: String, CaseIterable, Identifiable {
         case .upcoming:
             return "Ready to Depart"
         case .active:
-            return "Live Journeys"
+            return "Current Journeys"
         case .past:
             return "Completed Journeys"
         }
@@ -371,12 +371,15 @@ private struct ActiveTripSummary: View {
         GlassPanel(cornerRadius: 30, tint: .white.opacity(0.08), padding: 0) {
             VStack(alignment: .leading, spacing: RailDesign.Spacing.m) {
                 HStack(alignment: .top) {
-                    Label("Live trip", systemImage: "scope")
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(RailDesign.Palette.secondaryText)
-                        .padding(.horizontal, RailDesign.Spacing.s)
-                        .padding(.vertical, 7)
-                        .background(RailDesign.Palette.textSurface, in: Capsule())
+                    VStack(alignment: .leading, spacing: RailDesign.Spacing.xs) {
+                        Label(trip.sourceProvenance.liveSafeTripLabel, systemImage: "scope")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(RailDesign.Palette.secondaryText)
+                            .padding(.horizontal, RailDesign.Spacing.s)
+                            .padding(.vertical, 7)
+                            .background(RailDesign.Palette.textSurface, in: Capsule())
+                        SourceBadge(trip: trip)
+                    }
 
                     Spacer()
                     ServiceStatusPill(status: RailServiceStatus.from(trip))
@@ -442,7 +445,7 @@ private struct ActiveTripSummary: View {
                             Text("Open rail map")
                                 .font(.subheadline.weight(.bold))
                                 .foregroundStyle(RailDesign.Palette.ink)
-                            Text("Route line, train position, stops, and disruptions")
+                            Text("Route line, map position, stops, and disruptions")
                                 .font(.caption)
                                 .foregroundStyle(RailDesign.Palette.ink.opacity(0.68))
                                 .lineLimit(1)
@@ -682,7 +685,7 @@ private struct SearchScreen: View {
         .alert("Manual trip note", isPresented: $manualAddNotice) {
             Button("OK", role: .cancel) {}
         } message: {
-            Text("Manual trip creation is not connected in this build. Saved live and catalog trips remain available.")
+            Text("Manual trip creation is not connected in this build. Saved scheduled and starter catalog trips remain available.")
         }
         .animation(reduceMotion ? nil : RailDesign.Motion.quick, value: searchText)
         .railScreenChrome()
@@ -710,7 +713,7 @@ private struct SearchHeroView: View {
                     Text("Find rail journeys")
                         .font(.title3.weight(.bold))
                         .foregroundStyle(RailDesign.Palette.ink)
-                    Text("Search live and saved services by train number, station pair, operator, route, or departure time.")
+                    Text("Search scheduled, prediction, saved, and starter catalog services by train number, station pair, operator, route, or departure time.")
                         .font(.subheadline)
                         .foregroundStyle(RailDesign.Palette.secondaryText)
                         .fixedSize(horizontal: false, vertical: true)
@@ -861,6 +864,7 @@ private struct SearchResultsSection: View {
 private struct SearchResultCard: View {
     let trip: TrainTrip
     let track: () -> Void
+    @State private var sourceDetailTrip: TrainTrip?
 
     var body: some View {
         GlassPanel(tint: RailDesign.Palette.blue.opacity(0.10)) {
@@ -870,12 +874,25 @@ private struct SearchResultCard: View {
                         Text(trip.train)
                             .font(.headline)
                             .foregroundStyle(RailDesign.Palette.ink)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.72)
                         Text(trip.operatorName)
                             .font(.caption.weight(.semibold))
                             .foregroundStyle(RailDesign.Palette.secondaryText)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.76)
                     }
                     Spacer()
-                    ServiceStatusPill(status: RailServiceStatus.from(trip))
+                    VStack(alignment: .trailing, spacing: RailDesign.Spacing.xs) {
+                        ServiceStatusPill(status: RailServiceStatus.from(trip))
+                        Button {
+                            sourceDetailTrip = trip
+                        } label: {
+                            SourceBadge(trip: trip)
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityHint("Opens source details")
+                    }
                 }
 
                 HStack {
@@ -914,6 +931,9 @@ private struct SearchResultCard: View {
                     .buttonStyle(.glassProminent)
                 }
             }
+        }
+        .sheet(item: $sourceDetailTrip) { trip in
+            SourceDetailSheet(trip: trip)
         }
     }
 }
@@ -958,7 +978,7 @@ private struct StationsScreen: View {
                     }
                 }
             } header: {
-                SectionHeader(title: "Stations", subtitle: "Live boards, platforms, disruptions, facilities, and route shortcuts")
+                SectionHeader(title: "Stations", subtitle: "Station boards, platforms, disruptions, facilities, and route shortcuts")
             }
         }
         .listStyle(.plain)
@@ -1056,7 +1076,7 @@ private struct StationDetailView: View {
                     }
                 }
 
-                BoardSection(title: "Live departures", trips: station.departureTrips, empty: "No tracked departures for this station.")
+                BoardSection(title: "Tracked departures", trips: station.departureTrips, empty: "No tracked departures for this station.")
                 BoardSection(title: "Arrivals", trips: station.arrivalTrips, empty: "No tracked arrivals for this station.")
 
                 VStack(alignment: .leading, spacing: RailDesign.Spacing.s) {
@@ -1123,12 +1143,14 @@ private struct StationBoardRow: View {
                 Text("\(trip.operatorName) · \(trip.train)")
                     .font(.caption)
                     .foregroundStyle(RailDesign.Palette.secondaryText)
+                SourceBadge(trip: trip)
             }
             Spacer()
             PlatformChip(platform: trip.platform, label: "Track")
         }
         .padding(.vertical, RailDesign.Spacing.s)
         .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(trip.train), \(trip.origin.name) to \(trip.destination.name), \(trip.sourceProvenance.sourceKind.riderTitle), \(trip.sourceProvenance.freshness.displayName)")
     }
 }
 
@@ -1232,6 +1254,13 @@ private struct SettingsScreen: View {
                     SettingsPickerRow(symbol: "paintpalette", title: "Appearance", selection: $appearance, options: ["System", "Light", "Dark"])
                 }
 
+                SettingsGroup(title: "Providers") {
+                    ProviderRegionPicker(store: store)
+                    Divider()
+                        .background(RailDesign.Palette.hairline)
+                    ProviderDirectoryList(store: store)
+                }
+
                 SettingsGroup(title: "Privacy") {
                     SettingsToggleRow(symbol: "hand.raised", title: "Share diagnostics", detail: "Send anonymous rail search reliability signals. Station names and personal notes stay on this device.", isOn: $shareAnalytics)
                     SettingsInfoRow(symbol: "lock.shield", title: "Saved trip data", detail: "Tracked journeys, favorite stations, and alert choices are stored locally by this build.")
@@ -1264,8 +1293,9 @@ private struct TrainDetailView: View {
             VStack(alignment: .leading, spacing: RailDesign.Spacing.l) {
                 RouteHeaderPanel(trip: trip)
                 StatusSummaryPanel(trip: trip)
+                SourceProvenancePanel(trip: trip)
                 VStack(alignment: .leading, spacing: RailDesign.Spacing.s) {
-                    SectionHeader(title: "Rail map", subtitle: "Route line, current train position, upcoming stops, transfer cues, and disruptions")
+                    SectionHeader(title: "Rail map", subtitle: "Route line, map position, upcoming stops, transfer cues, and disruptions")
                     RailJourneyMapPanel(trip: trip, style: .detail)
                 }
                 JourneyProgressPanel(trip: trip)
@@ -1294,7 +1324,7 @@ private struct TrainDetailView: View {
                             InfoLine(symbol: "rectangle.split.3x1.fill", title: "Platform", value: trip.platform)
                             InfoLine(symbol: "train.side.front.car", title: "Carriage", value: "Car \(trip.bestCar) of \(trip.cars)")
                             InfoLine(symbol: "seat", title: "Seat note", value: trip.seat)
-                            InfoLine(symbol: "speedometer", title: "Current pace", value: trip.speed)
+                            InfoLine(symbol: "speedometer", title: "Speed", value: trip.speed)
                         }
                     }
                 }
@@ -1441,6 +1471,77 @@ private struct StatusSummaryPanel: View {
     }
 }
 
+private struct SourceProvenancePanel: View {
+    let trip: TrainTrip
+    @State private var sourceDetailTrip: TrainTrip?
+
+    private var provenance: SourceProvenance {
+        trip.sourceProvenance
+    }
+
+    private var freshnessText: String {
+        if let fetchedAt = provenance.fetchedAt {
+            return "\(provenance.freshness.displayName), fetched \(Self.dateFormatter.string(from: fetchedAt))"
+        }
+        if let publishedAt = provenance.publishedAt {
+            return "\(provenance.freshness.displayName), published \(Self.dateFormatter.string(from: publishedAt))"
+        }
+        return provenance.freshness.displayName
+    }
+
+    private static let dateFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .medium
+        formatter.timeStyle = .short
+        return formatter
+    }()
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: RailDesign.Spacing.s) {
+                    SectionHeader(title: "Source", subtitle: "Source, type, confidence, freshness, and license for this trip's visible data")
+            GlassPanel {
+                VStack(alignment: .leading, spacing: RailDesign.Spacing.m) {
+                    Button {
+                        sourceDetailTrip = trip
+                    } label: {
+                        SourceBadge(trip: trip, style: .regular)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityHint("Opens source details")
+
+                    InfoLine(symbol: "building.columns", title: "Provider", value: provenance.providerName)
+                    InfoLine(symbol: "doc.text.magnifyingglass", title: "Source", value: provenance.sourceName)
+                    InfoLine(symbol: "checkmark.seal", title: "Confidence", value: provenance.summaryText)
+                    InfoLine(symbol: "clock.badge.checkmark", title: "Freshness", value: freshnessText)
+                    InfoLine(symbol: "info.circle", title: "Meaning", value: provenance.riderExplanation)
+                    InfoLine(symbol: "doc.plaintext", title: "License", value: provenance.licenseAttributionText)
+                    InfoLine(symbol: "list.bullet.rectangle", title: "Fact mix", value: trip.sourceBreakdownText)
+
+                    VStack(spacing: RailDesign.Spacing.xs) {
+                        ForEach(trip.factProvenance) { fact in
+                            SourceFactRow(fact: fact)
+                        }
+                    }
+
+                    if let sourceURL = provenance.sourceURL {
+                        Link(destination: sourceURL) {
+                            Label(sourceURL.host ?? sourceURL.absoluteString, systemImage: "arrow.up.right.square")
+                                .font(.subheadline.weight(.semibold))
+                                .foregroundStyle(RailDesign.Palette.accent)
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.75)
+                        }
+                        .accessibilityLabel("Open source \(provenance.sourceName)")
+                    }
+                }
+            }
+        }
+        .sheet(item: $sourceDetailTrip) { trip in
+            SourceDetailSheet(trip: trip)
+        }
+    }
+}
+
 private struct StatusSummaryItem: View {
     let title: LocalizedStringKey
     let value: String
@@ -1474,7 +1575,7 @@ private struct JourneyProgressPanel: View {
     var body: some View {
         GlassPanel(tint: RailDesign.Palette.accent.opacity(0.14)) {
             VStack(alignment: .leading, spacing: RailDesign.Spacing.m) {
-                SectionHeader(title: "Live progress", subtitle: "Next stop, transfer risk, and estimated arrival")
+                SectionHeader(title: "Journey progress", subtitle: "Next stop, transfer risk, and estimated arrival")
                 ProgressView(value: trip.progress)
                     .tint(RailServiceStatus.from(trip).tint)
                 HStack {
@@ -1652,6 +1753,187 @@ private struct SettingsPickerRow: View {
     }
 }
 
+private struct ProviderRegionPicker: View {
+    @ObservedObject var store: TrainStore
+
+    var body: some View {
+        HStack(alignment: .center, spacing: RailDesign.Spacing.s) {
+            SettingsRowLabel(symbol: "globe.asia.australia", title: "Registry region", detail: "Filter provider status by region.")
+            Picker("", selection: Binding(
+                get: { store.selectedRegionID },
+                set: { store.selectRegion($0) }
+            )) {
+                ForEach(store.providerRegions) { region in
+                    Text(region.displayName).tag(region.id)
+                }
+            }
+            .pickerStyle(.menu)
+        }
+        .padding(.vertical, RailDesign.Spacing.s)
+    }
+}
+
+private struct ProviderDirectoryList: View {
+    @ObservedObject var store: TrainStore
+
+    var body: some View {
+        VStack(spacing: 0) {
+            ForEach(Array(store.visibleProviderDirectory.enumerated()), id: \.element.id) { index, provider in
+                if index > 0 {
+                    Divider()
+                        .background(RailDesign.Palette.hairline)
+                }
+                ProviderDirectoryRow(
+                    provider: provider,
+                    isActive: provider.id == store.activeProviderID,
+                    isSelected: provider.id == store.selectedProviderID,
+                    canSearch: store.providerCanSearch(provider.id),
+                    selectProvider: {
+                        store.selectProvider(provider.id)
+                    }
+                )
+            }
+        }
+    }
+}
+
+private struct ProviderDirectoryRow: View {
+    let provider: ProviderMetadata
+    let isActive: Bool
+    let isSelected: Bool
+    let canSearch: Bool
+    let selectProvider: () -> Void
+
+    private var statusTint: Color {
+        if canSearch { return RailDesign.Palette.mint }
+        switch provider.implementationStatus {
+        case .active:
+            return RailDesign.Palette.blue
+        case .planned:
+            return RailDesign.Palette.amber
+        case .disabled:
+            return RailDesign.Palette.secondaryText
+        }
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: RailDesign.Spacing.s) {
+            HStack(alignment: .top, spacing: RailDesign.Spacing.s) {
+                Image(systemName: canSearch ? "tram.fill" : "tram")
+                    .foregroundStyle(statusTint)
+                    .frame(width: 28, height: 28)
+                VStack(alignment: .leading, spacing: RailDesign.Spacing.xs) {
+                    HStack(alignment: .firstTextBaseline, spacing: RailDesign.Spacing.xs) {
+                        Text(provider.displayName)
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(RailDesign.Palette.ink)
+                            .fixedSize(horizontal: false, vertical: true)
+                        ProviderStatusPill(text: statusText, tint: statusTint)
+                    }
+
+                    Text("\(provider.region.displayName) / \(provider.authStrategy.displayName)")
+                        .font(.caption)
+                        .foregroundStyle(RailDesign.Palette.secondaryText)
+                        .fixedSize(horizontal: false, vertical: true)
+
+                    Text(provider.availability.message)
+                        .font(.caption)
+                        .foregroundStyle(RailDesign.Palette.secondaryText)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+
+            if !provider.capabilities.isEmpty {
+                ProviderCapabilityStrip(capabilities: provider.capabilities)
+            }
+
+            Text(provider.requirementSummary)
+                .font(.caption2)
+                .foregroundStyle(RailDesign.Palette.secondaryText)
+                .fixedSize(horizontal: false, vertical: true)
+
+            ProviderSourceLinks(links: provider.sourceLinks)
+
+            if canSearch && !isSelected {
+                Button(action: selectProvider) {
+                    Label("Use provider", systemImage: "checkmark.circle")
+                        .font(.caption.weight(.semibold))
+                }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.mini)
+                .tint(RailDesign.Palette.accent)
+            }
+        }
+        .padding(.vertical, RailDesign.Spacing.s)
+    }
+
+    private var statusText: String {
+        if isActive { return "Active" }
+        if canSearch { return "Available" }
+        return provider.implementationStatus.displayName
+    }
+}
+
+private struct ProviderStatusPill: View {
+    let text: String
+    let tint: Color
+
+    var body: some View {
+        Text(text)
+            .font(.caption2.weight(.bold))
+            .foregroundStyle(tint)
+            .padding(.horizontal, RailDesign.Spacing.xs)
+            .padding(.vertical, 3)
+            .background(tint.opacity(0.12), in: Capsule())
+            .lineLimit(1)
+            .minimumScaleFactor(0.8)
+    }
+}
+
+private struct ProviderCapabilityStrip: View {
+    let capabilities: Set<ProviderCapability>
+
+    private var sortedCapabilities: [ProviderCapability] {
+        capabilities.sorted { lhs, rhs in
+            lhs.displayName.localizedStandardCompare(rhs.displayName) == .orderedAscending
+        }
+    }
+
+    var body: some View {
+        LazyVGrid(columns: [GridItem(.adaptive(minimum: 118), spacing: RailDesign.Spacing.xs)], alignment: .leading, spacing: RailDesign.Spacing.xs) {
+            ForEach(sortedCapabilities) { capability in
+                Text(capability.displayName)
+                    .font(.caption2.weight(.semibold))
+                    .foregroundStyle(RailDesign.Palette.ink)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.72)
+                    .padding(.horizontal, RailDesign.Spacing.xs)
+                    .padding(.vertical, 5)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(RailDesign.Palette.accent.opacity(0.10), in: Capsule())
+            }
+        }
+    }
+}
+
+private struct ProviderSourceLinks: View {
+    let links: [ProviderSourceLink]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: RailDesign.Spacing.xxs) {
+            ForEach(Array(links.prefix(2))) { link in
+                Link(destination: link.url) {
+                    Label(link.title, systemImage: "arrow.up.right.square")
+                        .font(.caption2.weight(.semibold))
+                        .foregroundStyle(RailDesign.Palette.accent)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.72)
+                }
+            }
+        }
+    }
+}
+
 private struct SettingsInfoRow: View {
     let symbol: String
     let title: LocalizedStringKey
@@ -1825,7 +2107,7 @@ private extension TrainStore {
 
 private extension TrainTrip {
     var shareText: String {
-        "\(train): \(origin.name) to \(destination.name), \(status), platform \(platform), ETA \(eta)."
+        "\(train): \(origin.name) to \(destination.name), \(status), platform \(platform), ETA \(eta). Source: \(sourceProvenance.sourceKind.riderTitle), \(sourceProvenance.freshness.displayName)."
     }
 
     var transferSummary: String {

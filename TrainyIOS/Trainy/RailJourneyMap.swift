@@ -319,7 +319,7 @@ private struct RailMapModel {
             items.append(
                 RailMapInsight(
                     title: "No disruptions ahead",
-                    detail: "Tracked stops ahead are clear in the current status feed.",
+                    detail: "Tracked stops ahead are clear in the current trip data.",
                     symbolName: "checkmark.shield.fill",
                     tint: RailDesign.Palette.mint
                 )
@@ -545,6 +545,7 @@ private struct RailMapStatusOverlay: View {
                     .padding(.vertical, 7)
                     .background(RailDesign.Palette.textSurface, in: Capsule())
             }
+            SourceBadge(trip: model.trip)
 
             VStack(alignment: .leading, spacing: 2) {
                 Text("Next stop")
@@ -599,7 +600,7 @@ private struct RailMapControls: View {
                 VStack(spacing: 2) {
                     Image(systemName: "location.north.circle.fill")
                         .font(.caption.weight(.bold))
-                    Text("Train")
+                    Text("Map")
                         .font(.system(size: 9, weight: .bold, design: .rounded))
                 }
                 .foregroundStyle(RailDesign.Palette.accent)
@@ -607,9 +608,9 @@ private struct RailMapControls: View {
             }
             .buttonStyle(.plain)
             .railLiquidGlass(cornerRadius: 19, tint: RailDesign.Palette.accent.opacity(0.12), interactive: true, strokeOpacity: 0.26)
-            .accessibilityLabel("Locate train")
+            .accessibilityLabel("Center map marker")
             .contextMenu {
-                Text("Locate train")
+                Text("Center map marker")
             }
         }
     }
@@ -782,7 +783,7 @@ private struct RailMapTrainPin: View {
                     .background(status.tint, in: Circle())
                     .overlay(Circle().stroke(.white.opacity(0.88), lineWidth: 2))
             }
-            Text("Current train")
+            Text("Map position")
                 .font(.system(size: 10, weight: .bold, design: .rounded))
                 .foregroundStyle(RailDesign.Palette.ink)
                 .padding(.horizontal, 8)
@@ -790,7 +791,7 @@ private struct RailMapTrainPin: View {
                 .background(RailDesign.Palette.textSurface, in: Capsule())
         }
         .shadow(color: status.tint.opacity(0.30), radius: 14, y: 5)
-        .accessibilityLabel("Current train position")
+        .accessibilityLabel("Map position")
     }
 }
 

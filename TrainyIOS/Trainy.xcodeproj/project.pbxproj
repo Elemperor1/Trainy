@@ -16,6 +16,18 @@
 		9D0A10222C10000100A00001 /* RailDesignSystem.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D0A10212C10000100A00001 /* RailDesignSystem.swift */; };
 		9D0A10242C10000100A00001 /* RailComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D0A10232C10000100A00001 /* RailComponents.swift */; };
 		9D0A10262C10000100A00001 /* RailJourneyMap.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D0A10252C10000100A00001 /* RailJourneyMap.swift */; };
+		9D0A10282C10000100A00001 /* ProviderCapabilities.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D0A10272C10000100A00001 /* ProviderCapabilities.swift */; };
+		9D0A102A2C10000100A00001 /* ProviderErrors.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D0A10292C10000100A00001 /* ProviderErrors.swift */; };
+		9D0A102C2C10000100A00001 /* TrainProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D0A102B2C10000100A00001 /* TrainProvider.swift */; };
+		9D0A102E2C10000100A00001 /* ProviderRegistry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D0A102D2C10000100A00001 /* ProviderRegistry.swift */; };
+		9D0A10312C10000100A00001 /* ProviderTextUtilities.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D0A10302C10000100A00001 /* ProviderTextUtilities.swift */; };
+		9D0A10332C10000100A00001 /* ODPTClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D0A10322C10000100A00001 /* ODPTClient.swift */; };
+		9D0A10352C10000100A00001 /* ODPTModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D0A10342C10000100A00001 /* ODPTModels.swift */; };
+		9D0A10372C10000100A00001 /* JREastTimetableClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D0A10362C10000100A00001 /* JREastTimetableClient.swift */; };
+		9D0A10392C10000100A00001 /* ShinkansenTrainProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D0A10382C10000100A00001 /* ShinkansenTrainProvider.swift */; };
+		9D0A103B2C10000100A00001 /* ShinkansenRouteCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D0A103A2C10000100A00001 /* ShinkansenRouteCatalog.swift */; };
+		9D0A103D2C10000100A00001 /* ShinkansenStarterCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D0A103C2C10000100A00001 /* ShinkansenStarterCatalog.swift */; };
+		9D0A103F2C10000100A00001 /* ShinkansenTrainTripMapper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D0A103E2C10000100A00001 /* ShinkansenTrainTripMapper.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -30,6 +42,18 @@
 		9D0A10212C10000100A00001 /* RailDesignSystem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RailDesignSystem.swift; sourceTree = "<group>"; };
 		9D0A10232C10000100A00001 /* RailComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RailComponents.swift; sourceTree = "<group>"; };
 		9D0A10252C10000100A00001 /* RailJourneyMap.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RailJourneyMap.swift; sourceTree = "<group>"; };
+		9D0A10272C10000100A00001 /* ProviderCapabilities.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProviderCapabilities.swift; sourceTree = "<group>"; };
+		9D0A10292C10000100A00001 /* ProviderErrors.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProviderErrors.swift; sourceTree = "<group>"; };
+		9D0A102B2C10000100A00001 /* TrainProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrainProvider.swift; sourceTree = "<group>"; };
+		9D0A102D2C10000100A00001 /* ProviderRegistry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProviderRegistry.swift; sourceTree = "<group>"; };
+		9D0A10302C10000100A00001 /* ProviderTextUtilities.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProviderTextUtilities.swift; sourceTree = "<group>"; };
+		9D0A10322C10000100A00001 /* ODPTClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ODPTClient.swift; sourceTree = "<group>"; };
+		9D0A10342C10000100A00001 /* ODPTModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ODPTModels.swift; sourceTree = "<group>"; };
+		9D0A10362C10000100A00001 /* JREastTimetableClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JREastTimetableClient.swift; sourceTree = "<group>"; };
+		9D0A10382C10000100A00001 /* ShinkansenTrainProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShinkansenTrainProvider.swift; sourceTree = "<group>"; };
+		9D0A103A2C10000100A00001 /* ShinkansenRouteCatalog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShinkansenRouteCatalog.swift; sourceTree = "<group>"; };
+		9D0A103C2C10000100A00001 /* ShinkansenStarterCatalog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShinkansenStarterCatalog.swift; sourceTree = "<group>"; };
+		9D0A103E2C10000100A00001 /* ShinkansenTrainTripMapper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShinkansenTrainTripMapper.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -61,11 +85,55 @@
 				9D0A10022C10000100A00001 /* ContentView.swift */,
 				9D0A10042C10000100A00001 /* TrainModels.swift */,
 				9D0A10062C10000100A00001 /* TrainStore.swift */,
+				9D0A102F2C10000100A00001 /* Providers */,
 				9D0A101F2C10000100A00001 /* TrainDataProvider.swift */,
 				9D0A10082C10000100A00001 /* Assets.xcassets */,
 				9D0A100A2C10000100A00001 /* Info.plist */,
 			);
 			path = Trainy;
+			sourceTree = "<group>";
+		};
+		9D0A102F2C10000100A00001 /* Providers */ = {
+			isa = PBXGroup;
+			children = (
+				9D0A10272C10000100A00001 /* ProviderCapabilities.swift */,
+				9D0A10292C10000100A00001 /* ProviderErrors.swift */,
+				9D0A102B2C10000100A00001 /* TrainProvider.swift */,
+				9D0A102D2C10000100A00001 /* ProviderRegistry.swift */,
+				9D0A10302C10000100A00001 /* ProviderTextUtilities.swift */,
+				9D0A10402C10000100A00001 /* ODPT */,
+				9D0A10412C10000100A00001 /* JREast */,
+				9D0A10422C10000100A00001 /* Shinkansen */,
+			);
+			path = Providers;
+			sourceTree = "<group>";
+		};
+		9D0A10402C10000100A00001 /* ODPT */ = {
+			isa = PBXGroup;
+			children = (
+				9D0A10322C10000100A00001 /* ODPTClient.swift */,
+				9D0A10342C10000100A00001 /* ODPTModels.swift */,
+			);
+			path = ODPT;
+			sourceTree = "<group>";
+		};
+		9D0A10412C10000100A00001 /* JREast */ = {
+			isa = PBXGroup;
+			children = (
+				9D0A10362C10000100A00001 /* JREastTimetableClient.swift */,
+			);
+			path = JREast;
+			sourceTree = "<group>";
+		};
+		9D0A10422C10000100A00001 /* Shinkansen */ = {
+			isa = PBXGroup;
+			children = (
+				9D0A10382C10000100A00001 /* ShinkansenTrainProvider.swift */,
+				9D0A103A2C10000100A00001 /* ShinkansenRouteCatalog.swift */,
+				9D0A103C2C10000100A00001 /* ShinkansenStarterCatalog.swift */,
+				9D0A103E2C10000100A00001 /* ShinkansenTrainTripMapper.swift */,
+			);
+			path = Shinkansen;
 			sourceTree = "<group>";
 		};
 		9D0A100F2C10000100A00001 /* Products */ = {
@@ -152,6 +220,18 @@
 				9D0A10032C10000100A00001 /* ContentView.swift in Sources */,
 				9D0A10052C10000100A00001 /* TrainModels.swift in Sources */,
 				9D0A10072C10000100A00001 /* TrainStore.swift in Sources */,
+				9D0A10282C10000100A00001 /* ProviderCapabilities.swift in Sources */,
+				9D0A102A2C10000100A00001 /* ProviderErrors.swift in Sources */,
+				9D0A102C2C10000100A00001 /* TrainProvider.swift in Sources */,
+				9D0A102E2C10000100A00001 /* ProviderRegistry.swift in Sources */,
+				9D0A10312C10000100A00001 /* ProviderTextUtilities.swift in Sources */,
+				9D0A10332C10000100A00001 /* ODPTClient.swift in Sources */,
+				9D0A10352C10000100A00001 /* ODPTModels.swift in Sources */,
+				9D0A10372C10000100A00001 /* JREastTimetableClient.swift in Sources */,
+				9D0A10392C10000100A00001 /* ShinkansenTrainProvider.swift in Sources */,
+				9D0A103B2C10000100A00001 /* ShinkansenRouteCatalog.swift in Sources */,
+				9D0A103D2C10000100A00001 /* ShinkansenStarterCatalog.swift in Sources */,
+				9D0A103F2C10000100A00001 /* ShinkansenTrainTripMapper.swift in Sources */,
 				9D0A10202C10000100A00001 /* TrainDataProvider.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

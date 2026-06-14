@@ -16,7 +16,7 @@ final class TrainStore: ObservableObject {
             case .loading:
                 return "Updating"
             case .loaded:
-                return "Live"
+                return "Updated"
             case .empty:
                 return "Saved"
             case .offline:
@@ -35,36 +35,48 @@ final class TrainStore: ObservableObject {
     @Published private(set) var liveResults: [TrainTrip] = []
     @Published private(set) var liveLoadState: LiveLoadState = .idle
     @Published private(set) var lastLiveRefresh: Date?
+    @Published private(set) var selectedProviderID: String
+    @Published private(set) var selectedRegionID: String
 
     private let defaults: UserDefaults
-    private let provider: ShinkansenTrainProvider
+    private let providerRegistry: ProviderRegistry
+    private let provider: any ScheduleFeedProvider
     private let catalog: [TrainTrip]
     private var hasBootstrapped = false
     private var hasSavedPayload = false
 
-    init(defaults: UserDefaults = .standard, provider: ShinkansenTrainProvider = ShinkansenTrainProvider()) {
+    init(defaults: UserDefaults = .standard, registry: ProviderRegistry = .default, providerID: String? = nil) {
         self.defaults = defaults
-        self.provider = provider
-        let fullCatalog = provider.catalog
+        self.providerRegistry = registry
+        let requestedProviderID = providerID ?? defaults.string(forKey: DefaultsKey.selectedProviderID) ?? registry.defaultProviderID
+        let resolvedProvider = registry.scheduleProvider(id: requestedProviderID)
+            ?? registry.defaultScheduleProvider
+            ?? ShinkansenTrainProvider()
+        self.provider = resolvedProvider
+        self.selectedProviderID = resolvedProvider.providerID
+        let storedRegionID = defaults.string(forKey: DefaultsKey.selectedRegionID)
+        let availableRegionIDs = Set(registry.regions.map(\.id))
+        self.selectedRegionID = storedRegionID.flatMap { availableRegionIDs.contains($0) ? $0 : nil } ?? ProviderRegion.all.id
+        let fullCatalog = resolvedProvider.catalog
         self.catalog = fullCatalog
         let catalogIDs = Set(fullCatalog.map(\.id))
-        let isCurrentDataScope = defaults.string(forKey: DefaultsKey.dataScope) == provider.dataScope
+        let isCurrentDataScope = defaults.string(forKey: DefaultsKey.dataScope) == resolvedProvider.dataScope
         let storedSelectedTripID = defaults.string(forKey: DefaultsKey.selectedTripID)
 
         let initialTrips: [TrainTrip]
         if
             isCurrentDataScope,
-            let storedTrips = Self.decodeTrips(from: defaults.data(forKey: DefaultsKey.trackedTripsPayload))?.filter({ catalogIDs.contains($0.id) || $0.providerID == provider.providerID }),
+            let storedTrips = Self.decodeTrips(from: defaults.data(forKey: DefaultsKey.trackedTripsPayload))?.filter({ catalogIDs.contains($0.id) || $0.providerID == resolvedProvider.providerID }),
             !storedTrips.isEmpty
         {
             initialTrips = storedTrips
             self.hasSavedPayload = true
         } else {
             let storedIDs = isCurrentDataScope ? defaults.stringArray(forKey: DefaultsKey.trackedTripIDs) : nil
-            let defaultIDs = provider.defaultTrips.map(\.id)
+            let defaultIDs = resolvedProvider.defaultTrips.map(\.id)
             let trackedIDs = storedIDs?.isEmpty == false ? storedIDs ?? defaultIDs : defaultIDs
             let resolvedTrips = trackedIDs.compactMap { id in fullCatalog.first { $0.id == id } }
-            initialTrips = resolvedTrips.isEmpty ? provider.defaultTrips : resolvedTrips
+            initialTrips = resolvedTrips.isEmpty ? resolvedProvider.defaultTrips : resolvedTrips
         }
         self.trips = initialTrips
 
@@ -76,10 +88,63 @@ final class TrainStore: ObservableObject {
 
         self.notifiedIDs = Set(defaults.stringArray(forKey: DefaultsKey.notifiedIDs) ?? [])
         self.pinnedIDs = Set(defaults.stringArray(forKey: DefaultsKey.pinnedIDs) ?? [])
+        defaults.set(resolvedProvider.providerID, forKey: DefaultsKey.selectedProviderID)
+        defaults.set(selectedRegionID, forKey: DefaultsKey.selectedRegionID)
+    }
+
+    convenience init(defaults: UserDefaults = .standard, provider: any ScheduleFeedProvider) {
+        self.init(
+            defaults: defaults,
+            registry: ProviderRegistry(providers: [provider], defaultProviderID: provider.providerID),
+            providerID: provider.providerID
+        )
     }
 
     var selectedTrip: TrainTrip {
         trips.first { $0.id == selectedTripID } ?? trips[0]
+    }
+
+    var registeredProviders: [any TrainProvider] {
+        providerRegistry.providers
+    }
+
+    var providerDirectory: [ProviderMetadata] {
+        providerRegistry.providerDirectory
+    }
+
+    var visibleProviderDirectory: [ProviderMetadata] {
+        providerRegistry.visibleProviderDirectory(
+            selectedRegionID: selectedRegionID,
+            activeProviderID: activeProviderID
+        )
+    }
+
+    var providerRegions: [ProviderRegion] {
+        providerRegistry.regions
+    }
+
+    var activeProviderID: String {
+        provider.providerID
+    }
+
+    var activeProviderCapabilities: Set<ProviderCapability> {
+        provider.capabilities
+    }
+
+    var activeProviderAvailability: ProviderAvailability {
+        provider.availability
+    }
+
+    func activeProviderSupports(_ capability: ProviderCapability) -> Bool {
+        provider.supports(capability)
+    }
+
+    func providerSupports(_ capability: ProviderCapability, providerID: String) -> Bool {
+        providerRegistry.supports(capability, providerID: providerID)
+    }
+
+    func providerCanSearch(_ providerID: String) -> Bool {
+        providerRegistry.canSearch(providerID: providerID)
     }
 
     var discoveryTrips: [TrainTrip] {
@@ -93,7 +158,7 @@ final class TrainStore: ObservableObject {
             !trips.contains { $0.id == candidate.id }
         }
         let cleanQuery = query.trimmingCharacters(in: .whitespacesAndNewlines)
-        if provider.isODPTConfigured && !cleanQuery.isEmpty {
+        if !provider.includesCatalogResultsInSearch && !cleanQuery.isEmpty {
             return live
         }
         return live + discoveryResults(matching: query)
@@ -122,18 +187,18 @@ final class TrainStore: ObservableObject {
     var liveStatusText: String {
         switch liveLoadState {
         case .idle:
-            return "Ready for live search"
+            return "Ready for rail search"
         case .loading:
-            return provider.isODPTConfigured ? "Refreshing ODPT Shinkansen data" : "Refreshing Japan Shinkansen data"
+            return "Refreshing \(provider.feedLabel)"
         case .loaded:
             if let lastLiveRefresh {
                 return "\(provider.feedLabel) · updated \(Self.relativeTime(from: lastLiveRefresh))"
             }
             return "\(provider.feedLabel) ready"
         case .empty(let message):
-            return "Saved live trip · \(message)"
+            return "Saved trips only · \(message)"
         case .offline(let message):
-            return "Saved trip available · \(message)"
+            return SourceProvenance.providerUnavailableText(message: message)
         }
     }
 
@@ -154,6 +219,10 @@ final class TrainStore: ObservableObject {
     }
 
     func loadLiveRoutes() async {
+        guard provider.supports(.schedule) else {
+            liveLoadState = .empty("\(provider.displayName) does not support schedule search")
+            return
+        }
         guard liveRoutes.isEmpty else { return }
         liveLoadState = .loading
         do {
@@ -166,6 +235,11 @@ final class TrainStore: ObservableObject {
     }
 
     func searchLiveTrips(matching query: String) async {
+        guard provider.supports(.schedule) else {
+            liveResults = []
+            liveLoadState = .empty("\(provider.displayName) does not support schedule search")
+            return
+        }
         await loadLiveRoutes()
         liveLoadState = .loading
         do {
@@ -188,10 +262,16 @@ final class TrainStore: ObservableObject {
             return
         }
 
+        guard let realtimeProvider = provider as? any RealtimeFeedProvider else {
+            refreshSampleTrip()
+            liveLoadState = .loaded
+            return
+        }
+
         liveLoadState = .loading
         Task {
             do {
-                if let refreshedTrip = try await provider.refresh(trip, knownRoutes: liveRoutes) {
+                if let refreshedTrip = try await realtimeProvider.refresh(trip, knownRoutes: liveRoutes) {
                     applyRefreshedTrip(refreshedTrip, replacing: trip)
                     liveLoadState = .loaded
                     lastLiveRefresh = Date()
@@ -208,6 +288,18 @@ final class TrainStore: ObservableObject {
     func select(_ trip: TrainTrip) {
         selectedTripID = trip.id
         defaults.set(trip.id, forKey: DefaultsKey.selectedTripID)
+    }
+
+    func selectProvider(_ providerID: String) {
+        guard providerRegistry.canSearch(providerID: providerID) else { return }
+        selectedProviderID = providerID
+        defaults.set(providerID, forKey: DefaultsKey.selectedProviderID)
+    }
+
+    func selectRegion(_ regionID: String) {
+        guard providerRegions.contains(where: { $0.id == regionID }) else { return }
+        selectedRegionID = regionID
+        defaults.set(regionID, forKey: DefaultsKey.selectedRegionID)
     }
 
     func discoveryResults(matching query: String) -> [TrainTrip] {
@@ -278,7 +370,11 @@ final class TrainStore: ObservableObject {
             trip.destination.name,
             trip.nextStop,
             trip.status,
-            trip.dataSource ?? ""
+            trip.dataSource ?? "",
+            trip.sourceProvenance.sourceName,
+            trip.sourceProvenance.sourceKind.displayName,
+            trip.sourceProvenance.confidence.displayName,
+            trip.sourceBreakdownText
         ].joined(separator: " ")
     }
 
@@ -310,6 +406,8 @@ private enum DefaultsKey {
     static let trackedTripIDs = "trainy.trackedTripIDs"
     static let trackedTripsPayload = "trainy.trackedTripsPayload"
     static let selectedTripID = "trainy.selectedTripID"
+    static let selectedProviderID = "trainy.selectedProviderID"
+    static let selectedRegionID = "trainy.selectedRegionID"
     static let notifiedIDs = "trainy.notifiedIDs"
     static let pinnedIDs = "trainy.pinnedIDs"
 }

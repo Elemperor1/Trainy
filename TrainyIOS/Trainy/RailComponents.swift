@@ -1,5 +1,71 @@
 import SwiftUI
 
+extension SourceKind {
+    var badgeTitle: String {
+        compactTitle
+    }
+
+    var badgeSymbolName: String {
+        switch self {
+        case .starterCatalog:
+            return "sparkles"
+        case .officialTimetable:
+            return "building.columns.fill"
+        case .realtimePrediction:
+            return "dot.radiowaves.left.and.right"
+        case .vehiclePosition:
+            return "location.fill"
+        case .alertFeed:
+            return "exclamationmark.triangle.fill"
+        case .inferred:
+            return "tray.full.fill"
+        }
+    }
+
+    var badgeTint: Color {
+        switch self {
+        case .starterCatalog:
+            return RailDesign.Palette.copper
+        case .officialTimetable:
+            return RailDesign.Palette.accent
+        case .realtimePrediction, .vehiclePosition:
+            return RailDesign.Palette.blue
+        case .alertFeed:
+            return RailDesign.Palette.amber
+        case .inferred:
+            return RailDesign.Palette.violet
+        }
+    }
+}
+
+extension FreshnessState {
+    var compactTitle: String {
+        switch self {
+        case .fresh:
+            return "Fresh"
+        case .stale:
+            return "Stale"
+        case .expired:
+            return "Expired"
+        case .unknown:
+            return "Unk"
+        }
+    }
+
+    var tint: Color {
+        switch self {
+        case .fresh:
+            return RailDesign.Palette.mint
+        case .stale:
+            return RailDesign.Palette.amber
+        case .expired:
+            return RailDesign.Palette.red
+        case .unknown:
+            return RailDesign.Palette.secondaryText
+        }
+    }
+}
+
 struct GlassPanel<Content: View>: View {
     let cornerRadius: CGFloat
     let tint: Color
@@ -66,6 +132,204 @@ struct ServiceStatusPill: View {
         .padding(.horizontal, RailDesign.Spacing.s)
         .padding(.vertical, 7)
         .railLiquidGlass(cornerRadius: RailDesign.Radius.chip, tint: status.glassTint)
+        .accessibilityElement(children: .combine)
+    }
+}
+
+struct SourceBadge: View {
+    enum Style {
+        case compact
+        case regular
+
+        var width: CGFloat {
+            switch self {
+            case .compact:
+                return 128
+            case .regular:
+                return 164
+            }
+        }
+
+        var height: CGFloat { 30 }
+    }
+
+    let trip: TrainTrip
+    var style: Style = .compact
+
+    private var source: SourceProvenance {
+        trip.sourceProvenance
+    }
+
+    var body: some View {
+        HStack(spacing: RailDesign.Spacing.xxs) {
+            Image(systemName: source.sourceKind.badgeSymbolName)
+                .imageScale(.small)
+                .frame(width: 14)
+
+            Text(source.sourceKind.badgeTitle)
+                .font(.caption.weight(.bold))
+                .lineLimit(1)
+                .minimumScaleFactor(0.72)
+
+            FreshnessBadge(state: source.freshness)
+        }
+        .foregroundStyle(source.sourceKind.badgeTint)
+        .padding(.horizontal, RailDesign.Spacing.xs)
+        .frame(width: style.width, height: style.height, alignment: .leading)
+        .railLiquidGlass(cornerRadius: RailDesign.Radius.chip, tint: source.sourceKind.badgeTint.opacity(0.12))
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("\(source.sourceKind.riderTitle) source, \(source.confidence.displayName) confidence, \(source.freshness.displayName)")
+    }
+}
+
+struct FreshnessBadge: View {
+    let state: FreshnessState
+
+    var body: some View {
+        HStack(spacing: 3) {
+            Circle()
+                .fill(state.tint)
+                .frame(width: 6, height: 6)
+            Text(state.compactTitle)
+                .font(.caption2.weight(.semibold))
+                .lineLimit(1)
+                .minimumScaleFactor(0.72)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Freshness \(state.displayName)")
+    }
+}
+
+struct SourceFactRow: View {
+    let fact: FactProvenance
+
+    var body: some View {
+        HStack(alignment: .top, spacing: RailDesign.Spacing.s) {
+            Text(fact.fact.displayName)
+                .font(.caption.weight(.bold))
+                .foregroundStyle(RailDesign.Palette.ink)
+                .frame(width: 88, alignment: .leading)
+                .lineLimit(1)
+                .minimumScaleFactor(0.72)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(fact.summaryText)
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(RailDesign.Palette.secondaryText)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.72)
+                Text(fact.note)
+                    .font(.caption2)
+                    .foregroundStyle(RailDesign.Palette.secondaryText)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            Spacer(minLength: 0)
+        }
+        .padding(.vertical, 4)
+        .accessibilityElement(children: .combine)
+    }
+}
+
+struct SourceDetailSheet: View {
+    @Environment(\.dismiss) private var dismiss
+
+    let trip: TrainTrip
+
+    private var source: SourceProvenance {
+        trip.sourceProvenance
+    }
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: RailDesign.Spacing.l) {
+                    GlassPanel(tint: source.sourceKind.badgeTint.opacity(0.12)) {
+                        VStack(alignment: .leading, spacing: RailDesign.Spacing.m) {
+                            SourceBadge(trip: trip, style: .regular)
+                            Text(source.sourceName)
+                                .font(.title3.weight(.bold))
+                                .foregroundStyle(RailDesign.Palette.ink)
+                                .fixedSize(horizontal: false, vertical: true)
+                            Text(source.riderExplanation)
+                                .font(.subheadline)
+                                .foregroundStyle(RailDesign.Palette.secondaryText)
+                                .fixedSize(horizontal: false, vertical: true)
+                            Text(trip.sourceBreakdownText)
+                                .font(.subheadline)
+                                .foregroundStyle(RailDesign.Palette.secondaryText)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                    }
+
+                    GlassPanel {
+                        VStack(alignment: .leading, spacing: RailDesign.Spacing.m) {
+                            SourceMetadataLine(symbol: "building.columns", title: "Provider", value: source.providerName)
+                            SourceMetadataLine(symbol: "calendar.badge.clock", title: "Source type", value: source.sourceKind.riderTitle)
+                            SourceMetadataLine(symbol: "checkmark.seal", title: "Confidence", value: source.summaryText)
+                            SourceMetadataLine(symbol: "clock.badge.checkmark", title: "Freshness", value: "\(source.freshness.displayName). \(source.freshnessExplanation)")
+                            SourceMetadataLine(symbol: "doc.plaintext", title: "License and attribution", value: source.licenseAttributionText)
+                            if let sourceURL = source.sourceURL {
+                                Link(destination: sourceURL) {
+                                    Label(sourceURL.host ?? sourceURL.absoluteString, systemImage: "arrow.up.right.square")
+                                        .font(.subheadline.weight(.semibold))
+                                        .foregroundStyle(RailDesign.Palette.accent)
+                                        .lineLimit(1)
+                                        .minimumScaleFactor(0.72)
+                                }
+                                .accessibilityLabel("Open source \(source.sourceName)")
+                            }
+                        }
+                    }
+
+                    GlassPanel {
+                        VStack(alignment: .leading, spacing: RailDesign.Spacing.s) {
+                            Text("Fact Sources")
+                                .font(.headline)
+                                .foregroundStyle(RailDesign.Palette.ink)
+                            ForEach(trip.factProvenance) { fact in
+                                SourceFactRow(fact: fact)
+                            }
+                        }
+                    }
+                }
+                .padding(RailDesign.Spacing.m)
+            }
+            .background(RailGradientBackground().ignoresSafeArea())
+            .navigationTitle("Source")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Done") {
+                        dismiss()
+                    }
+                }
+            }
+        }
+    }
+}
+
+private struct SourceMetadataLine: View {
+    let symbol: String
+    let title: LocalizedStringKey
+    let value: String
+
+    var body: some View {
+        HStack(alignment: .top, spacing: RailDesign.Spacing.s) {
+            Image(systemName: symbol)
+                .foregroundStyle(RailDesign.Palette.accent)
+                .frame(width: 24)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(RailDesign.Palette.secondaryText)
+                Text(value.isEmpty ? "Not available" : value)
+                    .font(.subheadline)
+                    .foregroundStyle(RailDesign.Palette.ink)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
         .accessibilityElement(children: .combine)
     }
 }
@@ -153,6 +417,7 @@ struct TrainTripCard: View {
                             .foregroundStyle(RailDesign.Palette.ink)
                             .lineLimit(1)
                             .minimumScaleFactor(0.76)
+                        SourceBadge(trip: trip)
                     }
 
                     Spacer(minLength: RailDesign.Spacing.s)
@@ -208,7 +473,7 @@ struct TrainTripCard: View {
             }
         }
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("\(trip.train), \(trip.origin.name) to \(trip.destination.name), \(trip.status), platform \(trip.platform)")
+        .accessibilityLabel("\(trip.train), \(trip.origin.name) to \(trip.destination.name), \(trip.status), platform \(trip.platform), \(trip.sourceProvenance.sourceKind.riderTitle) source, \(trip.sourceProvenance.freshness.displayName)")
     }
 }
 
@@ -576,7 +841,7 @@ private struct AlertStrip: View {
 
 #Preview("States") {
     VStack(spacing: 16) {
-        OfflineBanner(message: "Saved journeys are available until live rail data returns.")
+        OfflineBanner(message: "Saved journeys are available until source data returns.")
         EmptyStateView(title: "No journeys yet", message: "Search by train number, route, operator, or station pair.")
         LoadingSkeletonView(rows: 1)
     }

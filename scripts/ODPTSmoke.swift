@@ -59,10 +59,13 @@ struct ODPTSmoke {
             throw ODPTSmokeError.noLiveTimetableTrips(query: query)
         }
         guard trips.allSatisfy({ trip in
-            guard let dataSource = trip.dataSource else { return false }
-            return dataSource == "ODPT TrainTimetable API" || dataSource.localizedCaseInsensitiveContains("official timetable")
+            trip.sourceProvenance.sourceKind == .officialTimetable &&
+                (trip.dataSource == "ODPT TrainTimetable API" || trip.dataSource?.localizedCaseInsensitiveContains("official timetable") == true)
         }) else {
             throw ODPTSmokeError.starterDataReturned(query: query)
+        }
+        guard trips.allSatisfy(hasTimetableFactLabels) else {
+            throw ODPTSmokeError.noLiveTimetableTrips(query: "\(query) missing structured timetable provenance")
         }
 
         let routeIDs = Set(trips.compactMap(\.routeID))
@@ -74,5 +77,22 @@ struct ODPTSmoke {
             "\(trip.train) \(trip.origin.name)->\(trip.destination.name) platform \(trip.platform)"
         }.joined(separator: "; ")
         print("\(query): \(trips.count) real timetable trips; \(preview)")
+    }
+
+    private static func hasTimetableFactLabels(_ trip: TrainTrip) -> Bool {
+        let facts = trip.factProvenance
+        let platformOK: Bool
+        if trip.platform == "TBD" {
+            platformOK = facts.contains { $0.fact == .platform && $0.confidence == .unknown && $0.sourceKind == .officialTimetable }
+        } else {
+            platformOK = facts.contains { $0.fact == .platform && $0.confidence == .confirmed && $0.sourceKind == .officialTimetable }
+        }
+
+        return facts.contains { $0.fact == .schedule && $0.confidence == .confirmed && $0.sourceKind == .officialTimetable } &&
+            platformOK &&
+            facts.contains { $0.fact == .speed && $0.confidence == .unknown } &&
+            facts.contains { $0.fact == .vehiclePosition && $0.confidence == .inferred && $0.sourceKind == .inferred } &&
+            facts.contains { $0.fact == .carriageCue && $0.confidence == .inferred && $0.sourceKind == .inferred } &&
+            facts.contains { $0.fact == .seatCue && $0.confidence == .inferred && $0.sourceKind == .inferred }
     }
 }
