@@ -1216,11 +1216,17 @@ private struct HistoryScreen: View {
 private struct SettingsScreen: View {
     @ObservedObject var store: TrainStore
     @AppStorage("rail.appearance") private var appearance = "System"
+    @AppStorage("trainy.timeFormat") private var timeFormatRaw = "12-hour"
     @State private var delayNotifications = true
     @State private var platformNotifications = true
     @State private var calendarSync = false
     @State private var useMetricUnits = true
     @State private var shareAnalytics = false
+
+    private var timeFormat: UserPreferences.TimeFormat {
+        get { UserPreferences.TimeFormat(rawValue: timeFormatRaw) ?? .hour12 }
+        set { timeFormatRaw = newValue.rawValue }
+    }
 
     var body: some View {
         ScrollView {
@@ -1248,8 +1254,8 @@ private struct SettingsScreen: View {
                     SettingsToggleRow(symbol: "rectangle.split.3x1", title: "Platform changes", detail: "Notify me when a saved journey moves to a different platform or track.", isOn: $platformNotifications)
                 }
 
-                SettingsGroup(title: "Journey Tools") {
-                    SettingsToggleRow(symbol: "calendar.badge.plus", title: "Calendar sync", detail: "Add train-specific departure, transfer, and arrival times to my calendar.", isOn: $calendarSync)
+                SettingsGroup(title: "Time and Units") {
+                    SettingsPickerRow(symbol: "clock", title: "Time format", selection: $timeFormatRaw, options: ["12-hour", "24-hour"])
                     SettingsToggleRow(symbol: "ruler", title: "Metric units", detail: "Use kilometers and 24-hour times where route data supports it.", isOn: $useMetricUnits)
                     SettingsPickerRow(symbol: "paintpalette", title: "Appearance", selection: $appearance, options: ["System", "Light", "Dark"])
                 }

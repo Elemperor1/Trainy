@@ -1,5 +1,9 @@
 import Foundation
 
+// MARK: - Time Formatting
+// Uses Asia/Tokyo timezone for all Shinkansen time operations (Japan normalization)
+// Time strings from ODPT are already in HH:MM format local to each station's timezone
+
 extension ShinkansenTrainProvider {
     static func trip(
         from timetable: ODPTTrainTimetable,
