@@ -11,11 +11,13 @@ Trainy is a Flighty-style train tracking app scoped first to Japan Shinkansen jo
 ### Core Components
 
 **TrainStore** (`Sources/TrainyCore/TrainStore.swift`) - The central state manager:
+
 - Owns tracked trips, selected trip, search query/filter, live routes/results, load state
 - Persists to UserDefaults with data-scope migration support
 - Depends on `ProviderRegistry` for provider abstraction
 
 **Provider System** (`Sources/TrainyCore/Providers/`):
+
 - `TrainProvider` protocol - Base provider interface with identity, capabilities, availability
 - `ScheduleFeedProvider` - Routes, stations, scheduled trips
 - `RealtimeFeedProvider` - Trip updates, vehicle positions, alerts
@@ -23,12 +25,14 @@ Trainy is a Flighty-style train tracking app scoped first to Japan Shinkansen jo
 - Capabilities: `.schedule`, `.realtimeTripUpdates`, `.serviceAlerts`, `.stationBoard`, `.journeyPlanning`, `.vehiclePositions`
 
 **ShinkansenTrainProvider** - Primary provider implementation:
+
 - Attempts ODPT API first (requires `ODPT_CONSUMER_KEY`)
 - Falls back to JR East official timetable pages
 - Uses curated starter catalog as final fallback without key
 - Implements both `ScheduleFeedProvider` and `RealtimeFeedProvider`
 
 **Models** (`Sources/TrainyCore/TrainModels.swift`):
+
 - `TrainTrip` - Main UI model with `SourceProvenance` tracking
 - `SourceProvenance` - Structured source metadata (provider, kind, confidence, freshness)
 - `SourceKind` - `.starterCatalog`, `.officialTimetable`, `.realtimePrediction`, `.vehiclePosition`, `.alertFeed`, `.inferred`
@@ -36,11 +40,13 @@ Trainy is a Flighty-style train tracking app scoped first to Japan Shinkansen jo
 - `FactProvenance` - Per-field confidence tracking for schedule, platform, route, etc.
 
 **Normalized Models** (`Sources/TrainyCore/RailNormalizedModels.swift`):
+
 - `RailProviderID`, `RailRegion`, `RailSource`, `RailStation`, `RailRoute`
 - `ScheduledRailTrip`, `RealtimeTripOverlay`, `RailVehiclePosition`, `RailServiceAlert`
 - `RailBoardEntry`, `RailTripCandidate` - Foundation for global provider expansion
 
 **ContentView** (`Sources/TrainyCore/ContentView.swift`):
+
 - Five-tab SwiftUI interface: Trips, Search, Stations, History, Settings
 - Uses `RailDesign` system for styling (see `RailDesignSystem.swift`)
 
@@ -125,6 +131,7 @@ bash -n scripts/lib/odpt-env.sh
 ### Continuous Integration
 
 GitHub Actions workflow at `.github/workflows/swift.yml`:
+
 - Runs on push to main/master and pull requests
 - Uses macos-latest runner
 - Runs xcodebuild with `CODE_SIGNING_ALLOWED=NO`
@@ -162,6 +169,7 @@ Provider secrets are never shipped in the app binary. The build script parses `O
 ## Planned Provider Architecture
 
 See `docs/global-provider-roadmap.md` for the full roadmap. Key principles:
+
 - Preserve Japan/Shinkansen as flagship first-run experience
 - Never overclaim live vehicle position for schedule-only sources
 - Prefer official direct feeds; use aggregators only when licensed
