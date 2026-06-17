@@ -2,11 +2,11 @@ import MapKit
 import SwiftUI
 import UIKit
 
-struct ContentView: View {
+public struct ContentView: View {
     @StateObject private var store = TrainStore()
     @State private var selectedTab: RailTab = .trips
 
-    init() {
+    public init() {
         let appearance = UITabBarAppearance()
         appearance.configureWithDefaultBackground()
         appearance.backgroundEffect = UIBlurEffect(style: .systemUltraThinMaterial)
@@ -23,7 +23,7 @@ struct ContentView: View {
         UITabBar.appearance().scrollEdgeAppearance = appearance
     }
 
-    var body: some View {
+    public var body: some View {
         TabView(selection: $selectedTab) {
             NavigationStack {
                 TripsScreen(store: store)
@@ -1132,7 +1132,7 @@ private struct StationBoardRow: View {
 
     var body: some View {
         HStack(spacing: RailDesign.Spacing.s) {
-            Text(trip.origin.time)
+            Text(trip.origin.time.formattedAsTime(in: trip.origin.timeZone))
                 .font(.headline.monospacedDigit())
                 .foregroundStyle(RailDesign.Palette.ink)
                 .frame(width: 58, alignment: .leading)
@@ -1435,13 +1435,14 @@ private struct HeaderStation: View {
     let station: String
     let label: LocalizedStringKey
     var alignment: HorizontalAlignment = .leading
+    var timeZone: TimeZone = TimeZone(identifier: "Asia/Tokyo")!
 
     var body: some View {
         VStack(alignment: alignment, spacing: RailDesign.Spacing.xxs) {
             Text(label)
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(RailDesign.Palette.secondaryText)
-            Text(time)
+            Text(time.formattedAsTime(in: timeZone))
                 .font(.title2.monospacedDigit().weight(.bold))
                 .foregroundStyle(RailDesign.Palette.ink)
             Text(station)

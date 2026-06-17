@@ -443,4 +443,8 @@ extension ShinkansenTrainProvider {
     static func point(_ station: ShinkansenStation, time: String) -> StationPoint {
         ShinkansenStarterCatalog.point(station, time: time)
     }
+
+    static func point(_ station: ShinkansenStation, time: String, timeZoneIdentifier: String) -> StationPoint {
+        StationPoint(name: station.name, code: station.code, time: time, latitude: station.latitude, longitude: station.longitude, timeZoneIdentifier: timeZoneIdentifier)
+    }
 }

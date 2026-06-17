@@ -8,52 +8,30 @@
 
 /* Begin PBXBuildFile section */
 		9D0A10012C10000100A00001 /* TrainyApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D0A10002C10000100A00001 /* TrainyApp.swift */; };
-		9D0A10032C10000100A00001 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D0A10022C10000100A00001 /* ContentView.swift */; };
-		9D0A10052C10000100A00001 /* TrainModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D0A10042C10000100A00001 /* TrainModels.swift */; };
-		9D0A10072C10000100A00001 /* TrainStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D0A10062C10000100A00001 /* TrainStore.swift */; };
 		9D0A10092C10000100A00001 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 9D0A10082C10000100A00001 /* Assets.xcassets */; };
-		9D0A10202C10000100A00001 /* TrainDataProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D0A101F2C10000100A00001 /* TrainDataProvider.swift */; };
-		9D0A10222C10000100A00001 /* RailDesignSystem.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D0A10212C10000100A00001 /* RailDesignSystem.swift */; };
-		9D0A10242C10000100A00001 /* RailComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D0A10232C10000100A00001 /* RailComponents.swift */; };
-		9D0A10262C10000100A00001 /* RailJourneyMap.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D0A10252C10000100A00001 /* RailJourneyMap.swift */; };
-		9D0A10282C10000100A00001 /* ProviderCapabilities.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D0A10272C10000100A00001 /* ProviderCapabilities.swift */; };
-		9D0A102A2C10000100A00001 /* ProviderErrors.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D0A10292C10000100A00001 /* ProviderErrors.swift */; };
-		9D0A102C2C10000100A00001 /* TrainProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D0A102B2C10000100A00001 /* TrainProvider.swift */; };
-		9D0A102E2C10000100A00001 /* ProviderRegistry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D0A102D2C10000100A00001 /* ProviderRegistry.swift */; };
-		9D0A10312C10000100A00001 /* ProviderTextUtilities.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D0A10302C10000100A00001 /* ProviderTextUtilities.swift */; };
-		9D0A10332C10000100A00001 /* ODPTClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D0A10322C10000100A00001 /* ODPTClient.swift */; };
-		9D0A10352C10000100A00001 /* ODPTModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D0A10342C10000100A00001 /* ODPTModels.swift */; };
-		9D0A10372C10000100A00001 /* JREastTimetableClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D0A10362C10000100A00001 /* JREastTimetableClient.swift */; };
-		9D0A10392C10000100A00001 /* ShinkansenTrainProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D0A10382C10000100A00001 /* ShinkansenTrainProvider.swift */; };
-		9D0A103B2C10000100A00001 /* ShinkansenRouteCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D0A103A2C10000100A00001 /* ShinkansenRouteCatalog.swift */; };
-		9D0A103D2C10000100A00001 /* ShinkansenStarterCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D0A103C2C10000100A00001 /* ShinkansenStarterCatalog.swift */; };
-		9D0A103F2C10000100A00001 /* ShinkansenTrainTripMapper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D0A103E2C10000100A00001 /* ShinkansenTrainTripMapper.swift */; };
+		9D0A10462C10000100A00001 /* TrainyCoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D0A10432C10000100A00001 /* TrainyCoreTests.swift */; };
+		9D0A20002C10000100A00001 /* TrainyCore in Frameworks */ = {isa = PBXBuildFile; productRef = 9D0A20032C10000100A00001 /* TrainyCore */; };
+		9D0A20012C10000100A00001 /* TrainyCore in Frameworks */ = {isa = PBXBuildFile; productRef = 9D0A20032C10000100A00001 /* TrainyCore */; };
 /* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		9D0A104A2C10000100A00001 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 9D0A10132C10000100A00001 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 9D0A10102C10000100A00001;
+			remoteInfo = Trainy;
+		};
+/* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
 		9D0A10002C10000100A00001 /* TrainyApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrainyApp.swift; sourceTree = "<group>"; };
-		9D0A10022C10000100A00001 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
-		9D0A10042C10000100A00001 /* TrainModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrainModels.swift; sourceTree = "<group>"; };
-		9D0A10062C10000100A00001 /* TrainStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrainStore.swift; sourceTree = "<group>"; };
 		9D0A10082C10000100A00001 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		9D0A100A2C10000100A00001 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		9D0A100B2C10000100A00001 /* Trainy.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Trainy.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		9D0A101F2C10000100A00001 /* TrainDataProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrainDataProvider.swift; sourceTree = "<group>"; };
-		9D0A10212C10000100A00001 /* RailDesignSystem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RailDesignSystem.swift; sourceTree = "<group>"; };
-		9D0A10232C10000100A00001 /* RailComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RailComponents.swift; sourceTree = "<group>"; };
-		9D0A10252C10000100A00001 /* RailJourneyMap.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RailJourneyMap.swift; sourceTree = "<group>"; };
-		9D0A10272C10000100A00001 /* ProviderCapabilities.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProviderCapabilities.swift; sourceTree = "<group>"; };
-		9D0A10292C10000100A00001 /* ProviderErrors.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProviderErrors.swift; sourceTree = "<group>"; };
-		9D0A102B2C10000100A00001 /* TrainProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrainProvider.swift; sourceTree = "<group>"; };
-		9D0A102D2C10000100A00001 /* ProviderRegistry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProviderRegistry.swift; sourceTree = "<group>"; };
-		9D0A10302C10000100A00001 /* ProviderTextUtilities.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProviderTextUtilities.swift; sourceTree = "<group>"; };
-		9D0A10322C10000100A00001 /* ODPTClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ODPTClient.swift; sourceTree = "<group>"; };
-		9D0A10342C10000100A00001 /* ODPTModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ODPTModels.swift; sourceTree = "<group>"; };
-		9D0A10362C10000100A00001 /* JREastTimetableClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JREastTimetableClient.swift; sourceTree = "<group>"; };
-		9D0A10382C10000100A00001 /* ShinkansenTrainProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShinkansenTrainProvider.swift; sourceTree = "<group>"; };
-		9D0A103A2C10000100A00001 /* ShinkansenRouteCatalog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShinkansenRouteCatalog.swift; sourceTree = "<group>"; };
-		9D0A103C2C10000100A00001 /* ShinkansenStarterCatalog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShinkansenStarterCatalog.swift; sourceTree = "<group>"; };
-		9D0A103E2C10000100A00001 /* ShinkansenTrainTripMapper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShinkansenTrainTripMapper.swift; sourceTree = "<group>"; };
+		9D0A10432C10000100A00001 /* TrainyCoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ../Tests/TrainyCoreTests/TrainyCoreTests.swift; sourceTree = SOURCE_ROOT; };
+		9D0A10442C10000100A00001 /* TrainyTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = TrainyTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		9D0A10452C10000100A00001 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -61,6 +39,15 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				9D0A20002C10000100A00001 /* TrainyCore in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		9D0A10482C10000100A00001 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				9D0A20012C10000100A00001 /* TrainyCore in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -71,6 +58,7 @@
 			isa = PBXGroup;
 			children = (
 				9D0A100E2C10000100A00001 /* Trainy */,
+				9D0A10432C10000100A00002 /* TrainyTests */,
 				9D0A100F2C10000100A00001 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -79,67 +67,26 @@
 			isa = PBXGroup;
 			children = (
 				9D0A10002C10000100A00001 /* TrainyApp.swift */,
-				9D0A10212C10000100A00001 /* RailDesignSystem.swift */,
-				9D0A10232C10000100A00001 /* RailComponents.swift */,
-				9D0A10252C10000100A00001 /* RailJourneyMap.swift */,
-				9D0A10022C10000100A00001 /* ContentView.swift */,
-				9D0A10042C10000100A00001 /* TrainModels.swift */,
-				9D0A10062C10000100A00001 /* TrainStore.swift */,
-				9D0A102F2C10000100A00001 /* Providers */,
-				9D0A101F2C10000100A00001 /* TrainDataProvider.swift */,
 				9D0A10082C10000100A00001 /* Assets.xcassets */,
 				9D0A100A2C10000100A00001 /* Info.plist */,
 			);
 			path = Trainy;
 			sourceTree = "<group>";
 		};
-		9D0A102F2C10000100A00001 /* Providers */ = {
+		9D0A10432C10000100A00002 /* TrainyTests */ = {
 			isa = PBXGroup;
 			children = (
-				9D0A10272C10000100A00001 /* ProviderCapabilities.swift */,
-				9D0A10292C10000100A00001 /* ProviderErrors.swift */,
-				9D0A102B2C10000100A00001 /* TrainProvider.swift */,
-				9D0A102D2C10000100A00001 /* ProviderRegistry.swift */,
-				9D0A10302C10000100A00001 /* ProviderTextUtilities.swift */,
-				9D0A10402C10000100A00001 /* ODPT */,
-				9D0A10412C10000100A00001 /* JREast */,
-				9D0A10422C10000100A00001 /* Shinkansen */,
+				9D0A10432C10000100A00001 /* TrainyCoreTests.swift */,
+				9D0A10452C10000100A00001 /* Info.plist */,
 			);
-			path = Providers;
-			sourceTree = "<group>";
-		};
-		9D0A10402C10000100A00001 /* ODPT */ = {
-			isa = PBXGroup;
-			children = (
-				9D0A10322C10000100A00001 /* ODPTClient.swift */,
-				9D0A10342C10000100A00001 /* ODPTModels.swift */,
-			);
-			path = ODPT;
-			sourceTree = "<group>";
-		};
-		9D0A10412C10000100A00001 /* JREast */ = {
-			isa = PBXGroup;
-			children = (
-				9D0A10362C10000100A00001 /* JREastTimetableClient.swift */,
-			);
-			path = JREast;
-			sourceTree = "<group>";
-		};
-		9D0A10422C10000100A00001 /* Shinkansen */ = {
-			isa = PBXGroup;
-			children = (
-				9D0A10382C10000100A00001 /* ShinkansenTrainProvider.swift */,
-				9D0A103A2C10000100A00001 /* ShinkansenRouteCatalog.swift */,
-				9D0A103C2C10000100A00001 /* ShinkansenStarterCatalog.swift */,
-				9D0A103E2C10000100A00001 /* ShinkansenTrainTripMapper.swift */,
-			);
-			path = Shinkansen;
+			path = TrainyTests;
 			sourceTree = "<group>";
 		};
 		9D0A100F2C10000100A00001 /* Products */ = {
 			isa = PBXGroup;
 			children = (
 				9D0A100B2C10000100A00001 /* Trainy.app */,
+				9D0A10442C10000100A00001 /* TrainyTests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -160,9 +107,33 @@
 			dependencies = (
 			);
 			name = Trainy;
+			packageProductDependencies = (
+				9D0A20032C10000100A00001 /* TrainyCore */,
+			);
 			productName = Trainy;
 			productReference = 9D0A100B2C10000100A00001 /* Trainy.app */;
 			productType = "com.apple.product-type.application";
+		};
+		9D0A104D2C10000100A00001 /* TrainyTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 9D0A104C2C10000100A00001 /* Build configuration list for PBXNativeTarget "TrainyTests" */;
+			buildPhases = (
+				9D0A10472C10000100A00001 /* Sources */,
+				9D0A10482C10000100A00001 /* Frameworks */,
+				9D0A10492C10000100A00001 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				9D0A104B2C10000100A00001 /* PBXTargetDependency */,
+			);
+			name = TrainyTests;
+			packageProductDependencies = (
+				9D0A20032C10000100A00001 /* TrainyCore */,
+			);
+			productName = TrainyTests;
+			productReference = 9D0A10442C10000100A00001 /* TrainyTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
 		};
 /* End PBXNativeTarget section */
 
@@ -177,6 +148,10 @@
 					9D0A10102C10000100A00001 = {
 						CreatedOnToolsVersion = 26.0;
 					};
+					9D0A104D2C10000100A00001 = {
+						CreatedOnToolsVersion = 26.0;
+						TestTargetID = 9D0A10102C10000100A00001;
+					};
 				};
 			};
 			buildConfigurationList = 9D0A10142C10000100A00001 /* Build configuration list for PBXProject "Trainy" */;
@@ -188,11 +163,15 @@
 				Base,
 			);
 			mainGroup = 9D0A100D2C10000100A00001;
+			packageReferences = (
+				9D0A20022C10000100A00001 /* XCLocalSwiftPackageReference "../" */,
+			);
 			productRefGroup = 9D0A100F2C10000100A00001 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
 				9D0A10102C10000100A00001 /* Trainy */,
+				9D0A104D2C10000100A00001 /* TrainyTests */,
 			);
 		};
 /* End PBXProject section */
@@ -206,6 +185,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		9D0A10492C10000100A00001 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
@@ -214,29 +200,26 @@
 			buildActionMask = 2147483647;
 			files = (
 				9D0A10012C10000100A00001 /* TrainyApp.swift in Sources */,
-				9D0A10222C10000100A00001 /* RailDesignSystem.swift in Sources */,
-				9D0A10242C10000100A00001 /* RailComponents.swift in Sources */,
-				9D0A10262C10000100A00001 /* RailJourneyMap.swift in Sources */,
-				9D0A10032C10000100A00001 /* ContentView.swift in Sources */,
-				9D0A10052C10000100A00001 /* TrainModels.swift in Sources */,
-				9D0A10072C10000100A00001 /* TrainStore.swift in Sources */,
-				9D0A10282C10000100A00001 /* ProviderCapabilities.swift in Sources */,
-				9D0A102A2C10000100A00001 /* ProviderErrors.swift in Sources */,
-				9D0A102C2C10000100A00001 /* TrainProvider.swift in Sources */,
-				9D0A102E2C10000100A00001 /* ProviderRegistry.swift in Sources */,
-				9D0A10312C10000100A00001 /* ProviderTextUtilities.swift in Sources */,
-				9D0A10332C10000100A00001 /* ODPTClient.swift in Sources */,
-				9D0A10352C10000100A00001 /* ODPTModels.swift in Sources */,
-				9D0A10372C10000100A00001 /* JREastTimetableClient.swift in Sources */,
-				9D0A10392C10000100A00001 /* ShinkansenTrainProvider.swift in Sources */,
-				9D0A103B2C10000100A00001 /* ShinkansenRouteCatalog.swift in Sources */,
-				9D0A103D2C10000100A00001 /* ShinkansenStarterCatalog.swift in Sources */,
-				9D0A103F2C10000100A00001 /* ShinkansenTrainTripMapper.swift in Sources */,
-				9D0A10202C10000100A00001 /* TrainDataProvider.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		9D0A10472C10000100A00001 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				9D0A10462C10000100A00001 /* TrainyCoreTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		9D0A104B2C10000100A00001 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 9D0A10102C10000100A00001 /* Trainy */;
+			targetProxy = 9D0A104A2C10000100A00001 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		9D0A10152C10000100A00001 /* Debug */ = {
@@ -417,6 +400,64 @@
 			};
 			name = Release;
 		};
+		9D0A104E2C10000100A00001 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "";
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = TrainyTests/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.jacobcyber.TrainyTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Trainy.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Trainy";
+			};
+			name = Debug;
+		};
+		9D0A104F2C10000100A00001 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "";
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = TrainyTests/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.jacobcyber.TrainyTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Trainy.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Trainy";
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -438,7 +479,31 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
+		9D0A104C2C10000100A00001 /* Build configuration list for PBXNativeTarget "TrainyTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				9D0A104E2C10000100A00001 /* Debug */,
+				9D0A104F2C10000100A00001 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 /* End XCConfigurationList section */
-	};
+
+/* Begin XCLocalSwiftPackageReference section */
+		9D0A20022C10000100A00001 /* XCLocalSwiftPackageReference "../" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = ..;
+		};
+/* End XCLocalSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		9D0A20032C10000100A00001 /* TrainyCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 9D0A20022C10000100A00001 /* XCLocalSwiftPackageReference "../" */;
+			productName = TrainyCore;
+		};
+/* End XCSwiftPackageProductDependency section */
+		};
 	rootObject = 9D0A10132C10000100A00001 /* Project object */;
 }

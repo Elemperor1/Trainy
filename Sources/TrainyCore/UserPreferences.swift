@@ -3,7 +3,7 @@ import SwiftUI
 
 /// User preferences for display formatting and unit conversion.
 /// Preferences are stored in UserDefaults and control how data is presented.
-struct UserPreferences {
+struct UserPreferences: @unchecked Sendable {
     /// Time format preference: 12-hour (e.g., "9:45 PM") or 24-hour (e.g., "21:45")
     enum TimeFormat: String, CaseIterable, Codable, Sendable {
         case hour12 = "12-hour"
@@ -74,6 +74,45 @@ struct UserPreferences {
         }
     }
 
+    /// Formats a time string (HH:MM format) using the provider's time zone and user's time format preference
+    func formatTimeString(_ timeString: String, in timeZone: TimeZone) -> String {
+        // If already in 24-hour format and user prefers 24h, return as-is
+        // Otherwise, parse and reformat
+        let formatter = DateFormatter()
+        formatter.timeZone = timeZone
+        formatter.timeStyle = timeFormat.timeStyle
+        formatter.dateStyle = .none
+
+        // Try to parse as a simple time string (HH:MM)
+        let pieces = timeString.split(separator: ":").compactMap { Int($0) }
+        guard pieces.count >= 2 else { return timeString }
+
+        // Create a date with today's date and the specified time
+        var calendar = Calendar.current
+        calendar.timeZone = timeZone
+        let now = Date()
+        let components = calendar.dateComponents([.year, .month, .day], from: now)
+
+        var dateComponents = DateComponents()
+        dateComponents.year = components.year
+        dateComponents.month = components.month
+        dateComponents.day = components.day
+        dateComponents.hour = pieces[0]
+        dateComponents.minute = pieces[1]
+
+        if let date = calendar.date(from: dateComponents) {
+            // Return formatted time only
+            let timeFormatter = DateFormatter()
+            timeFormatter.timeZone = timeZone
+            timeFormatter.timeStyle = timeFormat.timeStyle
+            timeFormatter.dateStyle = .none
+            return timeFormatter.string(from: date)
+        }
+
+        // Fallback: return the original string if formatting fails
+        return timeString
+    }
+
     /// Formats a date string using the provider's time zone and user's time format preference
     func format(_ dateString: String, in timeZone: TimeZone) -> String {
         guard let date = Self.parseISODateTime(dateString) else { return dateString }
@@ -96,6 +135,11 @@ struct UserPreferences {
         formatter.timeStyle = timeFormat.timeStyle
         formatter.timeZone = timeZone
         return formatter.string(from: date)
+    }
+
+    /// Returns the user's preferred unit system (metric or imperial)
+    var useMetric: Bool {
+        unitSystem == .metric
     }
 
     /// Parses ISO8601 datetime string to Date
