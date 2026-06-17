@@ -204,7 +204,92 @@ struct SourceProvenanceSmoke {
             "Encoded fact provenance did not round-trip."
         )
 
+        // Additional tests
+        try testProviderTextUtilities()
+        try testFreshnessState()
+        try testShinkansenProviderFallback()
+        try testTimeParsing()
+        try testProviderErrorMapping()
+
         print("Source provenance smoke passed: source labels, user-safe copy, license copy, legacy dataSource, ODPT, JR East, and mixed fact labels are mapped.")
+        print("Additional tests passed: ProviderTextUtilities, FreshnessState, Shinkansen fallback behavior, time parsing, error mapping.")
+    }
+
+    // MARK: - Additional Test Cases (No network required)
+
+    static func testProviderTextUtilities() throws {
+        // Stable ID tests
+        try require(ProviderTextUtilities.stableID(from: "Hello World") == "Hello-World", "Stable ID should replace spaces with dash.")
+        try require(ProviderTextUtilities.stableID(from: "123-abc") == "123-abc", "Stable ID should preserve alphanumerics.")
+
+        // Last identifier component
+        try require(ProviderTextUtilities.lastIdentifierComponent("odpt.Station.Tokyo") == "Tokyo", "Should extract last path component.")
+
+        // Spaced camelCase
+        try require(ProviderTextUtilities.spacedCamelCase("ShinOsaka") == "Shin Osaka", "Should add space before uppercase.")
+
+        // Normalized station key
+        try require(ProviderTextUtilities.normalizedStationKey("Tokyo") == "tokyo", "Should lowercase and remove non-letters.")
+
+        // Search tokens - stop words filtered
+        let tokens = ProviderTextUtilities.searchTokens(from: "Tokyo to Osaka")
+        try require(!tokens.contains("to"), "Should filter 'to' stop word.")
+
+        // Collapsed search text
+        try require(ProviderTextUtilities.collapsedSearchText("Tokyo Station") == "tokyostation", "Should remove spaces and normalize case.")
+    }
+
+    static func testFreshnessState() throws {
+        // Unknown when validUntil exists but no fetch date was recorded
+        let futureDate = Date().addingTimeInterval(3600)
+        try require(FreshnessState.resolved(fetchedAt: nil, validUntil: futureDate) == .unknown, "No fetch date should stay unknown.")
+
+        // Expired when validUntil in past
+        let pastDate = Date().addingTimeInterval(-3600)
+        try require(FreshnessState.resolved(fetchedAt: nil, validUntil: pastDate) == .expired, "Past validUntil should be expired.")
+
+        // Stale when fetched > 24 hours ago
+        let staleDate = Date().addingTimeInterval(-100000)
+        try require(FreshnessState.resolved(fetchedAt: staleDate, validUntil: nil) == .stale, "Stale fetch should be stale.")
+
+        // Unknown when no dates
+        try require(FreshnessState.resolved(fetchedAt: nil, validUntil: nil) == .unknown, "No dates should be unknown.")
+    }
+
+    static func testShinkansenProviderFallback() throws {
+        let provider = ShinkansenTrainProvider(consumerKey: nil)
+        try require(!provider.isODPTConfigured, "No ODPT key should not be configured.")
+        try require(provider.supports(.schedule), "Should support schedule without ODPT.")
+        try require(!provider.supports(.serviceAlerts), "Should not support service alerts without ODPT.")
+        try require(provider.feedLabel.contains("starter catalog"), "Feed label should indicate starter catalog.")
+        try require(provider.includesCatalogResultsInSearch, "Should include catalog in search without ODPT.")
+    }
+
+    static func testTimeParsing() throws {
+        // Minutes parsing
+        try require(ShinkansenTrainProvider.minutes(from: "08:30") == 510, "08:30 should be 510 minutes.")
+        try require(ShinkansenTrainProvider.minutes(from: "invalid") == 0, "Invalid time should return 0.")
+
+        // Next-day rollover
+        let startMinutes = 1410 // 23:30
+        let endMinutes = ShinkansenTrainProvider.minutes(from: "00:30", allowingNextDayAfter: startMinutes)
+        try require(endMinutes == 1470, "Time should roll over to next day when before start.")
+
+        // Duration text
+        try require(ShinkansenTrainProvider.durationText(from: "08:00", to: "08:30") == "30m", "30 min duration.")
+        try require(ShinkansenTrainProvider.durationText(from: "23:30", to: "00:30") == "1h 0m", "Duration across midnight.")
+
+        // Progress
+        try require(ShinkansenTrainProvider.progress(currentIndex: 0, count: 1) == 0, "Single stop progress is 0.")
+        try require(ShinkansenTrainProvider.progress(currentIndex: 0, count: 3) == 0, "Start of three stops is 0.")
+        try require(ShinkansenTrainProvider.progress(currentIndex: 2, count: 3) == 0.98, "End of three stops is capped below 1.0.")
+    }
+
+    static func testProviderErrorMapping() throws {
+        try require(ProviderError.providerNotFound("test").errorDescription?.contains("could not find provider") == true, "Provider not found message.")
+        try require(ProviderError.unsupportedCapability(providerID: "test", capability: .schedule).errorDescription?.contains("does not support") == true, "Unsupported capability message.")
+        try require(SourceProvenance.providerUnavailableText(message: "").contains("unavailable"), "Provider unavailable text.")
+        try require(TrainyAPIConfig.cleanODPTKey("test-key") == "test-key", "Clean key preserves value.")
     }
 
     private static func legacyPayloadWithoutNewSourceFields(from trip: TrainTrip) throws -> Data {

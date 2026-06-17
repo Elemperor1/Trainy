@@ -10,12 +10,12 @@ Trainy is a Flighty-style train tracking app scoped first to Japan Shinkansen jo
 
 ### Core Components
 
-**TrainStore** (`TrainyIOS/Trainy/TrainStore.swift`) - The central state manager:
+**TrainStore** (`Sources/TrainyCore/TrainStore.swift`) - The central state manager:
 - Owns tracked trips, selected trip, search query/filter, live routes/results, load state
 - Persists to UserDefaults with data-scope migration support
 - Depends on `ProviderRegistry` for provider abstraction
 
-**Provider System** (`TrainyIOS/Trainy/Providers/`):
+**Provider System** (`Sources/TrainyCore/Providers/`):
 - `TrainProvider` protocol - Base provider interface with identity, capabilities, availability
 - `ScheduleFeedProvider` - Routes, stations, scheduled trips
 - `RealtimeFeedProvider` - Trip updates, vehicle positions, alerts
@@ -28,19 +28,19 @@ Trainy is a Flighty-style train tracking app scoped first to Japan Shinkansen jo
 - Uses curated starter catalog as final fallback without key
 - Implements both `ScheduleFeedProvider` and `RealtimeFeedProvider`
 
-**Models** (`TrainyIOS/Trainy/TrainModels.swift`):
+**Models** (`Sources/TrainyCore/TrainModels.swift`):
 - `TrainTrip` - Main UI model with `SourceProvenance` tracking
 - `SourceProvenance` - Structured source metadata (provider, kind, confidence, freshness)
 - `SourceKind` - `.starterCatalog`, `.officialTimetable`, `.realtimePrediction`, `.vehiclePosition`, `.alertFeed`, `.inferred`
 - `FreshnessState` - `.fresh`, `.stale`, `.expired`, `.unknown`
 - `FactProvenance` - Per-field confidence tracking for schedule, platform, route, etc.
 
-**Normalized Models** (`TrainyIOS/Trainy/RailNormalizedModels.swift`):
+**Normalized Models** (`Sources/TrainyCore/RailNormalizedModels.swift`):
 - `RailProviderID`, `RailRegion`, `RailSource`, `RailStation`, `RailRoute`
 - `ScheduledRailTrip`, `RealtimeTripOverlay`, `RailVehiclePosition`, `RailServiceAlert`
 - `RailBoardEntry`, `RailTripCandidate` - Foundation for global provider expansion
 
-**ContentView** (`TrainyIOS/Trainy/ContentView.swift`):
+**ContentView** (`Sources/TrainyCore/ContentView.swift`):
 - Five-tab SwiftUI interface: Trips, Search, Stations, History, Settings
 - Uses `RailDesign` system for styling (see `RailDesignSystem.swift`)
 
@@ -70,6 +70,14 @@ Providers/
 ### Build
 
 ```bash
+# Inspect the SwiftPM package
+swift package describe
+
+# Build the SwiftPM library for iOS Simulator
+SDKROOT="$(xcrun --sdk iphonesimulator --show-sdk-path)"
+swift build --triple arm64-apple-ios26.0-simulator --sdk "$SDKROOT"
+swift build --build-tests --triple arm64-apple-ios26.0-simulator --sdk "$SDKROOT"
+
 # Build the iOS app
 scripts/build-ios.sh
 

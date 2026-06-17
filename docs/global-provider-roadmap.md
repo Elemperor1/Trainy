@@ -28,10 +28,10 @@ India and China are strategic watchlist markets, not near-term implementation ta
 Local repo:
 
 - `README.md` and `TrainyIOS/README.md`
-- `TrainyIOS/Trainy/TrainDataProvider.swift`
-- `TrainyIOS/Trainy/TrainStore.swift`
-- `TrainyIOS/Trainy/TrainModels.swift`
-- `TrainyIOS/Trainy/ContentView.swift`
+- `Sources/TrainyCore/TrainDataProvider.swift`
+- `Sources/TrainyCore/TrainStore.swift`
+- `Sources/TrainyCore/TrainModels.swift`
+- `Sources/TrainyCore/ContentView.swift`
 - `scripts/build-ios.sh`
 - `scripts/smoke-odpt.sh`
 - `scripts/lib/odpt-env.sh`
@@ -243,7 +243,7 @@ Engineering scope:
 
 - Add TrainyTests target.
 - Move provider parsing helpers into testable internal types.
-- Add fixture files under `TrainyIOS/TrainyTests/Fixtures`.
+- Add fixture files under `Tests/TrainyCoreTests/Fixtures`.
 
 ## Global Provider Expansion Strategy
 
@@ -706,7 +706,7 @@ Sources:
 
 ### Target Provider Layer
 
-Add a provider architecture under `TrainyIOS/Trainy/Providers/`:
+Add provider architecture under `Sources/TrainyCore/Providers/`:
 
 - `TrainProvider`: identity, display name, supported regions, capabilities, auth strategy, attribution, and data scope.
 - `ScheduleFeedProvider`: routes, stations, scheduled trips, station departures.

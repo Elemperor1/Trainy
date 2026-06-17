@@ -7,6 +7,9 @@ XCODE_APP="${XCODE_APP:-/Applications/Xcode-26.5.0.app}"
 DEVELOPER_DIR="${DEVELOPER_DIR:-$XCODE_APP/Contents/Developer}"
 DESTINATION="${DESTINATION:-generic/platform=iOS Simulator}"
 DERIVED_DATA_PATH="${DERIVED_DATA_PATH:-/private/tmp/trainy-derived}"
+CLONED_SOURCE_PACKAGES_DIR="${CLONED_SOURCE_PACKAGES_DIR:-/private/tmp/trainy-source-packages}"
+PACKAGE_CACHE_PATH="${PACKAGE_CACHE_PATH:-/private/tmp/trainy-swiftpm-cache}"
+XCODEBUILD_HOME="${XCODEBUILD_HOME:-/private/tmp/trainy-xcode-home}"
 CODE_SIGNING_ALLOWED="${CODE_SIGNING_ALLOWED:-NO}"
 ODPT_ENV_FILE="${ODPT_ENV_FILE:-$ROOT_DIR/TrainyIOS/Config/odpt.env}"
 
@@ -15,6 +18,7 @@ source "$ROOT_DIR/scripts/lib/odpt-env.sh"
 load_trainy_odpt_env "$ODPT_ENV_FILE"
 
 ODPT_CONSUMER_KEY="${ODPT_CONSUMER_KEY:-}"
+export ODPT_CONSUMER_KEY
 
 if [[ ! -d "$DEVELOPER_DIR" ]]; then
   echo "Xcode developer directory not found: $DEVELOPER_DIR" >&2
@@ -22,6 +26,7 @@ if [[ ! -d "$DEVELOPER_DIR" ]]; then
 fi
 
 export DEVELOPER_DIR
+mkdir -p "$CLONED_SOURCE_PACKAGES_DIR" "$PACKAGE_CACHE_PATH" "$XCODEBUILD_HOME"
 
 if ! xcodebuild -version >/dev/null 2>&1; then
   echo "xcodebuild is not ready. If this is a license issue, run:" >&2
@@ -29,11 +34,12 @@ if ! xcodebuild -version >/dev/null 2>&1; then
   exit 1
 fi
 
-xcodebuild \
+HOME="$XCODEBUILD_HOME" CFFIXED_USER_HOME="$XCODEBUILD_HOME" xcodebuild \
   -project "$PROJECT" \
   -scheme Trainy \
   -destination "$DESTINATION" \
   -derivedDataPath "$DERIVED_DATA_PATH" \
+  -clonedSourcePackagesDirPath "$CLONED_SOURCE_PACKAGES_DIR" \
+  -packageCachePath "$PACKAGE_CACHE_PATH" \
   CODE_SIGNING_ALLOWED="$CODE_SIGNING_ALLOWED" \
-  ODPT_CONSUMER_KEY="$ODPT_CONSUMER_KEY" \
   build
