@@ -3,7 +3,9 @@ node_modules/
 dist/
 .playwright-cli/
 output/
+.build/
 TrainyIOS/Config/odpt.env
 com.flightyapp.flighty_4.9.2_und3fined.ipa
 trainy_api_credentials_fillable_form.pdf
 docs/global-provider-implementation-checklist.md
+.env

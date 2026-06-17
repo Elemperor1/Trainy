@@ -2,6 +2,7 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+CORE_DIR="$ROOT_DIR/Sources/TrainyCore"
 XCODE_APP="${XCODE_APP:-/Applications/Xcode-26.5.0.app}"
 DEVELOPER_DIR="${DEVELOPER_DIR:-$XCODE_APP/Contents/Developer}"
 ODPT_ENV_FILE="${ODPT_ENV_FILE:-$ROOT_DIR/TrainyIOS/Config/odpt.env}"
@@ -33,20 +34,20 @@ mkdir -p "$SWIFT_MODULE_CACHE"
   -sdk "$(xcrun --sdk macosx --show-sdk-path)" \
   -module-cache-path "$SWIFT_MODULE_CACHE" \
   -parse-as-library \
-  "$ROOT_DIR/TrainyIOS/Trainy/TrainModels.swift" \
-  "$ROOT_DIR/TrainyIOS/Trainy/Providers/ProviderCapabilities.swift" \
-  "$ROOT_DIR/TrainyIOS/Trainy/Providers/ProviderErrors.swift" \
-  "$ROOT_DIR/TrainyIOS/Trainy/Providers/TrainProvider.swift" \
-  "$ROOT_DIR/TrainyIOS/Trainy/Providers/ProviderRegistry.swift" \
-  "$ROOT_DIR/TrainyIOS/Trainy/Providers/ProviderTextUtilities.swift" \
-  "$ROOT_DIR/TrainyIOS/Trainy/Providers/ODPT/ODPTClient.swift" \
-  "$ROOT_DIR/TrainyIOS/Trainy/Providers/ODPT/ODPTModels.swift" \
-  "$ROOT_DIR/TrainyIOS/Trainy/Providers/JREast/JREastTimetableClient.swift" \
-  "$ROOT_DIR/TrainyIOS/Trainy/Providers/Shinkansen/ShinkansenTrainProvider.swift" \
-  "$ROOT_DIR/TrainyIOS/Trainy/Providers/Shinkansen/ShinkansenRouteCatalog.swift" \
-  "$ROOT_DIR/TrainyIOS/Trainy/Providers/Shinkansen/ShinkansenStarterCatalog.swift" \
-  "$ROOT_DIR/TrainyIOS/Trainy/Providers/Shinkansen/ShinkansenTrainTripMapper.swift" \
-  "$ROOT_DIR/TrainyIOS/Trainy/TrainDataProvider.swift" \
+  "$CORE_DIR/TrainModels.swift" \
+  "$CORE_DIR/Providers/ProviderCapabilities.swift" \
+  "$CORE_DIR/Providers/ProviderErrors.swift" \
+  "$CORE_DIR/Providers/TrainProvider.swift" \
+  "$CORE_DIR/Providers/ProviderRegistry.swift" \
+  "$CORE_DIR/Providers/ProviderTextUtilities.swift" \
+  "$CORE_DIR/Providers/ODPT/ODPTClient.swift" \
+  "$CORE_DIR/Providers/ODPT/ODPTModels.swift" \
+  "$CORE_DIR/Providers/JREast/JREastTimetableClient.swift" \
+  "$CORE_DIR/Providers/Shinkansen/ShinkansenTrainProvider.swift" \
+  "$CORE_DIR/Providers/Shinkansen/ShinkansenRouteCatalog.swift" \
+  "$CORE_DIR/Providers/Shinkansen/ShinkansenStarterCatalog.swift" \
+  "$CORE_DIR/Providers/Shinkansen/ShinkansenTrainTripMapper.swift" \
+  "$CORE_DIR/TrainDataProvider.swift" \
   "$ROOT_DIR/scripts/ODPTSmoke.swift" \
   -o "$SMOKE_BINARY"
 

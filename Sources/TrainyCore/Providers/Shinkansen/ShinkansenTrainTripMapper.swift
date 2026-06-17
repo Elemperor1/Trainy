@@ -187,9 +187,10 @@ extension ShinkansenTrainProvider {
     static func point(for odptStationID: String, time: String) -> StationPoint {
         let name = stationName(from: odptStationID)
         if let station = stationByName[normalizedStationKey(name)] {
-            return point(station, time: time)
+            return point(station, time: time, timeZoneIdentifier: "Asia/Tokyo")
         }
-        return StationPoint(name: name, code: stationCode(for: name), time: time)
+        // Japan Shinkansen uses Asia/Tokyo time zone
+        return StationPoint(name: name, code: stationCode(for: name), time: time, timeZoneIdentifier: "Asia/Tokyo")
     }
 
     static func stationName(from odptStationID: String) -> String {

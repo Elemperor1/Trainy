@@ -1,5 +1,37 @@
 import SwiftUI
 
+// MARK: - Time Formatting Helpers
+
+extension String {
+    /// Formats a HH:MM time string according to user preferences in the given time zone
+    func formattedAsTime(in timeZone: TimeZone) -> String {
+        let prefs = UserPreferences.shared
+        let pieces = split(separator: ":").compactMap { Int($0) }
+        guard pieces.count >= 2 else { return self }
+
+        var calendar = Calendar.current
+        calendar.timeZone = timeZone
+        let now = Date()
+        let components = calendar.dateComponents([.year, .month, .day], from: now)
+
+        var dateComponents = DateComponents()
+        dateComponents.year = components.year
+        dateComponents.month = components.month
+        dateComponents.day = components.day
+        dateComponents.hour = pieces[0]
+        dateComponents.minute = pieces[1]
+
+        if let date = calendar.date(from: dateComponents) {
+            let formatter = DateFormatter()
+            formatter.timeZone = timeZone
+            formatter.timeStyle = prefs.timeFormat.timeStyle
+            formatter.dateStyle = .none
+            return formatter.string(from: date)
+        }
+        return self
+    }
+}
+
 extension SourceKind {
     var badgeTitle: String {
         compactTitle
@@ -371,12 +403,16 @@ struct PlatformChip: View {
     let platform: String
     var label: LocalizedStringKey = "Platform"
 
+    private var displayPlatform: String {
+        platform.isEmpty || platform == "TBD" || platform == "Unknown" ? "Not available" : platform
+    }
+
     var body: some View {
         HStack(spacing: RailDesign.Spacing.xxs) {
             Image(systemName: "rectangle.split.3x1.fill")
                 .imageScale(.small)
             Text(label)
-            Text(platform)
+            Text(displayPlatform)
                 .fontWeight(.bold)
         }
         .font(.caption.weight(.semibold))
@@ -763,11 +799,19 @@ struct OfflineBanner: View {
 private struct StationColumn: View {
     let title: String
     let time: String
-    let alignment: HorizontalAlignment
+    let timeZone: TimeZone
+    var alignment: HorizontalAlignment = .leading
+
+    init(title: String, time: String, alignment: HorizontalAlignment = .leading) {
+        self.title = title
+        self.time = time
+        self.timeZone = TimeZone(identifier: "Asia/Tokyo")!
+        self.alignment = alignment
+    }
 
     var body: some View {
         VStack(alignment: alignment, spacing: RailDesign.Spacing.xxs) {
-            Text(time)
+            Text(time.formattedAsTime(in: timeZone))
                 .font(.title3.monospacedDigit().weight(.bold))
                 .foregroundStyle(RailDesign.Palette.ink)
                 .lineLimit(1)

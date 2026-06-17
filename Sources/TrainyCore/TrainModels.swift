@@ -533,13 +533,25 @@ struct StationPoint: Hashable, Codable, Sendable {
     let time: String
     let latitude: Double?
     let longitude: Double?
+    let timeZoneIdentifier: String?  // Optional IANA time zone identifier
 
-    init(name: String, code: String, time: String, latitude: Double? = nil, longitude: Double? = nil) {
+    init(name: String, code: String, time: String, latitude: Double? = nil, longitude: Double? = nil, timeZoneIdentifier: String? = nil) {
         self.name = name
         self.code = code
         self.time = time
         self.latitude = latitude
         self.longitude = longitude
+        self.timeZoneIdentifier = timeZoneIdentifier
+    }
+
+    /// Returns the time zone for this station point, defaulting to Asia/Tokyo for Japan
+    var timeZone: TimeZone {
+        TimeZone(identifier: timeZoneIdentifier ?? "Asia/Tokyo") ?? TimeZone(identifier: "Asia/Tokyo")!
+    }
+
+    /// Check if this point has time zone information (for missing data detection)
+    var hasExplicitTimeZone: Bool {
+        timeZoneIdentifier != nil
     }
 }
 
@@ -563,6 +575,11 @@ struct StationStop: Identifiable, Hashable, Codable, Sendable {
         case platform
         case note
         case state
+    }
+
+    /// Display platform name, showing "Not available" for TBD or missing values
+    var displayPlatform: String {
+        platform.isEmpty || platform == "TBD" || platform == "Unknown" ? "Not available" : platform
     }
 }
 
