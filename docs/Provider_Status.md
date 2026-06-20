@@ -130,7 +130,18 @@ Status: Active
 
 Credential:
 
-SWISS_OPEN_TRANSPORT_API_KEY
+Product-specific API Manager authToken credentials:
+
+* `SWISS_OJP20_API_KEY` for `tedp_ojp20` / `ojp_2.0_plan`
+* `SWISS_GTFS_RT_API_KEY` for `tedp_gtfs_rt` / `tedp_gtfs_rt_plan`
+* `SWISS_GTFS_SA_API_KEY` for `tedp_gtfs_sa` / `tedp_gtfs_sa_plan`
+* `SWISS_FORMATION_SERVICE_API_KEY` for `tedp_formation_service_api` / `formation_service_plan`
+* `SWISS_SIRI_PT_API_KEY` for `tedp_siri_pt` / `siri_pt_plan`
+* `SWISS_SIRI_SX_API_KEY` for `tedp_siri_sx` / `siri_sx_plan`
+* `SWISS_SIRI_ET_API_KEY` for `tedp_siri_et` / `siri_et_plan`
+* `SWISS_OJPFARE_API_KEY` for `tedp_ojpfare` / `ojp_fare_plan`
+
+Do not assume a generic Swiss token has access to every product.
 
 Capabilities:
 
@@ -228,17 +239,29 @@ Provider #2
 
 ⸻
 
-United Kingdom Darwin
+United Kingdom Rail Data Marketplace
 
 Status: Active
 
-Product:
+Products:
 
-Darwin Real Time Train Information (Push)
+* Darwin Real Time Train Information (Push)
+* NWR Realtime Performance Data API
+
+Rail Data Marketplace product URLs:
+
+* Darwin Push: https://raildata.org.uk/dashboard/dataProduct/P-3f10bf96-d8e8-4041-aa5e-d75d82c45c4e/overview
+* NWR Realtime Performance Data API: https://raildata.org.uk/dashboard/dataProduct/P-80b653cd-bb2a-4897-a69a-4980e6e554da/overview
+
+Access:
+
+* Darwin Push: Active, price 0, licence Open, expires 2027-06-17
+* NWR Realtime Performance Data API: Active, price 0, licence Open Government Licence 3.0, expires 2027-06-17
 
 Source Type:
 
-Kafka Pub/Sub
+* Darwin Push: Kafka Pub/Sub
+* NWR Realtime Performance Data API: API
 
 Credential Type:
 
@@ -261,10 +284,11 @@ Capabilities:
 * Delays
 * Platform changes
 * Cancellations
+* Realtime performance metrics from NWR
 
 Implementation Notes:
 
-Backend worker required.
+Backend worker required for Darwin Push. NWR Realtime Performance Data API can be evaluated as a secondary UK rail performance/status source, but rider-facing station-board implementation should still start from Darwin Push unless the NWR API exposes a simpler MVP surface.
 
 Architecture:
 
