@@ -1,0 +1,13 @@
+{
+  "fixture": {
+    "provider": "Switzerland Open Transport Data",
+    "captured_at": "2026-06-17T13:59:41Z",
+    "source_url": "https://api.opentransportdata.swiss/la/gtfs-rt?format=JSON",
+    "required_api_product": "tedp_gtfs_rt",
+    "result": "access disallowed or unavailable for configured key",
+    "http_status": "403"
+  },
+  "response": {
+    "error": "Access to this API has been disallowed"
+  }
+}

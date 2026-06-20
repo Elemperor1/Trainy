@@ -1,0 +1,131 @@
+{
+  "fixture": {
+    "provider": "Netherlands NS",
+    "captured_at": "2026-06-17",
+    "source_url": "https://gateway.apiportal.ns.nl/reisinformatie-api/api/v2/departures?station=UT",
+    "query": {
+      "station": "UT"
+    }
+  },
+  "payload": {
+    "source": "DVS",
+    "departures": [
+      {
+        "direction": "Enschede",
+        "name": "NS  1755",
+        "plannedDateTime": "2026-06-17T15:37:00+0200",
+        "plannedTimeZoneOffset": 120,
+        "actualDateTime": "2026-06-17T15:44:21+0200",
+        "actualTimeZoneOffset": 120,
+        "plannedTrack": "11",
+        "actualTrack": "9",
+        "product": {
+          "number": "1755",
+          "categoryCode": "IC",
+          "shortCategoryName": "NS Intercity",
+          "longCategoryName": "Intercity",
+          "operatorName": "NS",
+          "operatorCode": "NS",
+          "type": "TRAIN"
+        },
+        "trainCategory": "IC",
+        "cancelled": false,
+        "routeStations": [
+          {
+            "uicCode": "8400055",
+            "mediumName": "Amersfoort C."
+          },
+          {
+            "uicCode": "8400066",
+            "mediumName": "Apeldoorn"
+          },
+          {
+            "uicCode": "8400173",
+            "mediumName": "Deventer"
+          },
+          {
+            "uicCode": "8400051",
+            "mediumName": "Almelo"
+          }
+        ],
+        "messages": [],
+        "departureStatus": "ON_STATION"
+      },
+      {
+        "direction": "'s-Hertogenbosch",
+        "name": "NS  8855",
+        "plannedDateTime": "2026-06-17T15:40:00+0200",
+        "plannedTimeZoneOffset": 120,
+        "actualDateTime": "2026-06-17T15:44:20+0200",
+        "actualTimeZoneOffset": 120,
+        "plannedTrack": "21",
+        "actualTrack": "21",
+        "product": {
+          "number": "8855",
+          "categoryCode": "SPR",
+          "shortCategoryName": "NS Sprinter",
+          "longCategoryName": "Sprinter",
+          "operatorName": "NS",
+          "operatorCode": "NS",
+          "type": "TRAIN"
+        },
+        "trainCategory": "SPR",
+        "cancelled": false,
+        "routeStations": [
+          {
+            "uicCode": "8400606",
+            "mediumName": "Vaartsche Rijn"
+          },
+          {
+            "uicCode": "8400623",
+            "mediumName": "Lunetten"
+          },
+          {
+            "uicCode": "8400340",
+            "mediumName": "Houten"
+          },
+          {
+            "uicCode": "8400244",
+            "mediumName": "Geldermalsen"
+          }
+        ],
+        "messages": [
+          {
+            "message": "15:54 IC Venlo spoor 18 eerder in 's-Hertogenbosch",
+            "style": "INFO"
+          }
+        ],
+        "departureStatus": "ON_STATION"
+      },
+      {
+        "direction": "Den Haag Centraal",
+        "name": "NS   650",
+        "plannedDateTime": "2026-06-17T15:43:00+0200",
+        "plannedTimeZoneOffset": 120,
+        "actualDateTime": "2026-06-17T15:43:00+0200",
+        "actualTimeZoneOffset": 120,
+        "plannedTrack": "8",
+        "actualTrack": "8",
+        "product": {
+          "number": "650",
+          "categoryCode": "IC",
+          "shortCategoryName": "NS Intercity",
+          "longCategoryName": "Intercity",
+          "operatorName": "NS",
+          "operatorCode": "NS",
+          "type": "TRAIN"
+        },
+        "trainCategory": "IC",
+        "cancelled": true,
+        "routeStations": [],
+        "messages": [
+          {
+            "message": "Rijdt niet door een persoon op het spoor",
+            "style": "WARNING"
+          }
+        ],
+        "departureStatus": "UNKNOWN"
+      }
+    ]
+  }
+}

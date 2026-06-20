@@ -1,0 +1,62 @@
+[
+  {
+    "@id": "urn:trainy-fixture:odpt:TrainTimetable:tokaido:nozomi-231",
+    "owl:sameAs": "odpt.TrainTimetable:JR-Central.TokaidoShinkansen.Nozomi231",
+    "odpt:operator": "odpt.Operator:JR-Central",
+    "odpt:railway": "odpt.Railway:JR-Central.TokaidoShinkansen",
+    "odpt:calendar": "odpt.Calendar:Weekday",
+    "odpt:train": "odpt.Train:JR-Central.TokaidoShinkansen.Nozomi231",
+    "odpt:trainNumber": "231",
+    "odpt:trainType": "odpt.TrainType:JR-Central.Nozomi",
+    "odpt:trainName": [
+      {
+        "ja": "Nozomi",
+        "en": "Nozomi"
+      }
+    ],
+    "odpt:originStation": [
+      "odpt.Station:JR-Central.TokaidoShinkansen.Tokyo"
+    ],
+    "odpt:destinationStation": [
+      "odpt.Station:JR-Central.TokaidoShinkansen.ShinOsaka"
+    ],
+    "odpt:trainTimetableObject": [
+      {
+        "odpt:departureStation": "odpt.Station:JR-Central.TokaidoShinkansen.Tokyo",
+        "odpt:departureTime": "09:21",
+        "odpt:departurePlatformNumber": "18"
+      },
+      {
+        "odpt:arrivalStation": "odpt.Station:JR-Central.TokaidoShinkansen.ShinYokohama",
+        "odpt:arrivalTime": "09:38",
+        "odpt:departureStation": "odpt.Station:JR-Central.TokaidoShinkansen.ShinYokohama",
+        "odpt:departureTime": "09:39",
+        "odpt:arrivalPlatformNumber": "3",
+        "odpt:departurePlatformNumber": "3"
+      },
+      {
+        "odpt:arrivalStation": "odpt.Station:JR-Central.TokaidoShinkansen.Nagoya",
+        "odpt:arrivalTime": "10:58",
+        "odpt:departureStation": "odpt.Station:JR-Central.TokaidoShinkansen.Nagoya",
+        "odpt:departureTime": "10:59",
+        "odpt:arrivalPlatformNumber": "16",
+        "odpt:departurePlatformNumber": "16"
+      },
+      {
+        "odpt:arrivalStation": "odpt.Station:JR-Central.TokaidoShinkansen.Kyoto",
+        "odpt:arrivalTime": "11:34",
+        "odpt:departureStation": "odpt.Station:JR-Central.TokaidoShinkansen.Kyoto",
+        "odpt:departureTime": "11:35",
+        "odpt:arrivalPlatformNumber": "14",
+        "odpt:departurePlatformNumber": "14"
+      },
+      {
+        "odpt:arrivalStation": "odpt.Station:JR-Central.TokaidoShinkansen.ShinOsaka",
+        "odpt:arrivalTime": "11:48",
+        "odpt:arrivalPlatformNumber": "25"
+      }
+    ],
+    "dct:valid": "2026-06-30T14:59:00Z",
+    "dc:date": "2026-06-17T00:00:00Z"
+  }
+]

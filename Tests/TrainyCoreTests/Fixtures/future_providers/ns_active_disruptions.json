@@ -1,0 +1,596 @@
+{
+  "fixture": {
+    "provider": "Netherlands NS",
+    "captured_at": "2026-06-17",
+    "source_url": "https://gateway.apiportal.ns.nl/reisinformatie-api/api/v3/disruptions?isActive=true",
+    "query": {
+      "is_active": true
+    }
+  },
+  "disruptions": [
+    {
+      "type": "DISRUPTION",
+      "id": "6065287",
+      "title": "Utrecht - 's-Hertogenbosch.",
+      "isActive": true,
+      "topic": "disruption_6065287_nl",
+      "local": false,
+      "titleSections": [
+        [
+          {
+            "type": "STATION",
+            "value": "Utrecht C."
+          },
+          {
+            "type": "ICON",
+            "value": "DISRUPTION"
+          },
+          {
+            "type": "STATION",
+            "value": "Geldermalsen"
+          },
+          {
+            "type": "STATION",
+            "value": "'s-Hertogenbosch"
+          }
+        ]
+      ],
+      "registrationTime": "2026-06-17T15:13:46+0200",
+      "releaseTime": "2026-06-17T15:13:46+0200",
+      "start": "2026-06-17T14:45:00+0200",
+      "end": "2026-06-17T15:45:00+0200",
+      "phase": {
+        "id": "2",
+        "label": "Impact bekend"
+      },
+      "impact": {
+        "value": 3
+      },
+      "expectedDuration": {
+        "description": "De treinen rijden weer normaal rond 15:45 uur.",
+        "endTime": "2026-06-17T15:45:00+0200"
+      },
+      "publicationSections": [
+        {
+          "section": {
+            "stations": [
+              {
+                "coordinate": {
+                  "lat": 52.0888900756836,
+                  "lng": 5.11027765274048
+                },
+                "countryCode": "NL",
+                "name": "Utrecht Centraal",
+                "stationCode": "UT",
+                "uicCode": "8400621"
+              },
+              {
+                "coordinate": {
+                  "lat": 52.078889,
+                  "lng": 5.121667
+                },
+                "countryCode": "NL",
+                "name": "Utrecht Vaartsche Rijn",
+                "stationCode": "UTVR",
+                "uicCode": "8400606"
+              },
+              {
+                "coordinate": {
+                  "lat": 52.0655555725098,
+                  "lng": 5.14416646957397
+                },
+                "countryCode": "NL",
+                "name": "Utrecht Lunetten",
+                "stationCode": "UTLN",
+                "uicCode": "8400623"
+              },
+              {
+                "coordinate": {
+                  "lat": 52.03402,
+                  "lng": 5.16821
+                },
+                "countryCode": "NL",
+                "name": "Houten",
+                "stationCode": "HTN",
+                "uicCode": "8400340"
+              },
+              {
+                "coordinate": {
+                  "lat": 52.01701,
+                  "lng": 5.17949
+                },
+                "countryCode": "NL",
+                "name": "Houten Castellum",
+                "stationCode": "HTNC",
+                "uicCode": "8400335"
+              },
+              {
+                "coordinate": {
+                  "lat": 51.9466667175293,
+                  "lng": 5.22694444656372
+                },
+                "countryCode": "NL",
+                "name": "Culemborg",
+                "stationCode": "CL",
+                "uicCode": "8400154"
+              },
+              {
+                "coordinate": {
+                  "lat": 51.88301,
+                  "lng": 5.27127
+                },
+                "countryCode": "NL",
+                "name": "Geldermalsen",
+                "stationCode": "GDM",
+                "uicCode": "8400244"
+              },
+              {
+                "coordinate": {
+                  "lat": 51.8088874816895,
+                  "lng": 5.26333332061768
+                },
+                "countryCode": "NL",
+                "name": "Zaltbommel",
+                "stationCode": "ZBM",
+                "uicCode": "8400732"
+              },
+              {
+                "coordinate": {
+                  "lat": 51.69048,
+                  "lng": 5.29362
+                },
+                "countryCode": "NL",
+                "name": "'s-Hertogenbosch",
+                "stationCode": "HT",
+                "uicCode": "8400319"
+              }
+            ],
+            "direction": "BOTH",
+            "operators": [
+              "NS"
+            ]
+          },
+          "consequence": {
+            "section": {
+              "stations": [
+                {
+                  "coordinate": {
+                    "lat": 52.0888900756836,
+                    "lng": 5.11027765274048
+                  },
+                  "countryCode": "NL",
+                  "name": "Utrecht Centraal",
+                  "stationCode": "UT",
+                  "uicCode": "8400621"
+                },
+                {
+                  "coordinate": {
+                    "lat": 52.078889,
+                    "lng": 5.121667
+                  },
+                  "countryCode": "NL",
+                  "name": "Utrecht Vaartsche Rijn",
+                  "stationCode": "UTVR",
+                  "uicCode": "8400606"
+                },
+                {
+                  "coordinate": {
+                    "lat": 52.0655555725098,
+                    "lng": 5.14416646957397
+                  },
+                  "countryCode": "NL",
+                  "name": "Utrecht Lunetten",
+                  "stationCode": "UTLN",
+                  "uicCode": "8400623"
+                },
+                {
+                  "coordinate": {
+                    "lat": 52.03402,
+                    "lng": 5.16821
+                  },
+                  "countryCode": "NL",
+                  "name": "Houten",
+                  "stationCode": "HTN",
+                  "uicCode": "8400340"
+                },
+                {
+                  "coordinate": {
+                    "lat": 52.01701,
+                    "lng": 5.17949
+                  },
+                  "countryCode": "NL",
+                  "name": "Houten Castellum",
+                  "stationCode": "HTNC",
+                  "uicCode": "8400335"
+                },
+                {
+                  "coordinate": {
+                    "lat": 51.9466667175293,
+                    "lng": 5.22694444656372
+                  },
+                  "countryCode": "NL",
+                  "name": "Culemborg",
+                  "stationCode": "CL",
+                  "uicCode": "8400154"
+                },
+                {
+                  "coordinate": {
+                    "lat": 51.88301,
+                    "lng": 5.27127
+                  },
+                  "countryCode": "NL",
+                  "name": "Geldermalsen",
+                  "stationCode": "GDM",
+                  "uicCode": "8400244"
+                }
+              ],
+              "direction": "BOTH",
+              "operators": [
+                "NS"
+              ]
+            },
+            "description": "geen treinen",
+            "level": "LESS_TRAINS"
+          },
+          "sectionType": "NL"
+        }
+      ],
+      "timespans": [
+        {
+          "start": "2026-06-17T14:45:00+0200",
+          "end": "2026-06-17T15:45:00+0200",
+          "period": "Woensdag 17 juni 14:45 uur t/m woensdag 17 juni 15:45 uur.",
+          "situation": {
+            "label": "Door technisch onderzoek: tussen Utrecht Centraal en Geldermalsen rijden er geen treinen."
+          },
+          "cause": {
+            "label": "technisch onderzoek",
+            "type": "OTHER"
+          },
+          "advices": []
+        }
+      ],
+      "alternativeTransportTimespans": []
+    },
+    {
+      "type": "DISRUPTION",
+      "id": "6065288",
+      "title": "Rotterdam - Breda.",
+      "isActive": true,
+      "topic": "disruption_6065288_nl",
+      "local": false,
+      "titleSections": [
+        [
+          {
+            "type": "STATION",
+            "value": "Rotterdam C."
+          },
+          {
+            "type": "ICON",
+            "value": "DISRUPTION"
+          },
+          {
+            "type": "STATION",
+            "value": "Breda"
+          }
+        ]
+      ],
+      "registrationTime": "2026-06-17T15:13:56+0200",
+      "releaseTime": "2026-06-17T15:13:56+0200",
+      "start": "2026-06-17T14:54:12+0200",
+      "end": "2026-06-17T16:00:00+0200",
+      "phase": {
+        "id": "2",
+        "label": "Impact bekend"
+      },
+      "impact": {
+        "value": 2
+      },
+      "expectedDuration": {
+        "description": "Dit duurt tot ongeveer 16:00 uur.",
+        "endTime": "2026-06-17T16:00:00+0200"
+      },
+      "publicationSections": [
+        {
+          "section": {
+            "stations": [
+              {
+                "coordinate": {
+                  "lat": 51.9249992370605,
+                  "lng": 4.46888875961304
+                },
+                "countryCode": "NL",
+                "name": "Rotterdam Centraal",
+                "stationCode": "RTD",
+                "uicCode": "8400530"
+              },
+              {
+                "coordinate": {
+                  "lat": 51.9202766418457,
+                  "lng": 4.48888874053955
+                },
+                "countryCode": "NL",
+                "name": "Rotterdam Blaak",
+                "stationCode": "RTB",
+                "uicCode": "8400529"
+              },
+              {
+                "coordinate": {
+                  "lat": 51.9044456481934,
+                  "lng": 4.51027774810791
+                },
+                "countryCode": "NL",
+                "name": "Rotterdam Zuid",
+                "stationCode": "RTZ",
+                "uicCode": "8400533"
+              },
+              {
+                "coordinate": {
+                  "lat": 51.8800010681152,
+                  "lng": 4.53138875961304
+                },
+                "countryCode": "NL",
+                "name": "Rotterdam Lombardijen",
+                "stationCode": "RLB",
+                "uicCode": "8400542"
+              },
+              {
+                "coordinate": {
+                  "lat": 51.606388092041,
+                  "lng": 4.72083330154419
+                },
+                "countryCode": "NL",
+                "name": "Breda-Prinsenbeek",
+                "stationCode": "BDPB",
+                "uicCode": "8400132"
+              },
+              {
+                "coordinate": {
+                  "lat": 51.5955543518066,
+                  "lng": 4.78000020980835
+                },
+                "countryCode": "NL",
+                "name": "Breda",
+                "stationCode": "BD",
+                "uicCode": "8400131"
+              }
+            ],
+            "direction": "BOTH",
+            "operators": [
+              "NS International"
+            ]
+          },
+          "consequence": {
+            "section": {
+              "stations": [
+                {
+                  "coordinate": {
+                    "lat": 51.9249992370605,
+                    "lng": 4.46888875961304
+                  },
+                  "countryCode": "NL",
+                  "name": "Rotterdam Centraal",
+                  "stationCode": "RTD",
+                  "uicCode": "8400530"
+                },
+                {
+                  "coordinate": {
+                    "lat": 51.9202766418457,
+                    "lng": 4.48888874053955
+                  },
+                  "countryCode": "NL",
+                  "name": "Rotterdam Blaak",
+                  "stationCode": "RTB",
+                  "uicCode": "8400529"
+                },
+                {
+                  "coordinate": {
+                    "lat": 51.9044456481934,
+                    "lng": 4.51027774810791
+                  },
+                  "countryCode": "NL",
+                  "name": "Rotterdam Zuid",
+                  "stationCode": "RTZ",
+                  "uicCode": "8400533"
+                },
+                {
+                  "coordinate": {
+                    "lat": 51.8800010681152,
+                    "lng": 4.53138875961304
+                  },
+                  "countryCode": "NL",
+                  "name": "Rotterdam Lombardijen",
+                  "stationCode": "RLB",
+                  "uicCode": "8400542"
+                },
+                {
+                  "coordinate": {
+                    "lat": 51.606388092041,
+                    "lng": 4.72083330154419
+                  },
+                  "countryCode": "NL",
+                  "name": "Breda-Prinsenbeek",
+                  "stationCode": "BDPB",
+                  "uicCode": "8400132"
+                },
+                {
+                  "coordinate": {
+                    "lat": 51.5955543518066,
+                    "lng": 4.78000020980835
+                  },
+                  "countryCode": "NL",
+                  "name": "Breda",
+                  "stationCode": "BD",
+                  "uicCode": "8400131"
+                }
+              ],
+              "direction": "BOTH",
+              "operators": [
+                "NS International"
+              ]
+            },
+            "description": "geen treinen op de HSL",
+            "level": "LESS_TRAINS"
+          },
+          "sectionType": "HSL"
+        }
+      ],
+      "timespans": [
+        {
+          "start": "2026-06-17T14:54:12+0200",
+          "end": "2026-06-17T16:00:00+0200",
+          "period": "Woensdag 17 juni 14:54 uur t/m woensdag 17 juni 16:00 uur.",
+          "situation": {
+            "label": "Door een systeemstoring: tussen Rotterdam Centraal en Breda rijden er op de hogesnelheidslijn geen treinen."
+          },
+          "cause": {
+            "label": "systeemstoring",
+            "type": "OTHER"
+          },
+          "advices": []
+        }
+      ],
+      "alternativeTransportTimespans": []
+    },
+    {
+      "type": "DISRUPTION",
+      "id": "6065293",
+      "title": "Schiphol - Rotterdam.",
+      "isActive": true,
+      "topic": "disruption_6065293_nl",
+      "local": false,
+      "titleSections": [
+        [
+          {
+            "type": "STATION",
+            "value": "Schiphol Airport"
+          },
+          {
+            "type": "ICON",
+            "value": "DISRUPTION"
+          },
+          {
+            "type": "STATION",
+            "value": "Rotterdam C."
+          }
+        ]
+      ],
+      "registrationTime": "2026-06-17T15:14:59+0200",
+      "releaseTime": "2026-06-17T15:14:59+0200",
+      "start": "2026-06-17T14:54:12+0200",
+      "end": "2026-06-17T16:00:00+0200",
+      "phase": {
+        "id": "2",
+        "label": "Impact bekend"
+      },
+      "impact": {
+        "value": 2
+      },
+      "expectedDuration": {
+        "description": "Dit duurt tot ongeveer 16:00 uur.",
+        "endTime": "2026-06-17T16:00:00+0200"
+      },
+      "publicationSections": [
+        {
+          "section": {
+            "stations": [
+              {
+                "coordinate": {
+                  "lat": 52.3094444274902,
+                  "lng": 4.76194429397583
+                },
+                "countryCode": "NL",
+                "name": "Schiphol Airport",
+                "stationCode": "SHL",
+                "uicCode": "8400561"
+              },
+              {
+                "coordinate": {
+                  "lat": 52.2933349609375,
+                  "lng": 4.70055532455444
+                },
+                "countryCode": "NL",
+                "name": "Hoofddorp",
+                "stationCode": "HFD",
+                "uicCode": "8400332"
+              },
+              {
+                "coordinate": {
+                  "lat": 51.9249992370605,
+                  "lng": 4.46888875961304
+                },
+                "countryCode": "NL",
+                "name": "Rotterdam Centraal",
+                "stationCode": "RTD",
+                "uicCode": "8400530"
+              }
+            ],
+            "direction": "BOTH",
+            "operators": [
+              "NS International"
+            ]
+          },
+          "consequence": {
+            "section": {
+              "stations": [
+                {
+                  "coordinate": {
+                    "lat": 52.3094444274902,
+                    "lng": 4.76194429397583
+                  },
+                  "countryCode": "NL",
+                  "name": "Schiphol Airport",
+                  "stationCode": "SHL",
+                  "uicCode": "8400561"
+                },
+                {
+                  "coordinate": {
+                    "lat": 52.2933349609375,
+                    "lng": 4.70055532455444
+                  },
+                  "countryCode": "NL",
+                  "name": "Hoofddorp",
+                  "stationCode": "HFD",
+                  "uicCode": "8400332"
+                },
+                {
+                  "coordinate": {
+                    "lat": 51.9249992370605,
+                    "lng": 4.46888875961304
+                  },
+                  "countryCode": "NL",
+                  "name": "Rotterdam Centraal",
+                  "stationCode": "RTD",
+                  "uicCode": "8400530"
+                }
+              ],
+              "direction": "BOTH",
+              "operators": [
+                "NS International"
+              ]
+            },
+            "description": "minder treinen op de HSL",
+            "level": "LESS_TRAINS"
+          },
+          "sectionType": "HSL"
+        }
+      ],
+      "timespans": [
+        {
+          "start": "2026-06-17T14:54:12+0200",
+          "end": "2026-06-17T16:00:00+0200",
+          "period": "Woensdag 17 juni 14:54 uur t/m woensdag 17 juni 16:00 uur.",
+          "situation": {
+            "label": "Door een systeemstoring: tussen Schiphol Airport en Rotterdam Centraal rijden er op de hogesnelheidslijn minder treinen."
+          },
+          "cause": {
+            "label": "systeemstoring",
+            "type": "OTHER"
+          },
+          "advices": []
+        }
+      ],
+      "alternativeTransportTimespans": []
+    }
+  ]
+}

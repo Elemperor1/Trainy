@@ -1,0 +1,35 @@
+header {
+  gtfs_realtime_version: "2.0"
+  incrementality: FULL_DATASET
+  timestamp: 1781703808
+}
+entity {
+  id: "161D.1380.127.124.A.8.90014357"
+  trip_update {
+    trip {
+      trip_id: "161D.1380.127.124.A.8.90014357"
+      schedule_relationship: SCHEDULED
+      route_id: "WST_1a"
+    }
+    stop_time_update {
+      arrival {
+        delay: 0
+      }
+      departure {
+        delay: -65
+      }
+      stop_id: "2750511"
+      schedule_relationship: SCHEDULED
+    }
+    vehicle {
+      [transit_realtime.tfnsw_vehicle_descriptor] {
+        vehicle_model: "A"
+      }
+    }
+    timestamp: 1781686015
+    [transit_realtime.trip_properties] {
+      block_id: "485658"
+      shape_id: "WST_1a"
+    }
+  }
+}

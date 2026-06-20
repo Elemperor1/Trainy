@@ -1,0 +1,100 @@
+{
+  "fixture": {
+    "provider": "Hong Kong MTR",
+    "captured_at": "2026-06-17",
+    "source_url": "https://rt.data.gov.hk/v1/transport/mtr/getSchedule.php?line=TML&sta=TAW",
+    "query": {
+      "line": "TML",
+      "station": "TAW"
+    }
+  },
+  "payload": {
+    "sys_time": "2026-06-17 21:43:31",
+    "curr_time": "2026-06-17 21:43:21",
+    "data": {
+      "TML-TAW": {
+        "curr_time": "2026-06-17 21:43:21",
+        "sys_time": "2026-06-17 21:43:31",
+        "UP": [
+          {
+            "seq": "1",
+            "dest": "TUM",
+            "plat": "3",
+            "time": "2026-06-17 21:43:21",
+            "ttnt": "0",
+            "valid": "Y",
+            "source": "-"
+          },
+          {
+            "seq": "2",
+            "dest": "TUM",
+            "plat": "3",
+            "time": "2026-06-17 21:48:21",
+            "ttnt": "5",
+            "valid": "Y",
+            "source": "-"
+          },
+          {
+            "seq": "3",
+            "dest": "TUM",
+            "plat": "3",
+            "time": "2026-06-17 21:54:21",
+            "ttnt": "11",
+            "valid": "Y",
+            "source": "-"
+          },
+          {
+            "seq": "4",
+            "dest": "TUM",
+            "plat": "3",
+            "time": "2026-06-17 22:00:21",
+            "ttnt": "17",
+            "valid": "Y",
+            "source": "-"
+          }
+        ],
+        "DOWN": [
+          {
+            "seq": "1",
+            "dest": "WKS",
+            "plat": "4",
+            "time": "2026-06-17 21:48:21",
+            "ttnt": "5",
+            "valid": "Y",
+            "source": "-"
+          },
+          {
+            "seq": "2",
+            "dest": "WKS",
+            "plat": "4",
+            "time": "2026-06-17 21:55:21",
+            "ttnt": "12",
+            "valid": "Y",
+            "source": "-"
+          },
+          {
+            "seq": "3",
+            "dest": "WKS",
+            "plat": "4",
+            "time": "2026-06-17 22:02:21",
+            "ttnt": "19",
+            "valid": "Y",
+            "source": "-"
+          },
+          {
+            "seq": "4",
+            "dest": "WKS",
+            "plat": "4",
+            "time": "2026-06-17 22:08:21",
+            "ttnt": "25",
+            "valid": "Y",
+            "source": "-"
+          }
+        ]
+      }
+    },
+    "isdelay": "N",
+    "status": 1,
+    "message": "successful"
+  }
+}

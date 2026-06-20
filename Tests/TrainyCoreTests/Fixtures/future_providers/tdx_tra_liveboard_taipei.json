@@ -1,0 +1,92 @@
+{
+  "fixture": {
+    "provider": "Taiwan TDX",
+    "captured_at": "2026-06-17",
+    "source_url": "https://tdx.transportdata.tw/api/basic/v2/Rail/TRA/LiveBoard/Station/1000",
+    "query": {
+      "station_id": "1000",
+      "top": 3,
+      "format": "JSON"
+    }
+  },
+  "live_boards": [
+    {
+      "StationID": "1000",
+      "StationName": {
+        "Zh_tw": "臺北",
+        "En": "Taipei"
+      },
+      "TrainNo": "157",
+      "Direction": 1,
+      "TrainTypeID": "1108",
+      "TrainTypeCode": "3",
+      "TrainTypeName": {
+        "Zh_tw": "自強(推拉式自強號且無自行車車廂)",
+        "En": "Tze-Chiang Limited Express"
+      },
+      "TripLine": 1,
+      "EndingStationID": "3160",
+      "EndingStationName": {
+        "Zh_tw": "苗栗",
+        "En": "Miaoli"
+      },
+      "ScheduledArrivalTime": "21:42:00",
+      "ScheduledDepartureTime": "21:45:00",
+      "DelayTime": 2,
+      "SrcUpdateTime": "2026-06-17T21:42:22+08:00",
+      "UpdateTime": "2026-06-17T21:43:06+08:00"
+    },
+    {
+      "StationID": "1000",
+      "StationName": {
+        "Zh_tw": "臺北",
+        "En": "Taipei"
+      },
+      "TrainNo": "1273",
+      "Direction": 1,
+      "TrainTypeID": "1131",
+      "TrainTypeCode": "6",
+      "TrainTypeName": {
+        "Zh_tw": "區間",
+        "En": "Local Train"
+      },
+      "TripLine": 0,
+      "EndingStationID": "1210",
+      "EndingStationName": {
+        "Zh_tw": "新竹",
+        "En": "Hsinchu"
+      },
+      "ScheduledArrivalTime": "21:48:00",
+      "ScheduledDepartureTime": "21:50:00",
+      "DelayTime": 2,
+      "SrcUpdateTime": "2026-06-17T21:41:44+08:00",
+      "UpdateTime": "2026-06-17T21:43:06+08:00"
+    },
+    {
+      "StationID": "1000",
+      "StationName": {
+        "Zh_tw": "臺北",
+        "En": "Taipei"
+      },
+      "TrainNo": "1274",
+      "Direction": 0,
+      "TrainTypeID": "1131",
+      "TrainTypeCode": "6",
+      "TrainTypeName": {
+        "Zh_tw": "區間",
+        "En": "Local Train"
+      },
+      "TripLine": 0,
+      "EndingStationID": "0900",
+      "EndingStationName": {
+        "Zh_tw": "基隆",
+        "En": "Keelung"
+      },
+      "ScheduledArrivalTime": "21:52:00",
+      "ScheduledDepartureTime": "21:55:00",
+      "DelayTime": 0,
+      "SrcUpdateTime": "2026-06-17T21:42:54+08:00",
+      "UpdateTime": "2026-06-17T21:43:06+08:00"
+    }
+  ]
+}

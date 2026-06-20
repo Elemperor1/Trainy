@@ -1,0 +1,9 @@
+{
+  "provider": "Transport for NSW",
+  "captured_at": "2026-06-17",
+  "source_url": "https://api.transport.nsw.gov.au/v1/gtfs/schedule/sydneytrains",
+  "selected_trip_id": "161D.1380.127.124.A.8.90014357",
+  "selected_route_id": "WST_1a",
+  "realtime_reference_stop_id": "2750511",
+  "included_tables": ["agency.txt", "routes.txt", "trips.txt", "stop_times.txt", "stops.txt", "calendar.txt"]
+}

@@ -1,0 +1,8 @@
+stop_id,stop_code,stop_name,stop_desc,stop_lat,stop_lon,zone_id,stop_url,location_type,parent_station,stop_timezone,wheelchair_boarding
+2000338,2000338,Central Station Platform 18,,-33.88416,151.206916,,,0,200060,,0
+2747362,2747362,Kingswood Station Platform 2,,-33.758327,150.720008,,,0,274720,,0
+2750511,2750511,Penrith Station Platform 1,,-33.749959,150.696191,,,0,275010,,0
+2015134,2015134,Redfern Station Platform 4,,-33.891922,151.198559,,,0,201510,,0
+213051,213051,Summer Hill Station Platform 1,,-33.890345,151.138972,,,0,213010,,0
+204831,204831,Stanmore Station Platform 1,,-33.894449,151.164038,,,0,204810,,0
+2747372,2747372,Werrington Station Platform 2,,-33.759218,150.757656,,,0,274710,,0

@@ -1,0 +1,107 @@
+{
+  "fixture": {
+    "provider": "Taiwan TDX",
+    "captured_at": "2026-06-17",
+    "source_url": "https://tdx.transportdata.tw/api/basic/v2/Rail/THSR/GeneralTimetable",
+    "query": {
+      "top": 1,
+      "format": "JSON"
+    }
+  },
+  "timetables": [
+    {
+      "UpdateTime": "2026-06-17",
+      "EffectiveDate": "2026-06-11",
+      "ExpiringDate": "",
+      "VersionID": 2130,
+      "GeneralTimetable": {
+        "GeneralTrainInfo": {
+          "TrainNo": "0108",
+          "Direction": 1,
+          "StartingStationID": "1070",
+          "StartingStationName": {
+            "Zh_tw": "左營",
+            "En": "Zuoying"
+          },
+          "EndingStationID": "0990",
+          "EndingStationName": {
+            "Zh_tw": "南港",
+            "En": "Nangang"
+          },
+          "Note": {},
+          "Overnight": false
+        },
+        "StopTimes": [
+          {
+            "StopSequence": 1,
+            "StationID": "1070",
+            "StationName": {
+              "Zh_tw": "左營",
+              "En": "Zuoying",
+              "Ja": "左營",
+              "Ko": "쭤잉"
+            },
+            "DepartureTime": "07:55"
+          },
+          {
+            "StopSequence": 2,
+            "StationID": "1040",
+            "StationName": {
+              "Zh_tw": "台中",
+              "En": "Taichung",
+              "Ja": "台中",
+              "Ko": "타이중"
+            },
+            "ArrivalTime": "08:37",
+            "DepartureTime": "08:39"
+          },
+          {
+            "StopSequence": 3,
+            "StationID": "1010",
+            "StationName": {
+              "Zh_tw": "板橋",
+              "En": "Banqiao",
+              "Ja": "板橋",
+              "Ko": "반차오"
+            },
+            "ArrivalTime": "09:20",
+            "DepartureTime": "09:21"
+          },
+          {
+            "StopSequence": 4,
+            "StationID": "1000",
+            "StationName": {
+              "Zh_tw": "台北",
+              "En": "Taipei",
+              "Ja": "台北",
+              "Ko": "타이페이"
+            },
+            "ArrivalTime": "09:29",
+            "DepartureTime": "09:32"
+          },
+          {
+            "StopSequence": 5,
+            "StationID": "0990",
+            "StationName": {
+              "Zh_tw": "南港",
+              "En": "Nangang",
+              "Ja": "南港",
+              "Ko": "난강"
+            },
+            "ArrivalTime": "09:40"
+          }
+        ],
+        "ServiceDay": {
+          "Monday": 1,
+          "Tuesday": 1,
+          "Wednesday": 1,
+          "Thursday": 1,
+          "Friday": 1,
+          "Saturday": 1,
+          "Sunday": 1
+        },
+        "SrcUpdateTime": "2026-06-11T06:10:01+08:00"
+      }
+    }
+  ]
+}

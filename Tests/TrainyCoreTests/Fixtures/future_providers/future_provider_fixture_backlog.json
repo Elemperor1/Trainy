@@ -1,0 +1,102 @@
+{
+  "as_of": "2026-06-17",
+  "status_source": "docs/Provider_Status.md",
+  "status_groups": {
+    "active": "Credentialed provider fixture can be captured or has been captured without storing secrets.",
+    "public": "No credential required for the captured fixture.",
+    "verification_needed": "Access path, API product permission, or backend worker path still needs confirmation before a provider data fixture is complete.",
+    "deferred": "Provider is intentionally not on the implementation path yet.",
+    "blocked": "Provider access is not obtainable without a partner or policy change."
+  },
+  "providers": [
+    {
+      "provider": "Netherlands NS",
+      "status_group": "active",
+      "fixture_status": "captured",
+      "fixture_files": [
+        "future_providers/ns_departures_utrecht_centraal.json",
+        "future_providers/ns_active_disruptions.json"
+      ],
+      "notes": "Reduced Utrecht Centraal departures and active disruption samples captured from NS API responses. No request headers or key material stored."
+    },
+    {
+      "provider": "Hong Kong MTR",
+      "status_group": "public",
+      "fixture_status": "captured",
+      "fixture_files": [
+        "future_providers/mtr_next_train_tuen_ma_tai_wai.json"
+      ],
+      "notes": "DATA.GOV.HK/MTR next-train endpoint requires no credential."
+    },
+    {
+      "provider": "Taiwan TDX",
+      "status_group": "active",
+      "fixture_status": "captured",
+      "fixture_files": [
+        "future_providers/tdx_thsr_general_timetable.json",
+        "future_providers/tdx_tra_liveboard_taipei.json"
+      ],
+      "notes": "THSR timetable and Taiwan Railway Taipei live-board samples captured after local OAuth exchange. Stored files omit token exchange responses and request headers."
+    },
+    {
+      "provider": "Transport for NSW",
+      "status_group": "active",
+      "fixture_status": "captured",
+      "fixture_files": [
+        "future_providers/tfnsw_gtfs_static_sydneytrains_mini/",
+        "future_providers/tfnsw_gtfs_rt_sydneytrains_trip_update.textproto"
+      ],
+      "notes": "Static Sydney Trains GTFS feed reduced to one trip. Realtime v2 trip update stored as a first-entity textproto sample."
+    },
+    {
+      "provider": "France SNCF / transport.data.gouv.fr",
+      "status_group": "active",
+      "fixture_status": "captured_public_metadata",
+      "fixture_files": [
+        "future_providers/france_sncf_transport_dataset_metadata.json"
+      ],
+      "notes": "Reduced SNCF national rail resource metadata captured from the public dataset API. The local transport.data.gouv.fr credential was not required for this metadata endpoint."
+    },
+    {
+      "provider": "MTA LIRR / Metro-North",
+      "status_group": "public",
+      "fixture_status": "access_verified_and_captured",
+      "fixture_files": [
+        "future_providers/mta_lirr_gtfs_rt_trip_update.textproto",
+        "future_providers/mta_metro_north_gtfs_rt_trip_update.textproto"
+      ],
+      "notes": "Both commuter rail GTFS-RT feeds returned HTTP 200 without a credential, resolving the access-path verification item."
+    },
+    {
+      "provider": "Switzerland Open Transport Data",
+      "status_group": "active",
+      "fixture_status": "captured",
+      "fixture_files": [
+        "future_providers/swiss_gtfs_rt_trip_updates.json",
+        "future_providers/swiss_gtfsrt_access_disallowed.json"
+      ],
+      "notes": "Swiss API Manager uses separate auth credentials per product. The GTFS-RT product credential captured a reduced trip-updates fixture. The access-disallowed evidence file documents the earlier generic-key failure and should not be treated as provider data."
+    },
+    {
+      "provider": "UK Rail Data Marketplace",
+      "status_group": "verification_needed",
+      "fixture_status": "backend_worker_required",
+      "fixture_files": [],
+      "notes": "Active products: Darwin Real Time Train Information (Push), price 0, licence Open, expires 2027-06-17; NWR Realtime Performance Data API, price 0, licence OGL3, expires 2027-06-17. Kafka settings are present locally for Darwin, but no backend worker or Kafka consumer tooling exists in this repo yet. Capture Darwin from the worker path after that path is confirmed; evaluate NWR as a secondary UK performance/status source."
+    },
+    {
+      "provider": "Germany DB",
+      "status_group": "deferred",
+      "fixture_status": "not_a_blocker",
+      "fixture_files": [],
+      "notes": "Official DB APIs require paid access that is not acquired. Do not treat Germany as an active implementation blocker; select GTFS.de, DELFI, or OpenData OPNV before capturing an alternative sample."
+    },
+    {
+      "provider": "South Korea TAGO/TOPIS",
+      "status_group": "blocked",
+      "fixture_status": "not_a_blocker",
+      "fixture_files": [],
+      "notes": "Provider support indicated foreign developers cannot obtain access. Keep partnership-required status unless access policy or a partner source changes."
+    }
+  ]
+}

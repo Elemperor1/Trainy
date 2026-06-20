@@ -1,0 +1,14 @@
+{
+  "providerID": "shinkansen",
+  "defaultTripCount": 4,
+  "expectedTripIDs": [
+    "nozomi-231",
+    "sakura-555",
+    "hayabusa-17",
+    "kagayaki-509"
+  ],
+  "fallbackQuery": "Tokyo to Shin-Osaka",
+  "expectedFallbackRouteID": "tokaido",
+  "expectedSourceKind": "starterCatalog",
+  "requiresNetwork": false
+}
