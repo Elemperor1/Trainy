@@ -1632,17 +1632,33 @@ private struct SettingsScreen: View {
                 }
 
                 SettingsGroup(title: "Notifications") {
-                    SettingsToggleRow(symbol: "bell.badge", title: "Delay and disruption alerts", detail: "Notify me when a tracked train reports a delay, cancellation, or service disruption.", isOn: $delayNotifications)
-                    SettingsToggleRow(symbol: "rectangle.split.3x1", title: "Platform changes", detail: "Notify me when a saved journey moves to a different platform or track.", isOn: $platformNotifications)
+                    SettingsToggleRow(symbol: "bell.badge", title: "Local delay notice preference", detail: "Prototype preference only. This build does not request system notification permission or schedule delay alerts.", isOn: $delayNotifications)
+                    SettingsToggleRow(symbol: "rectangle.split.3x1", title: "Local platform notice preference", detail: "Prototype preference only. Platform-change notifications are not scheduled in this build.", isOn: $platformNotifications)
                 }
 
                 SettingsGroup(title: "Time and Units") {
-                    SettingsPickerRow(symbol: "clock", title: "Time format", selection: $timeFormatRaw, options: ["12-hour", "24-hour"])
-                    SettingsToggleRow(symbol: "ruler", title: "Metric units", detail: "Use kilometers and 24-hour times where route data supports it.", isOn: $useMetricUnits)
-                    SettingsPickerRow(symbol: "paintpalette", title: "Appearance", selection: $appearance, options: ["System", "Light", "Dark"])
+                    SettingsPickerRow(symbol: "clock", title: "Time format", detail: "Applies to trip cards, station boards, detail timelines, ETA labels, and shared journey text.", selection: $timeFormatRaw, options: UserPreferences.TimeFormat.allCases.map(\.rawValue))
+                    SettingsToggleRow(symbol: "ruler", title: "Metric units", detail: "Applies to source-backed speed and distance values when a provider supplies numeric metric data.", isOn: usesMetricUnits)
+                    SettingsPickerRow(symbol: "tag", title: "Source labels", detail: "Controls whether source badges use compact labels or longer rider-facing source names.", selection: $sourceLabelVerbosityRaw, options: UserPreferences.SourceLabelVerbosity.allCases.map(\.rawValue))
+                    SettingsPickerRow(symbol: "paintpalette", title: "Appearance", detail: "Stored as a display preference; app-wide appearance switching is not applied in this build.", selection: $appearance, options: ["System", "Light", "Dark"])
+                    SettingsInfoRow(symbol: "calendar.badge.clock", title: "Calendar sync", detail: "Not connected in this build. Saved journeys stay inside Trainy unless you share them manually.")
                 }
 
                 SettingsGroup(title: "Providers") {
+                    if let activeProvider {
+                        ProviderActiveSummary(provider: activeProvider)
+                        Divider()
+                            .background(RailDesign.Palette.hairline)
+                    }
+                    SettingsNavigationRow(
+                        symbol: "globe.asia.australia.fill",
+                        title: "Supported regions",
+                        detail: "Japan is active; the rest of the globe remains muted in this build."
+                    ) {
+                        SupportedRegionsScreen(store: store)
+                    }
+                    Divider()
+                        .background(RailDesign.Palette.hairline)
                     ProviderRegionPicker(store: store)
                     Divider()
                         .background(RailDesign.Palette.hairline)
@@ -1650,13 +1666,24 @@ private struct SettingsScreen: View {
                 }
 
                 SettingsGroup(title: "Privacy") {
-                    SettingsToggleRow(symbol: "hand.raised", title: "Share diagnostics", detail: "Send anonymous rail search reliability signals. Station names and personal notes stay on this device.", isOn: $shareAnalytics)
+                    SettingsToggleRow(symbol: "hand.raised", title: "Diagnostics sharing consent", detail: "Off by default and stored locally. This build sends no diagnostics; future diagnostics must exclude station names, trip IDs, notes, provider keys, and contact details.", isOn: $diagnosticsConsent)
                     SettingsInfoRow(symbol: "lock.shield", title: "Saved trip data", detail: "Tracked journeys, favorite stations, and alert choices are stored locally by this build.")
                 }
 
                 SettingsGroup(title: "Support") {
                     SettingsInfoRow(symbol: "questionmark.circle", title: "Help", detail: "Get guidance for train numbers, platforms, transfers, and offline saved journeys.")
                     SettingsInfoRow(symbol: "info.circle", title: "About", detail: "Trainy is an original rail companion interface built with system fonts, SF Symbols, and app-owned data.")
+                }
+
+                SettingsGroup(title: "Developer") {
+                    SettingsActionRow(
+                        symbol: "arrow.counterclockwise.circle",
+                        title: "Reset first-run",
+                        detail: "Show the data-scope onboarding again for fixture, copy, and simulator checks.",
+                        actionTitle: "Reset"
+                    ) {
+                        store.resetFirstRun()
+                    }
                 }
             }
             .padding(RailDesign.Spacing.m)
@@ -2715,12 +2742,13 @@ private struct SettingsToggleRow: View {
 private struct SettingsPickerRow: View {
     let symbol: String
     let title: LocalizedStringKey
+    let detail: LocalizedStringKey
     @Binding var selection: String
     let options: [String]
 
     var body: some View {
         HStack {
-            SettingsRowLabel(symbol: symbol, title: title, detail: "Choose how the rail companion adapts to system appearance.")
+            SettingsRowLabel(symbol: symbol, title: title, detail: detail)
             Picker("", selection: $selection) {
                 ForEach(options, id: \.self) { option in
                     Text(option).tag(option)
