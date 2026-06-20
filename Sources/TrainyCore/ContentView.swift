@@ -366,6 +366,23 @@ private struct ActiveTripSummary: View {
     let trip: TrainTrip
     @ObservedObject var store: TrainStore
     let openMap: () -> Void
+    @AppStorage("trainy.timeFormat") private var timeFormatRaw = UserPreferences.TimeFormat.hour12.rawValue
+
+    private var timeFormat: UserPreferences.TimeFormat {
+        UserPreferences.TimeFormat(rawValue: timeFormatRaw) ?? .hour12
+    }
+
+    private var formattedOriginTime: String {
+        trip.origin.time.formattedAsTime(in: trip.origin.timeZone, format: timeFormat)
+    }
+
+    private var formattedDestinationTime: String {
+        trip.destination.time.formattedAsTime(in: trip.destination.timeZone, format: timeFormat)
+    }
+
+    private var formattedETA: String {
+        trip.eta.formattedAsTime(in: trip.destination.timeZone, format: timeFormat)
+    }
 
     var body: some View {
         GlassPanel(cornerRadius: 30, tint: .white.opacity(0.08), padding: 0) {
@@ -400,7 +417,7 @@ private struct ActiveTripSummary: View {
                 VStack(alignment: .leading, spacing: RailDesign.Spacing.s) {
                     HStack(alignment: .firstTextBaseline) {
                         VStack(alignment: .leading, spacing: 2) {
-                            Text(trip.origin.time)
+                            Text(formattedOriginTime)
                                 .font(.headline.monospacedDigit().weight(.bold))
                             Text(trip.origin.name)
                                 .font(.caption.weight(.medium))
@@ -409,7 +426,7 @@ private struct ActiveTripSummary: View {
                         }
                         Spacer()
                         VStack(alignment: .trailing, spacing: 2) {
-                            Text(trip.destination.time)
+                            Text(formattedDestinationTime)
                                 .font(.headline.monospacedDigit().weight(.bold))
                             Text(trip.destination.name)
                                 .font(.caption.weight(.medium))
@@ -429,8 +446,13 @@ private struct ActiveTripSummary: View {
 
                 HStack(spacing: RailDesign.Spacing.xs) {
                     ControlMetricTile(title: "Next", value: trip.nextStop, symbol: "location.north.line.fill", tint: RailDesign.Palette.accent)
-                    ControlMetricTile(title: "ETA", value: trip.eta, symbol: "clock", tint: RailDesign.Palette.violet)
-                    ControlMetricTile(title: "Platform", value: trip.platform, symbol: "rectangle.split.3x1.fill", tint: RailDesign.Palette.blue)
+                    ControlMetricTile(title: "ETA", value: formattedETA, symbol: "clock", tint: RailDesign.Palette.violet)
+                    ControlMetricTile(
+                        title: "Platform",
+                        value: trip.displayPlatform,
+                        symbol: "rectangle.split.3x1.fill",
+                        tint: trip.platformDisplayState.isKnown ? RailDesign.Palette.blue : RailDesign.Palette.secondaryText
+                    )
                 }
 
                 Button(action: openMap) {
@@ -861,10 +883,47 @@ private struct SearchResultsSection: View {
     }
 }
 
+private struct SearchEmptyStateView: View {
+    let emptyState: TrainStore.SearchEmptyState
+    let manualAdd: () -> Void
+
+    var body: some View {
+        if let actionTitle = emptyState.actionTitle {
+            EmptyStateView(
+                title: LocalizedStringKey(emptyState.title),
+                message: LocalizedStringKey(emptyState.message),
+                symbolName: emptyState.symbolName,
+                actionTitle: LocalizedStringKey(actionTitle)
+            ) {
+                manualAdd()
+            }
+        } else {
+            EmptyStateView(
+                title: LocalizedStringKey(emptyState.title),
+                message: LocalizedStringKey(emptyState.message),
+                symbolName: emptyState.symbolName
+            )
+        }
+    }
+}
+
 private struct SearchResultCard: View {
     let trip: TrainTrip
     let track: () -> Void
     @State private var sourceDetailTrip: TrainTrip?
+    @AppStorage("trainy.timeFormat") private var timeFormatRaw = UserPreferences.TimeFormat.hour12.rawValue
+
+    private var timeFormat: UserPreferences.TimeFormat {
+        UserPreferences.TimeFormat(rawValue: timeFormatRaw) ?? .hour12
+    }
+
+    private var formattedOriginTime: String {
+        trip.origin.time.formattedAsTime(in: trip.origin.timeZone, format: timeFormat)
+    }
+
+    private var formattedDestinationTime: String {
+        trip.destination.time.formattedAsTime(in: trip.destination.timeZone, format: timeFormat)
+    }
 
     var body: some View {
         GlassPanel(tint: RailDesign.Palette.blue.opacity(0.10)) {
@@ -878,6 +937,11 @@ private struct SearchResultCard: View {
                             .minimumScaleFactor(0.72)
                         Text(trip.operatorName)
                             .font(.caption.weight(.semibold))
+                            .foregroundStyle(RailDesign.Palette.secondaryText)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.76)
+                        Text("\(trip.sourceProvenance.sourceKind.riderTitle) · \(trip.sourceProvenance.freshness.displayName)")
+                            .font(.caption2.weight(.semibold))
                             .foregroundStyle(RailDesign.Palette.secondaryText)
                             .lineLimit(1)
                             .minimumScaleFactor(0.76)
@@ -897,7 +961,7 @@ private struct SearchResultCard: View {
 
                 HStack {
                     VStack(alignment: .leading, spacing: 2) {
-                        Text(trip.origin.time)
+                        Text(formattedOriginTime)
                             .font(.headline.monospacedDigit())
                         Text(trip.origin.name)
                             .font(.caption)
@@ -909,7 +973,7 @@ private struct SearchResultCard: View {
                         .foregroundStyle(RailDesign.Palette.secondaryText)
                     Spacer()
                     VStack(alignment: .trailing, spacing: 2) {
-                        Text(trip.destination.time)
+                        Text(formattedDestinationTime)
                             .font(.headline.monospacedDigit())
                         Text(trip.destination.name)
                             .font(.caption)
@@ -1129,10 +1193,15 @@ private struct BoardSection: View {
 
 private struct StationBoardRow: View {
     let trip: TrainTrip
+    @AppStorage("trainy.timeFormat") private var timeFormatRaw = UserPreferences.TimeFormat.hour12.rawValue
+
+    private var timeFormat: UserPreferences.TimeFormat {
+        UserPreferences.TimeFormat(rawValue: timeFormatRaw) ?? .hour12
+    }
 
     var body: some View {
         HStack(spacing: RailDesign.Spacing.s) {
-            Text(trip.origin.time.formattedAsTime(in: trip.origin.timeZone))
+            Text(trip.origin.time.formattedAsTime(in: trip.origin.timeZone, format: timeFormat))
                 .font(.headline.monospacedDigit())
                 .foregroundStyle(RailDesign.Palette.ink)
                 .frame(width: 58, alignment: .leading)
@@ -1217,16 +1286,22 @@ private struct HistoryScreen: View {
 private struct SettingsScreen: View {
     @ObservedObject var store: TrainStore
     @AppStorage("rail.appearance") private var appearance = "System"
-    @AppStorage("trainy.timeFormat") private var timeFormatRaw = "12-hour"
-    @State private var delayNotifications = true
-    @State private var platformNotifications = true
-    @State private var calendarSync = false
-    @State private var useMetricUnits = true
-    @State private var shareAnalytics = false
+    @AppStorage("trainy.timeFormat") private var timeFormatRaw = UserPreferences.TimeFormat.hour12.rawValue
+    @AppStorage("trainy.unitSystem") private var unitSystemRaw = UserPreferences.UnitSystem.metric.rawValue
+    @AppStorage("trainy.sourceLabelVerbosity") private var sourceLabelVerbosityRaw = UserPreferences.SourceLabelVerbosity.compact.rawValue
+    @AppStorage("trainy.localDelayNoticesEnabled") private var delayNotifications = false
+    @AppStorage("trainy.localPlatformNoticesEnabled") private var platformNotifications = false
+    @AppStorage("trainy.diagnosticsConsent") private var diagnosticsConsent = false
 
-    private var timeFormat: UserPreferences.TimeFormat {
-        get { UserPreferences.TimeFormat(rawValue: timeFormatRaw) ?? .hour12 }
-        set { timeFormatRaw = newValue.rawValue }
+    private var usesMetricUnits: Binding<Bool> {
+        Binding(
+            get: { unitSystemRaw != UserPreferences.UnitSystem.imperial.rawValue },
+            set: { unitSystemRaw = $0 ? UserPreferences.UnitSystem.metric.rawValue : UserPreferences.UnitSystem.imperial.rawValue }
+        )
+    }
+
+    private var activeProvider: ProviderMetadata? {
+        store.providerDirectory.first { $0.id == store.activeProviderID }
     }
 
     var body: some View {
@@ -1437,13 +1512,18 @@ private struct HeaderStation: View {
     let label: LocalizedStringKey
     var alignment: HorizontalAlignment = .leading
     var timeZone: TimeZone = TimeZone(identifier: "Asia/Tokyo")!
+    @AppStorage("trainy.timeFormat") private var timeFormatRaw = UserPreferences.TimeFormat.hour12.rawValue
+
+    private var timeFormat: UserPreferences.TimeFormat {
+        UserPreferences.TimeFormat(rawValue: timeFormatRaw) ?? .hour12
+    }
 
     var body: some View {
         VStack(alignment: alignment, spacing: RailDesign.Spacing.xxs) {
             Text(label)
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(RailDesign.Palette.secondaryText)
-            Text(time.formattedAsTime(in: timeZone))
+            Text(time.formattedAsTime(in: timeZone, format: timeFormat))
                 .font(.title2.monospacedDigit().weight(.bold))
                 .foregroundStyle(RailDesign.Palette.ink)
             Text(station)
@@ -1465,13 +1545,23 @@ private struct StatusSummaryPanel: View {
                 HStack(spacing: RailDesign.Spacing.m) {
                     StatusSummaryItem(title: "Status", value: trip.status, symbol: RailServiceStatus.from(trip).symbolName, tint: RailServiceStatus.from(trip).tint)
                     Divider()
-                    StatusSummaryItem(title: "Platform", value: trip.platform, symbol: "rectangle.split.3x1", tint: RailDesign.Palette.blue)
+                    StatusSummaryItem(
+                        title: "Platform",
+                        value: trip.displayPlatform,
+                        symbol: "rectangle.split.3x1",
+                        tint: trip.platformDisplayState.isKnown ? RailDesign.Palette.blue : RailDesign.Palette.secondaryText
+                    )
                     Divider()
                     StatusSummaryItem(title: "Updated", value: trip.updated, symbol: "arrow.clockwise", tint: RailDesign.Palette.violet)
                 }
                 VStack(spacing: RailDesign.Spacing.m) {
                     StatusSummaryItem(title: "Status", value: trip.status, symbol: RailServiceStatus.from(trip).symbolName, tint: RailServiceStatus.from(trip).tint)
-                    StatusSummaryItem(title: "Platform", value: trip.platform, symbol: "rectangle.split.3x1", tint: RailDesign.Palette.blue)
+                    StatusSummaryItem(
+                        title: "Platform",
+                        value: trip.displayPlatform,
+                        symbol: "rectangle.split.3x1",
+                        tint: trip.platformDisplayState.isKnown ? RailDesign.Palette.blue : RailDesign.Palette.secondaryText
+                    )
                     StatusSummaryItem(title: "Updated", value: trip.updated, symbol: "arrow.clockwise", tint: RailDesign.Palette.violet)
                 }
             }
@@ -1579,6 +1669,15 @@ private struct StatusSummaryItem: View {
 
 private struct JourneyProgressPanel: View {
     let trip: TrainTrip
+    @AppStorage("trainy.timeFormat") private var timeFormatRaw = UserPreferences.TimeFormat.hour12.rawValue
+
+    private var timeFormat: UserPreferences.TimeFormat {
+        UserPreferences.TimeFormat(rawValue: timeFormatRaw) ?? .hour12
+    }
+
+    private var formattedETA: String {
+        trip.eta.formattedAsTime(in: trip.destination.timeZone, format: timeFormat)
+    }
 
     var body: some View {
         GlassPanel(tint: RailDesign.Palette.accent.opacity(0.14)) {
@@ -1589,7 +1688,7 @@ private struct JourneyProgressPanel: View {
                 HStack {
                     InfoLine(symbol: "location.north.line.fill", title: "Next stop", value: trip.nextStop)
                     Spacer(minLength: RailDesign.Spacing.s)
-                    InfoLine(symbol: "clock", title: "ETA", value: trip.eta)
+                    InfoLine(symbol: "clock", title: "ETA", value: formattedETA)
                 }
             }
         }
@@ -2060,8 +2159,8 @@ private struct StationSnapshot: Identifiable, Hashable {
         Array(
             Set(
                 trips.flatMap { trip in
-                    ([trip.origin.name: trip.platform][name].map { [$0] } ?? []) +
-                    trip.stops.filter { $0.name == name }.map(\.platform)
+                    ([trip.origin.name: trip.displayPlatform][name].map { [$0] } ?? []) +
+                    trip.stops.filter { $0.name == name }.map(\.displayPlatform)
                 }
             )
         )
@@ -2119,7 +2218,8 @@ private extension TrainStore {
 
 private extension TrainTrip {
     var shareText: String {
-        "\(train): \(origin.name) to \(destination.name), \(status), platform \(platform), ETA \(eta). Source: \(sourceProvenance.sourceKind.riderTitle), \(sourceProvenance.freshness.displayName)."
+        let formattedETA = eta.formattedAsTime(in: destination.timeZone)
+        return "\(train): \(origin.name) to \(destination.name), \(status), platform \(displayPlatform), ETA \(formattedETA). Source: \(sourceProvenance.sourceKind.riderTitle), \(sourceProvenance.freshness.displayName)."
     }
 
     var transferSummary: String {

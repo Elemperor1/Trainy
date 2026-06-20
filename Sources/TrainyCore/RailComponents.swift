@@ -450,6 +450,7 @@ struct PlatformChip: View {
 struct TrainTripCard: View {
     let trip: TrainTrip
     var role: Role = .upcoming
+    @AppStorage("trainy.timeFormat") private var timeFormatRaw = UserPreferences.TimeFormat.hour12.rawValue
 
     enum Role {
         case upcoming
@@ -460,6 +461,14 @@ struct TrainTripCard: View {
 
     private var status: RailServiceStatus {
         RailServiceStatus.from(trip)
+    }
+
+    private var timeFormat: UserPreferences.TimeFormat {
+        UserPreferences.TimeFormat(rawValue: timeFormatRaw) ?? .hour12
+    }
+
+    private var formattedETA: String {
+        trip.eta.formattedAsTime(in: trip.destination.timeZone, format: timeFormat)
     }
 
     var body: some View {
@@ -519,7 +528,7 @@ struct TrainTripCard: View {
                             Text(trip.nextStop)
                                 .font(.subheadline.weight(.semibold))
                                 .foregroundStyle(RailDesign.Palette.ink)
-                            Text("ETA \(trip.eta)")
+                            Text("ETA \(formattedETA)")
                                 .font(.caption)
                                 .foregroundStyle(status.tint)
                         }
@@ -532,7 +541,7 @@ struct TrainTripCard: View {
             }
         }
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("\(trip.train), \(trip.origin.name) to \(trip.destination.name), \(trip.status), platform \(trip.platform), \(trip.sourceProvenance.sourceKind.riderTitle) source, \(trip.sourceProvenance.freshness.displayName)")
+        .accessibilityLabel("\(trip.train), \(trip.origin.name) to \(trip.destination.name), \(trip.status), platform \(trip.displayPlatform), \(trip.sourceProvenance.sourceKind.riderTitle) source, \(trip.sourceProvenance.freshness.displayName)")
     }
 }
 
@@ -550,6 +559,7 @@ private struct TripOpenCue: View {
 struct StopTimelineRow: View {
     let stop: StationStop
     let isLast: Bool
+    @AppStorage("trainy.timeFormat") private var timeFormatRaw = UserPreferences.TimeFormat.hour12.rawValue
 
     private var tint: Color {
         switch stop.state {
@@ -579,6 +589,14 @@ struct StopTimelineRow: View {
             .replacingOccurrences(of: "gate", with: "platform")
     }
 
+    private var timeFormat: UserPreferences.TimeFormat {
+        UserPreferences.TimeFormat(rawValue: timeFormatRaw) ?? .hour12
+    }
+
+    private var timeZone: TimeZone {
+        TimeZone(identifier: "Asia/Tokyo")!
+    }
+
     var body: some View {
         HStack(alignment: .top, spacing: RailDesign.Spacing.s) {
             VStack(spacing: 0) {
@@ -606,7 +624,7 @@ struct StopTimelineRow: View {
 
             VStack(alignment: .leading, spacing: RailDesign.Spacing.xs) {
                 HStack(alignment: .firstTextBaseline) {
-                    Text(stop.time)
+                    Text(stop.time.formattedAsTime(in: timeZone, format: timeFormat))
                         .font(.subheadline.monospacedDigit().weight(.semibold))
                         .foregroundStyle(RailDesign.Palette.ink)
                     Text(stop.name)
@@ -824,6 +842,7 @@ private struct StationColumn: View {
     let time: String
     let timeZone: TimeZone
     var alignment: HorizontalAlignment = .leading
+    @AppStorage("trainy.timeFormat") private var timeFormatRaw = UserPreferences.TimeFormat.hour12.rawValue
 
     init(title: String, time: String, alignment: HorizontalAlignment = .leading) {
         self.title = title
@@ -834,7 +853,7 @@ private struct StationColumn: View {
 
     var body: some View {
         VStack(alignment: alignment, spacing: RailDesign.Spacing.xxs) {
-            Text(time.formattedAsTime(in: timeZone))
+            Text(time.formattedAsTime(in: timeZone, format: timeFormat))
                 .font(.title3.monospacedDigit().weight(.bold))
                 .foregroundStyle(RailDesign.Palette.ink)
                 .lineLimit(1)
@@ -846,6 +865,10 @@ private struct StationColumn: View {
                 .minimumScaleFactor(0.78)
         }
         .frame(maxWidth: .infinity, alignment: alignment == .leading ? .leading : .trailing)
+    }
+
+    private var timeFormat: UserPreferences.TimeFormat {
+        UserPreferences.TimeFormat(rawValue: timeFormatRaw) ?? .hour12
     }
 }
 
