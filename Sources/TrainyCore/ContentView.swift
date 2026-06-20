@@ -920,10 +920,17 @@ private struct SearchScreen: View {
                     OfflineBanner(message: offlineMessage)
                 }
 
-                SearchHeroView()
+                SearchHeroView(scopeText: store.searchScopeText, availability: store.activeProviderAvailability)
+
+                if let notice = store.searchCapabilityNotice {
+                    SearchCapabilityNoticeView(notice: notice)
+                }
 
                 if searchText.isEmpty {
-                    RecentSearchesView { value in
+                    RecentSearchesView(
+                        examples: Array(store.searchExamples.prefix(4)),
+                        providerName: store.activeProviderName
+                    ) { value in
                         searchText = value
                     }
                     FavoriteStationsStrip(stations: store.stationSnapshots.prefix(6).map { $0.name }) { station in
@@ -938,7 +945,8 @@ private struct SearchScreen: View {
                     title: searchText.isEmpty ? "Suggested services" : "Matching services",
                     isLoading: store.liveLoadState == .loading,
                     results: results,
-                    query: searchText
+                    query: searchText,
+                    emptyState: store.searchEmptyState(for: searchText, results: results)
                 ) { trip in
                     store.track(trip)
                     store.select(trip)
@@ -974,7 +982,7 @@ private struct SearchScreen: View {
         .alert("Manual trip note", isPresented: $manualAddNotice) {
             Button("OK", role: .cancel) {}
         } message: {
-            Text("Manual trip creation is not connected in this build. Saved scheduled and starter catalog trips remain available.")
+            Text("Manual trip creation is not connected in this build. This note does not add or connect a provider trip; saved scheduled and starter catalog trips remain available.")
         }
         .animation(reduceMotion ? nil : RailDesign.Motion.quick, value: searchText)
         .railScreenChrome()
@@ -991,6 +999,9 @@ private struct SearchScreen: View {
 }
 
 private struct SearchHeroView: View {
+    let scopeText: String
+    let availability: ProviderAvailability
+
     var body: some View {
         GlassPanel(cornerRadius: RailDesign.Radius.hero, tint: RailDesign.Palette.violet.opacity(0.14)) {
             HStack(alignment: .top, spacing: RailDesign.Spacing.m) {
@@ -1002,32 +1013,66 @@ private struct SearchHeroView: View {
                     Text("Find rail journeys")
                         .font(.title3.weight(.bold))
                         .foregroundStyle(RailDesign.Palette.ink)
-                    Text("Search scheduled, prediction, saved, and starter catalog services by train number, station pair, operator, route, or departure time.")
+                    Text("Search scheduled, saved, and starter catalog services by train number, station pair, operator, route, or departure time. Prediction labels appear only when a provider supplies them.")
                         .font(.subheadline)
                         .foregroundStyle(RailDesign.Palette.secondaryText)
                         .fixedSize(horizontal: false, vertical: true)
+                    HStack(spacing: RailDesign.Spacing.xs) {
+                        ProviderStatusPill(text: scopeText, tint: availability.status.tint)
+                        ProviderStatusPill(text: availability.status.displayName, tint: availability.status.tint)
+                    }
                 }
             }
         }
     }
 }
 
-private struct RecentSearchesView: View {
-    let select: (String) -> Void
+private struct SearchCapabilityNoticeView: View {
+    let notice: TrainStore.SearchCapabilityNotice
 
-    private let recents = [
-        "Tokyo to Shin-Osaka",
-        "Nozomi",
-        "JR East",
-        "Sendai morning"
-    ]
+    private var tint: Color {
+        switch notice.kind {
+        case .realtimeUnavailable:
+            return RailDesign.Palette.marine
+        case .scheduleUnavailable:
+            return RailDesign.Palette.amber
+        }
+    }
+
+    var body: some View {
+        HStack(alignment: .top, spacing: RailDesign.Spacing.s) {
+            Image(systemName: notice.symbolName)
+                .font(.headline)
+                .foregroundStyle(tint)
+                .frame(width: 28)
+            VStack(alignment: .leading, spacing: RailDesign.Spacing.xxs) {
+                Text(notice.title)
+                    .font(.subheadline.weight(.bold))
+                    .foregroundStyle(RailDesign.Palette.ink)
+                Text(notice.message)
+                    .font(.caption)
+                    .foregroundStyle(RailDesign.Palette.secondaryText)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(RailDesign.Spacing.m)
+        .railLiquidGlass(cornerRadius: RailDesign.Radius.control, tint: tint.opacity(0.12))
+        .accessibilityElement(children: .combine)
+    }
+}
+
+private struct RecentSearchesView: View {
+    let examples: [String]
+    let providerName: String
+    let select: (String) -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: RailDesign.Spacing.s) {
-            SectionHeader(title: "Recent searches", subtitle: "Tap to reuse")
+            SectionHeader(title: "Provider examples", subtitle: providerName)
             GlassPanel {
                 VStack(spacing: 0) {
-                    ForEach(recents, id: \.self) { item in
+                    ForEach(examples, id: \.self) { item in
                         Button {
                             select(item)
                         } label: {
@@ -1045,7 +1090,7 @@ private struct RecentSearchesView: View {
                         }
                         .buttonStyle(.plain)
 
-                        if item != recents.last {
+                        if item != examples.last {
                             Divider()
                         }
                     }
@@ -1119,6 +1164,7 @@ private struct SearchResultsSection: View {
     let isLoading: Bool
     let results: [TrainTrip]
     let query: String
+    let emptyState: TrainStore.SearchEmptyState?
     let track: (TrainTrip) -> Void
     let manualAdd: () -> Void
 
@@ -1128,15 +1174,8 @@ private struct SearchResultsSection: View {
 
             if isLoading && !query.isEmpty {
                 LoadingSkeletonView(rows: 2)
-            } else if results.isEmpty {
-                EmptyStateView(
-                    title: "No rail services found",
-                    message: "Try a train number, route name, operator, station pair, or a broader date and time.",
-                    symbolName: "magnifyingglass",
-                    actionTitle: "Manual Fallback"
-                ) {
-                    manualAdd()
-                }
+            } else if let emptyState {
+                SearchEmptyStateView(emptyState: emptyState, manualAdd: manualAdd)
             } else {
                 VStack(spacing: RailDesign.Spacing.s) {
                     ForEach(results) { trip in

@@ -289,6 +289,64 @@ final class TrainStore: ObservableObject {
         }
     }
 
+    func searchEmptyState(for query: String, results: [TrainTrip]) -> SearchEmptyState? {
+        let cleanQuery = query.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        guard results.isEmpty else { return nil }
+        if liveLoadState == .loading && !cleanQuery.isEmpty { return nil }
+
+        if !provider.supports(.schedule) {
+            return SearchEmptyState(
+                kind: .scheduleUnavailable,
+                title: "Schedule search unavailable",
+                message: "\(provider.displayName) does not expose scheduled trip search in this build. Realtime or board-only feeds need a separate surface before they appear here.",
+                symbolName: "calendar.badge.exclamationmark",
+                actionTitle: nil
+            )
+        }
+
+        if !provider.availability.canSearch {
+            return SearchEmptyState(
+                kind: .providerUnavailable,
+                title: "Provider unavailable",
+                message: "\(provider.displayName) is not available for search: \(provider.availability.message)",
+                symbolName: "exclamationmark.triangle",
+                actionTitle: nil
+            )
+        }
+
+        if case .offline(let message) = liveLoadState {
+            return SearchEmptyState(
+                kind: .providerUnavailable,
+                title: "Provider unavailable",
+                message: SourceProvenance.providerUnavailableText(message: message),
+                symbolName: "wifi.slash",
+                actionTitle: nil
+            )
+        }
+
+        let exampleText = searchExamples.prefix(2).joined(separator: " or ")
+        let suggestion = exampleText.isEmpty ? "Try a broader station pair or train name." : "Try \(exampleText)."
+
+        if cleanQuery.isEmpty {
+            return SearchEmptyState(
+                kind: .noMatches,
+                title: "No suggested services yet",
+                message: "\(provider.displayName) has no suggested services loaded for \(provider.region.displayName). \(suggestion)",
+                symbolName: "magnifyingglass",
+                actionTitle: nil
+            )
+        }
+
+        return SearchEmptyState(
+            kind: .noMatches,
+            title: "No \(provider.region.displayName) services found",
+            message: "No \(provider.displayName) schedule or starter catalog service matched \"\(cleanQuery)\". \(suggestion)",
+            symbolName: "magnifyingglass",
+            actionTitle: "Manual note only"
+        )
+    }
+
     func bootstrapLiveData() async {
         guard !hasBootstrapped else { return }
         hasBootstrapped = true
