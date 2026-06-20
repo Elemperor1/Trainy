@@ -2422,7 +2422,7 @@ private struct SourceProvenancePanel: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: RailDesign.Spacing.s) {
-                    SectionHeader(title: "Source", subtitle: "Source, type, confidence, freshness, and license for this trip's visible data")
+            SectionHeader(title: "Source", subtitle: "Source, type, confidence, freshness, and license for this trip's visible data")
             GlassPanel {
                 VStack(alignment: .leading, spacing: RailDesign.Spacing.m) {
                     Button {
@@ -2433,10 +2433,16 @@ private struct SourceProvenancePanel: View {
                     .buttonStyle(.plain)
                     .accessibilityHint("Opens source details")
 
+                    if trip.sourceStateDisplayState.needsVisibleCallout {
+                        SourceStateCallout(state: trip.sourceStateDisplayState)
+                    }
+
                     InfoLine(symbol: "building.columns", title: "Provider", value: provenance.providerName)
                     InfoLine(symbol: "doc.text.magnifyingglass", title: "Source", value: provenance.sourceName)
                     InfoLine(symbol: "checkmark.seal", title: "Confidence", value: provenance.summaryText)
                     InfoLine(symbol: "clock.badge.checkmark", title: "Freshness", value: freshnessText)
+                    InfoLine(symbol: trip.vehiclePositionDisplayState.symbolName, title: "Map marker", value: trip.vehiclePositionDisplayState.detailText)
+                    InfoLine(symbol: "rectangle.split.3x1", title: "Platform", value: trip.platformDisplayState.detailText)
                     InfoLine(symbol: "info.circle", title: "Meaning", value: provenance.riderExplanation)
                     InfoLine(symbol: "doc.plaintext", title: "License", value: provenance.licenseAttributionText)
                     InfoLine(symbol: "list.bullet.rectangle", title: "Fact mix", value: trip.sourceBreakdownText)
@@ -2463,6 +2469,46 @@ private struct SourceProvenancePanel: View {
         .sheet(item: $sourceDetailTrip) { trip in
             SourceDetailSheet(trip: trip)
         }
+    }
+}
+
+private struct SourceStateCallout: View {
+    let state: RailSourceStateDisplayState
+
+    private var tint: Color {
+        switch state.kind {
+        case .current:
+            return RailDesign.Palette.mint
+        case .staleSaved:
+            return RailDesign.Palette.amber
+        case .expired:
+            return RailDesign.Palette.red
+        case .unknown:
+            return RailDesign.Palette.secondaryText
+        }
+    }
+
+    var body: some View {
+        HStack(alignment: .top, spacing: RailDesign.Spacing.s) {
+            Image(systemName: state.symbolName)
+                .font(.headline)
+                .foregroundStyle(tint)
+                .frame(width: 28)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(state.title)
+                    .font(.subheadline.weight(.bold))
+                    .foregroundStyle(RailDesign.Palette.ink)
+                Text(state.detailText)
+                    .font(.caption)
+                    .foregroundStyle(RailDesign.Palette.secondaryText)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(RailDesign.Spacing.s)
+        .railLiquidGlass(cornerRadius: RailDesign.Radius.control, tint: tint.opacity(0.13), strokeOpacity: 0.24)
+        .accessibilityElement(children: .combine)
     }
 }
 
