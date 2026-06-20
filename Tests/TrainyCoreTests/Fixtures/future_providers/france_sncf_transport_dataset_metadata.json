@@ -1,0 +1,77 @@
+{
+  "fixture": {
+    "provider": "France SNCF / transport.data.gouv.fr",
+    "captured_at": "2026-06-17",
+    "source_url": "https://transport.data.gouv.fr/api/datasets",
+    "selection": "SNCF national rail dataset metadata"
+  },
+  "dataset": {
+    "id": "6853c089b3ed5781f6adfdf7",
+    "title": "Réseau SNCF TGV, Intercités et TER",
+    "page_url": "https://transport.data.gouv.fr/datasets/horaires-sncf",
+    "licence": "odc-odbl",
+    "publisher": "SNCF",
+    "resources": [
+      {
+        "id": 83583,
+        "title": "https://proxy.transport.data.gouv.fr/resource/sncf-gtfs-rt-trip-updates",
+        "format": "gtfs-rt",
+        "type": "main",
+        "is_available": true,
+        "page_url": "https://transport.data.gouv.fr/resources/83583",
+        "url": "https://proxy.transport.data.gouv.fr/resource/sncf-gtfs-rt-trip-updates",
+        "updated": "2026-06-16T20:51:36.639757Z"
+      },
+      {
+        "id": 83198,
+        "title": "https://proxy.transport.data.gouv.fr/resource/sncf-siri-lite-estimated-timetable",
+        "format": "SIRI Lite",
+        "type": "main",
+        "is_available": true,
+        "page_url": "https://transport.data.gouv.fr/resources/83198",
+        "url": "https://proxy.transport.data.gouv.fr/resource/sncf-siri-lite-estimated-timetable",
+        "updated": "2026-06-16T20:24:25.100384Z"
+      },
+      {
+        "id": 83195,
+        "title": "https://eu.ftp.opendatasoft.com/sncf/plandata/export-opendata-sncf-netex.zip",
+        "format": "NeTEx",
+        "type": "main",
+        "is_available": true,
+        "page_url": "https://transport.data.gouv.fr/resources/83195",
+        "url": "https://www.data.gouv.fr/api/1/datasets/r/c5f6456e-1137-4e74-a10f-4b0a25c3cc61",
+        "updated": "2026-06-16T19:43:58.000000Z"
+      },
+      {
+        "id": 83196,
+        "title": "https://proxy.transport.data.gouv.fr/resource/sncf-gtfs-rt-service-alerts",
+        "format": "gtfs-rt",
+        "type": "main",
+        "is_available": true,
+        "page_url": "https://transport.data.gouv.fr/resources/83196",
+        "url": "https://proxy.transport.data.gouv.fr/resource/sncf-gtfs-rt-service-alerts",
+        "updated": "2026-06-16T21:10:06.378533Z"
+      },
+      {
+        "id": 83199,
+        "title": "https://proxy.transport.data.gouv.fr/resource/sncf-siri-lite-situation-exchange",
+        "format": "SIRI Lite",
+        "type": "main",
+        "is_available": true,
+        "page_url": "https://transport.data.gouv.fr/resources/83199",
+        "url": "https://proxy.transport.data.gouv.fr/resource/sncf-siri-lite-situation-exchange",
+        "updated": "2026-06-16T20:14:12.674215Z"
+      },
+      {
+        "id": 83582,
+        "title": "https://eu.ftp.opendatasoft.com/sncf/plandata/Export_OpenData_SNCF_GTFS_NewTripId.zip",
+        "format": "GTFS",
+        "type": "main",
+        "is_available": true,
+        "page_url": "https://transport.data.gouv.fr/resources/83582",
+        "url": "https://www.data.gouv.fr/api/1/datasets/r/9ae758ec-cd7a-40cd-a890-bb3963224942",
+        "updated": "2026-06-16T19:57:53.000000Z"
+      }
+    ]
+  }
+}

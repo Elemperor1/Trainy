@@ -43,6 +43,37 @@ scripts/smoke-odpt.sh
 
 The smoke compiles the Trainy provider code and requires both `Tokyo to Shin-Osaka` and `JR East` searches to return ODPT-backed or scheduled timetable trips instead of starter data.
 
+## Credentialed provider smoke checks
+
+Future-provider smoke scripts use strict env-file parsing: each script accepts only its provider's expected keys, exits `2` when credentials are missing, exits `1` for provider/network failures, and prints only provider, query, and result count on success.
+
+Local env files are ignored by git. Copy only the examples you need:
+
+```bash
+cp TrainyIOS/Config/ns.env.example TrainyIOS/Config/ns.env
+cp TrainyIOS/Config/tdx.env.example TrainyIOS/Config/tdx.env
+cp TrainyIOS/Config/tfnsw.env.example TrainyIOS/Config/tfnsw.env
+cp TrainyIOS/Config/swiss.env.example TrainyIOS/Config/swiss.env
+cp TrainyIOS/Config/france-sncf.env.example TrainyIOS/Config/france-sncf.env
+chmod 600 TrainyIOS/Config/*.env
+```
+
+Run the checks from the repository root:
+
+```bash
+scripts/smoke-ns.sh
+scripts/smoke-tdx.sh
+scripts/smoke-tfnsw.sh
+scripts/smoke-swiss-gtfs-rt.sh
+scripts/smoke-france-sncf.sh
+```
+
+The shared pattern verifier does not call live providers:
+
+```bash
+scripts/test-provider-smoke-pattern.sh
+```
+
 ## Local tooling note
 
 This workspace is set up for the non-App-Store Xcode 26.5 install at `/Applications/Xcode-26.5.0.app`:

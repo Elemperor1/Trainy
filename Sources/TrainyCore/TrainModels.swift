@@ -579,7 +579,86 @@ struct StationStop: Identifiable, Hashable, Codable, Sendable {
 
     /// Display platform name, showing "Not available" for TBD or missing values
     var displayPlatform: String {
-        platform.isEmpty || platform == "TBD" || platform == "Unknown" ? "Not available" : platform
+        platformDisplayState.displayText
+    }
+
+    var platformDisplayState: RailPlatformDisplayState {
+        RailPlatformDisplayState.resolve(platform)
+    }
+}
+
+struct RailPlatformDisplayState: Hashable, Sendable {
+    enum Kind: String, Hashable, Sendable {
+        case known
+        case unavailable
+    }
+
+    let kind: Kind
+    let displayText: String
+    let detailText: String
+
+    var isKnown: Bool {
+        kind == .known
+    }
+
+    static func resolve(_ rawPlatform: String) -> RailPlatformDisplayState {
+        let trimmed = rawPlatform.trimmingCharacters(in: .whitespacesAndNewlines)
+        let normalized = trimmed.lowercased()
+        let unavailableValues: Set<String> = ["", "tbd", "unknown", "not available", "n/a", "na", "-"]
+
+        if unavailableValues.contains(normalized) {
+            return RailPlatformDisplayState(
+                kind: .unavailable,
+                displayText: "Not available",
+                detailText: "Platform is not supplied by this source yet."
+            )
+        }
+
+        return RailPlatformDisplayState(
+            kind: .known,
+            displayText: trimmed,
+            detailText: "Platform or track is supplied by this trip source."
+        )
+    }
+}
+
+struct RailVehiclePositionDisplayState: Hashable, Sendable {
+    enum Kind: String, Hashable, Sendable {
+        case liveVehicle
+        case routeMarker
+        case unavailable
+    }
+
+    let kind: Kind
+    let title: String
+    let mapLabel: String
+    let detailText: String
+    let symbolName: String
+
+    var rendersMapMarker: Bool {
+        kind != .unavailable
+    }
+
+    var isLiveVehiclePosition: Bool {
+        kind == .liveVehicle
+    }
+}
+
+struct RailSourceStateDisplayState: Hashable, Sendable {
+    enum Kind: String, Hashable, Sendable {
+        case current
+        case staleSaved
+        case expired
+        case unknown
+    }
+
+    let kind: Kind
+    let title: String
+    let detailText: String
+    let symbolName: String
+
+    var needsVisibleCallout: Bool {
+        kind == .staleSaved || kind == .expired
     }
 }
 
@@ -732,6 +811,121 @@ struct TrainTrip: Identifiable, Hashable, Codable, Sendable {
             parts.append("Unknown: \(Self.compactFactList(unknownFacts))")
         }
         return parts.isEmpty ? sourceProvenance.summaryText : parts.joined(separator: ". ")
+    }
+
+    var platformDisplayState: RailPlatformDisplayState {
+        RailPlatformDisplayState.resolve(platform)
+    }
+
+    var displayPlatform: String {
+        platformDisplayState.displayText
+    }
+
+    var vehiclePositionDisplayState: RailVehiclePositionDisplayState {
+        let positionFact = factProvenance.first { $0.fact == .vehiclePosition }
+        let hasVehicleCoordinate = vehicleLatitude != nil && vehicleLongitude != nil
+        let isVehicleFeed = sourceProvenance.sourceKind == .vehiclePosition || positionFact?.sourceKind == .vehiclePosition
+        let isConfirmedVehicleFeed = isVehicleFeed && (sourceProvenance.confidence == .confirmed || positionFact?.confidence == .confirmed)
+
+        if isConfirmedVehicleFeed && hasVehicleCoordinate {
+            return RailVehiclePositionDisplayState(
+                kind: .liveVehicle,
+                title: "Vehicle position",
+                mapLabel: "Vehicle position",
+                detailText: "Map marker comes from a provider vehicle-position feed.",
+                symbolName: "location.fill"
+            )
+        }
+
+        if isVehicleFeed {
+            return RailVehiclePositionDisplayState(
+                kind: .unavailable,
+                title: "Vehicle position not available",
+                mapLabel: "No vehicle position",
+                detailText: "The provider source is vehicle-position capable, but this trip has no usable coordinate.",
+                symbolName: "location.slash"
+            )
+        }
+
+        if let positionFact {
+            switch positionFact.confidence {
+            case .confirmed:
+                return RailVehiclePositionDisplayState(
+                    kind: .routeMarker,
+                    title: "Route marker",
+                    mapLabel: "Route marker",
+                    detailText: "Map marker is based on route geometry, not a vehicle-position feed.",
+                    symbolName: "point.topleft.down.curvedto.point.bottomright.up"
+                )
+            case .estimated, .inferred:
+                return RailVehiclePositionDisplayState(
+                    kind: .routeMarker,
+                    title: "Route marker",
+                    mapLabel: "Route marker",
+                    detailText: positionFact.note,
+                    symbolName: "point.topleft.down.curvedto.point.bottomright.up"
+                )
+            case .unknown:
+                return RailVehiclePositionDisplayState(
+                    kind: .unavailable,
+                    title: "Vehicle position not available",
+                    mapLabel: "No vehicle position",
+                    detailText: positionFact.note,
+                    symbolName: "location.slash"
+                )
+            }
+        }
+
+        if sourceProvenance.sourceKind == .starterCatalog || sourceProvenance.sourceKind == .officialTimetable || hasVehicleCoordinate {
+            return RailVehiclePositionDisplayState(
+                kind: .routeMarker,
+                title: "Route marker",
+                mapLabel: "Route marker",
+                detailText: "Map marker is inferred from route, stop, or saved trip geometry, not a vehicle-position feed.",
+                symbolName: "point.topleft.down.curvedto.point.bottomright.up"
+            )
+        }
+
+        return RailVehiclePositionDisplayState(
+            kind: .unavailable,
+            title: "Vehicle position not available",
+            mapLabel: "No vehicle position",
+            detailText: "No vehicle-position feed or inferred route marker is available for this trip.",
+            symbolName: "location.slash"
+        )
+    }
+
+    var sourceStateDisplayState: RailSourceStateDisplayState {
+        switch sourceProvenance.freshness {
+        case .fresh:
+            return RailSourceStateDisplayState(
+                kind: .current,
+                title: "Source current",
+                detailText: sourceProvenance.freshnessExplanation,
+                symbolName: "checkmark.seal"
+            )
+        case .stale:
+            return RailSourceStateDisplayState(
+                kind: .staleSaved,
+                title: "Stale saved trip",
+                detailText: sourceProvenance.freshnessExplanation,
+                symbolName: "clock.badge.exclamationmark"
+            )
+        case .expired:
+            return RailSourceStateDisplayState(
+                kind: .expired,
+                title: "Expired source data",
+                detailText: sourceProvenance.freshnessExplanation,
+                symbolName: "calendar.badge.exclamationmark"
+            )
+        case .unknown:
+            return RailSourceStateDisplayState(
+                kind: .unknown,
+                title: "Freshness unknown",
+                detailText: sourceProvenance.freshnessExplanation,
+                symbolName: "questionmark.circle"
+            )
+        }
     }
 
     private static func compactFactList(_ facts: [String]) -> String {

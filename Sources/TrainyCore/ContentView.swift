@@ -5,6 +5,7 @@ import UIKit
 public struct ContentView: View {
     @StateObject private var store = TrainStore()
     @State private var selectedTab: RailTab = .trips
+    @State private var presentedSheet: RailSheet?
 
     public init() {
         let appearance = UITabBarAppearance()
@@ -61,6 +62,42 @@ public struct ContentView: View {
         .task {
             await store.bootstrapLiveData()
         }
+        .onAppear {
+            presentFirstRunIfNeeded()
+        }
+        .onChange(of: store.shouldShowFirstRun) { _, shouldShowFirstRun in
+            presentedSheet = shouldShowFirstRun ? .firstRun : nil
+        }
+        .sheet(item: $presentedSheet) { sheet in
+            switch sheet {
+            case .firstRun:
+                FirstRunExperienceSheet(
+                    store: store,
+                    startWithShinkansen: {
+                        store.startFirstRunWithShinkansen()
+                        selectedTab = .trips
+                        presentedSheet = nil
+                    },
+                    explorePlannedRegions: {
+                        store.explorePlannedRegionsFromFirstRun()
+                        selectedTab = .settings
+                        presentedSheet = nil
+                    },
+                    skip: {
+                        store.completeFirstRun()
+                        presentedSheet = nil
+                    }
+                )
+                .interactiveDismissDisabled()
+                .presentationDetents([.large])
+                .presentationDragIndicator(.hidden)
+            }
+        }
+    }
+
+    private func presentFirstRunIfNeeded() {
+        guard store.shouldShowFirstRun else { return }
+        presentedSheet = .firstRun
     }
 }
 
@@ -99,6 +136,236 @@ private enum RailTab: Hashable {
         case .settings:
             return "gearshape"
         }
+    }
+}
+
+private enum RailSheet: Identifiable {
+    case firstRun
+
+    var id: String {
+        switch self {
+        case .firstRun:
+            return "first-run"
+        }
+    }
+}
+
+private struct FirstRunExperienceSheet: View {
+    @ObservedObject var store: TrainStore
+    let startWithShinkansen: () -> Void
+    let explorePlannedRegions: () -> Void
+    let skip: () -> Void
+
+    private var activeProvider: ProviderMetadata? {
+        store.providerDirectory.first { $0.id == store.activeProviderID }
+    }
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: RailDesign.Spacing.l) {
+                    FirstRunHeader()
+
+                    FirstRunDefaultProviderCard(provider: activeProvider)
+
+                    VStack(alignment: .leading, spacing: RailDesign.Spacing.s) {
+                        SectionHeader(title: "Data scope", subtitle: "What each label means before global providers arrive")
+                        GlassPanel {
+                            VStack(spacing: 0) {
+                                FirstRunScopeRow(
+                                    symbol: "books.vertical.fill",
+                                    title: "Starter catalog",
+                                    detail: "Curated Shinkansen examples are available even without provider credentials."
+                                )
+                                Divider()
+                                    .background(RailDesign.Palette.hairline)
+                                FirstRunScopeRow(
+                                    symbol: "calendar.badge.checkmark",
+                                    title: "Official timetable",
+                                    detail: "ODPT and JR timetable results are shown as scheduled data when those sources return trips."
+                                )
+                                Divider()
+                                    .background(RailDesign.Palette.hairline)
+                                FirstRunScopeRow(
+                                    symbol: "dot.radiowaves.left.and.right",
+                                    title: "Realtime",
+                                    detail: "Predictions and vehicle positions stay off unless a provider supplies those exact feeds."
+                                )
+                            }
+                        }
+                    }
+
+                    GlassPanel(tint: RailDesign.Palette.amber.opacity(0.12)) {
+                        HStack(alignment: .top, spacing: RailDesign.Spacing.s) {
+                            Image(systemName: "hammer.circle.fill")
+                                .font(.title3)
+                                .symbolRenderingMode(.hierarchical)
+                                .foregroundStyle(RailDesign.Palette.amber)
+                                .frame(width: 30)
+
+                            VStack(alignment: .leading, spacing: RailDesign.Spacing.xs) {
+                                Text("Planned regions are roadmap entries")
+                                    .font(.subheadline.weight(.bold))
+                                    .foregroundStyle(RailDesign.Palette.ink)
+                                Text("They remain unavailable for search until credentials, fixtures, source labels, and provider adapters are complete.")
+                                    .font(.caption)
+                                    .foregroundStyle(RailDesign.Palette.secondaryText)
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
+                        }
+                    }
+
+                }
+                .padding(RailDesign.Spacing.m)
+                .padding(.bottom, 148)
+            }
+            .background(RailGradientBackground().ignoresSafeArea())
+            .navigationTitle("Trainy")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Skip", action: skip)
+                        .font(.subheadline.weight(.semibold))
+                }
+            }
+            .safeAreaInset(edge: .bottom) {
+                FirstRunActionBar(
+                    startWithShinkansen: startWithShinkansen,
+                    explorePlannedRegions: explorePlannedRegions
+                )
+            }
+        }
+    }
+}
+
+private struct FirstRunHeader: View {
+    var body: some View {
+        VStack(alignment: .leading, spacing: RailDesign.Spacing.s) {
+            Image(systemName: "checklist.checked")
+                .font(.system(size: 46, weight: .semibold))
+                .symbolRenderingMode(.hierarchical)
+                .foregroundStyle(RailDesign.Palette.accent)
+                .frame(width: 58, height: 58)
+                .background(RailDesign.Palette.accent.opacity(0.12), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+
+            VStack(alignment: .leading, spacing: RailDesign.Spacing.xs) {
+                Text("Start with the Japan Shinkansen")
+                    .font(.title2.weight(.bold))
+                    .foregroundStyle(RailDesign.Palette.ink)
+                    .fixedSize(horizontal: false, vertical: true)
+                Text("Trainy opens with one implemented provider and clear source labels. Global regions are visible in Settings as planned work, not searchable service.")
+                    .font(.subheadline)
+                    .foregroundStyle(RailDesign.Palette.secondaryText)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .accessibilityElement(children: .combine)
+    }
+}
+
+private struct FirstRunDefaultProviderCard: View {
+    let provider: ProviderMetadata?
+
+    var body: some View {
+        GlassPanel(cornerRadius: 26, tint: RailDesign.Palette.accent.opacity(0.14)) {
+            HStack(alignment: .top, spacing: RailDesign.Spacing.m) {
+                Image(systemName: "checkmark.seal.fill")
+                    .font(.title2)
+                    .symbolRenderingMode(.hierarchical)
+                    .foregroundStyle(RailDesign.Palette.mint)
+                    .frame(width: 34)
+
+                VStack(alignment: .leading, spacing: RailDesign.Spacing.xs) {
+                    HStack(alignment: .firstTextBaseline, spacing: RailDesign.Spacing.xs) {
+                        Text(provider?.displayName ?? "Japan Shinkansen")
+                            .font(.headline.weight(.bold))
+                            .foregroundStyle(RailDesign.Palette.ink)
+                            .fixedSize(horizontal: false, vertical: true)
+                        ProviderStatusPill(text: "Selected default", tint: RailDesign.Palette.mint)
+                    }
+
+                    Text("\(provider?.region.displayName ?? "Japan") / schedule-only search")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(RailDesign.Palette.secondaryText)
+                        .fixedSize(horizontal: false, vertical: true)
+
+                    Text(provider?.availability.message ?? "Uses the Shinkansen starter catalog and official timetable sources when available.")
+                        .font(.caption)
+                        .foregroundStyle(RailDesign.Palette.secondaryText)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Japan Shinkansen selected default")
+    }
+}
+
+private struct FirstRunActionBar: View {
+    let startWithShinkansen: () -> Void
+    let explorePlannedRegions: () -> Void
+
+    var body: some View {
+        VStack(spacing: RailDesign.Spacing.s) {
+            Button(action: startWithShinkansen) {
+                Label("Start with Shinkansen", systemImage: "train.side.front.car")
+                    .font(.headline.weight(.semibold))
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, RailDesign.Spacing.s)
+            }
+            .buttonStyle(.borderedProminent)
+            .controlSize(.large)
+            .tint(RailDesign.Palette.accent)
+            .accessibilityHint("Uses Japan Shinkansen as the selected rail scope.")
+
+            Button(action: explorePlannedRegions) {
+                Label("Explore planned regions", systemImage: "globe.asia.australia")
+                    .font(.subheadline.weight(.semibold))
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, RailDesign.Spacing.xs)
+            }
+            .buttonStyle(.bordered)
+            .controlSize(.large)
+            .tint(RailDesign.Palette.marine)
+            .accessibilityHint("Opens provider settings with planned regions shown as unavailable.")
+        }
+        .padding(.horizontal, RailDesign.Spacing.m)
+        .padding(.top, RailDesign.Spacing.s)
+        .padding(.bottom, RailDesign.Spacing.s)
+        .background(.ultraThinMaterial)
+        .overlay(alignment: .top) {
+            Divider()
+                .background(RailDesign.Palette.hairline)
+        }
+    }
+}
+
+private struct FirstRunScopeRow: View {
+    let symbol: String
+    let title: String
+    let detail: String
+
+    var body: some View {
+        HStack(alignment: .top, spacing: RailDesign.Spacing.s) {
+            Image(systemName: symbol)
+                .font(.headline)
+                .symbolRenderingMode(.hierarchical)
+                .foregroundStyle(RailDesign.Palette.accent)
+                .frame(width: 30)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(RailDesign.Palette.ink)
+                Text(detail)
+                    .font(.caption)
+                    .foregroundStyle(RailDesign.Palette.secondaryText)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .padding(.vertical, RailDesign.Spacing.s)
+        .accessibilityElement(children: .combine)
     }
 }
 
@@ -366,6 +633,23 @@ private struct ActiveTripSummary: View {
     let trip: TrainTrip
     @ObservedObject var store: TrainStore
     let openMap: () -> Void
+    @AppStorage("trainy.timeFormat") private var timeFormatRaw = UserPreferences.TimeFormat.hour12.rawValue
+
+    private var timeFormat: UserPreferences.TimeFormat {
+        UserPreferences.TimeFormat(rawValue: timeFormatRaw) ?? .hour12
+    }
+
+    private var formattedOriginTime: String {
+        trip.origin.time.formattedAsTime(in: trip.origin.timeZone, format: timeFormat)
+    }
+
+    private var formattedDestinationTime: String {
+        trip.destination.time.formattedAsTime(in: trip.destination.timeZone, format: timeFormat)
+    }
+
+    private var formattedETA: String {
+        trip.eta.formattedAsTime(in: trip.destination.timeZone, format: timeFormat)
+    }
 
     var body: some View {
         GlassPanel(cornerRadius: 30, tint: .white.opacity(0.08), padding: 0) {
@@ -400,7 +684,7 @@ private struct ActiveTripSummary: View {
                 VStack(alignment: .leading, spacing: RailDesign.Spacing.s) {
                     HStack(alignment: .firstTextBaseline) {
                         VStack(alignment: .leading, spacing: 2) {
-                            Text(trip.origin.time)
+                            Text(formattedOriginTime)
                                 .font(.headline.monospacedDigit().weight(.bold))
                             Text(trip.origin.name)
                                 .font(.caption.weight(.medium))
@@ -409,7 +693,7 @@ private struct ActiveTripSummary: View {
                         }
                         Spacer()
                         VStack(alignment: .trailing, spacing: 2) {
-                            Text(trip.destination.time)
+                            Text(formattedDestinationTime)
                                 .font(.headline.monospacedDigit().weight(.bold))
                             Text(trip.destination.name)
                                 .font(.caption.weight(.medium))
@@ -429,8 +713,13 @@ private struct ActiveTripSummary: View {
 
                 HStack(spacing: RailDesign.Spacing.xs) {
                     ControlMetricTile(title: "Next", value: trip.nextStop, symbol: "location.north.line.fill", tint: RailDesign.Palette.accent)
-                    ControlMetricTile(title: "ETA", value: trip.eta, symbol: "clock", tint: RailDesign.Palette.violet)
-                    ControlMetricTile(title: "Platform", value: trip.platform, symbol: "rectangle.split.3x1.fill", tint: RailDesign.Palette.blue)
+                    ControlMetricTile(title: "ETA", value: formattedETA, symbol: "clock", tint: RailDesign.Palette.violet)
+                    ControlMetricTile(
+                        title: "Platform",
+                        value: trip.displayPlatform,
+                        symbol: "rectangle.split.3x1.fill",
+                        tint: trip.platformDisplayState.isKnown ? RailDesign.Palette.blue : RailDesign.Palette.secondaryText
+                    )
                 }
 
                 Button(action: openMap) {
@@ -631,10 +920,17 @@ private struct SearchScreen: View {
                     OfflineBanner(message: offlineMessage)
                 }
 
-                SearchHeroView()
+                SearchHeroView(scopeText: store.searchScopeText, availability: store.activeProviderAvailability)
+
+                if let notice = store.searchCapabilityNotice {
+                    SearchCapabilityNoticeView(notice: notice)
+                }
 
                 if searchText.isEmpty {
-                    RecentSearchesView { value in
+                    RecentSearchesView(
+                        examples: Array(store.searchExamples.prefix(4)),
+                        providerName: store.activeProviderName
+                    ) { value in
                         searchText = value
                     }
                     FavoriteStationsStrip(stations: store.stationSnapshots.prefix(6).map { $0.name }) { station in
@@ -649,7 +945,8 @@ private struct SearchScreen: View {
                     title: searchText.isEmpty ? "Suggested services" : "Matching services",
                     isLoading: store.liveLoadState == .loading,
                     results: results,
-                    query: searchText
+                    query: searchText,
+                    emptyState: store.searchEmptyState(for: searchText, results: results)
                 ) { trip in
                     store.track(trip)
                     store.select(trip)
@@ -685,7 +982,7 @@ private struct SearchScreen: View {
         .alert("Manual trip note", isPresented: $manualAddNotice) {
             Button("OK", role: .cancel) {}
         } message: {
-            Text("Manual trip creation is not connected in this build. Saved scheduled and starter catalog trips remain available.")
+            Text("Manual trip creation is not connected in this build. This note does not add or connect a provider trip; saved scheduled and starter catalog trips remain available.")
         }
         .animation(reduceMotion ? nil : RailDesign.Motion.quick, value: searchText)
         .railScreenChrome()
@@ -702,6 +999,9 @@ private struct SearchScreen: View {
 }
 
 private struct SearchHeroView: View {
+    let scopeText: String
+    let availability: ProviderAvailability
+
     var body: some View {
         GlassPanel(cornerRadius: RailDesign.Radius.hero, tint: RailDesign.Palette.violet.opacity(0.14)) {
             HStack(alignment: .top, spacing: RailDesign.Spacing.m) {
@@ -713,32 +1013,66 @@ private struct SearchHeroView: View {
                     Text("Find rail journeys")
                         .font(.title3.weight(.bold))
                         .foregroundStyle(RailDesign.Palette.ink)
-                    Text("Search scheduled, prediction, saved, and starter catalog services by train number, station pair, operator, route, or departure time.")
+                    Text("Search scheduled, saved, and starter catalog services by train number, station pair, operator, route, or departure time. Prediction labels appear only when a provider supplies them.")
                         .font(.subheadline)
                         .foregroundStyle(RailDesign.Palette.secondaryText)
                         .fixedSize(horizontal: false, vertical: true)
+                    HStack(spacing: RailDesign.Spacing.xs) {
+                        ProviderStatusPill(text: scopeText, tint: availability.status.tint)
+                        ProviderStatusPill(text: availability.status.displayName, tint: availability.status.tint)
+                    }
                 }
             }
         }
     }
 }
 
-private struct RecentSearchesView: View {
-    let select: (String) -> Void
+private struct SearchCapabilityNoticeView: View {
+    let notice: TrainStore.SearchCapabilityNotice
 
-    private let recents = [
-        "Tokyo to Shin-Osaka",
-        "Nozomi",
-        "JR East",
-        "Sendai morning"
-    ]
+    private var tint: Color {
+        switch notice.kind {
+        case .realtimeUnavailable:
+            return RailDesign.Palette.marine
+        case .scheduleUnavailable:
+            return RailDesign.Palette.amber
+        }
+    }
+
+    var body: some View {
+        HStack(alignment: .top, spacing: RailDesign.Spacing.s) {
+            Image(systemName: notice.symbolName)
+                .font(.headline)
+                .foregroundStyle(tint)
+                .frame(width: 28)
+            VStack(alignment: .leading, spacing: RailDesign.Spacing.xxs) {
+                Text(notice.title)
+                    .font(.subheadline.weight(.bold))
+                    .foregroundStyle(RailDesign.Palette.ink)
+                Text(notice.message)
+                    .font(.caption)
+                    .foregroundStyle(RailDesign.Palette.secondaryText)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(RailDesign.Spacing.m)
+        .railLiquidGlass(cornerRadius: RailDesign.Radius.control, tint: tint.opacity(0.12))
+        .accessibilityElement(children: .combine)
+    }
+}
+
+private struct RecentSearchesView: View {
+    let examples: [String]
+    let providerName: String
+    let select: (String) -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: RailDesign.Spacing.s) {
-            SectionHeader(title: "Recent searches", subtitle: "Tap to reuse")
+            SectionHeader(title: "Provider examples", subtitle: providerName)
             GlassPanel {
                 VStack(spacing: 0) {
-                    ForEach(recents, id: \.self) { item in
+                    ForEach(examples, id: \.self) { item in
                         Button {
                             select(item)
                         } label: {
@@ -756,7 +1090,7 @@ private struct RecentSearchesView: View {
                         }
                         .buttonStyle(.plain)
 
-                        if item != recents.last {
+                        if item != examples.last {
                             Divider()
                         }
                     }
@@ -830,6 +1164,7 @@ private struct SearchResultsSection: View {
     let isLoading: Bool
     let results: [TrainTrip]
     let query: String
+    let emptyState: TrainStore.SearchEmptyState?
     let track: (TrainTrip) -> Void
     let manualAdd: () -> Void
 
@@ -839,15 +1174,8 @@ private struct SearchResultsSection: View {
 
             if isLoading && !query.isEmpty {
                 LoadingSkeletonView(rows: 2)
-            } else if results.isEmpty {
-                EmptyStateView(
-                    title: "No rail services found",
-                    message: "Try a train number, route name, operator, station pair, or a broader date and time.",
-                    symbolName: "magnifyingglass",
-                    actionTitle: "Manual Fallback"
-                ) {
-                    manualAdd()
-                }
+            } else if let emptyState {
+                SearchEmptyStateView(emptyState: emptyState, manualAdd: manualAdd)
             } else {
                 VStack(spacing: RailDesign.Spacing.s) {
                     ForEach(results) { trip in
@@ -861,10 +1189,47 @@ private struct SearchResultsSection: View {
     }
 }
 
+private struct SearchEmptyStateView: View {
+    let emptyState: TrainStore.SearchEmptyState
+    let manualAdd: () -> Void
+
+    var body: some View {
+        if let actionTitle = emptyState.actionTitle {
+            EmptyStateView(
+                title: LocalizedStringKey(emptyState.title),
+                message: LocalizedStringKey(emptyState.message),
+                symbolName: emptyState.symbolName,
+                actionTitle: LocalizedStringKey(actionTitle)
+            ) {
+                manualAdd()
+            }
+        } else {
+            EmptyStateView(
+                title: LocalizedStringKey(emptyState.title),
+                message: LocalizedStringKey(emptyState.message),
+                symbolName: emptyState.symbolName
+            )
+        }
+    }
+}
+
 private struct SearchResultCard: View {
     let trip: TrainTrip
     let track: () -> Void
     @State private var sourceDetailTrip: TrainTrip?
+    @AppStorage("trainy.timeFormat") private var timeFormatRaw = UserPreferences.TimeFormat.hour12.rawValue
+
+    private var timeFormat: UserPreferences.TimeFormat {
+        UserPreferences.TimeFormat(rawValue: timeFormatRaw) ?? .hour12
+    }
+
+    private var formattedOriginTime: String {
+        trip.origin.time.formattedAsTime(in: trip.origin.timeZone, format: timeFormat)
+    }
+
+    private var formattedDestinationTime: String {
+        trip.destination.time.formattedAsTime(in: trip.destination.timeZone, format: timeFormat)
+    }
 
     var body: some View {
         GlassPanel(tint: RailDesign.Palette.blue.opacity(0.10)) {
@@ -878,6 +1243,11 @@ private struct SearchResultCard: View {
                             .minimumScaleFactor(0.72)
                         Text(trip.operatorName)
                             .font(.caption.weight(.semibold))
+                            .foregroundStyle(RailDesign.Palette.secondaryText)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.76)
+                        Text("\(trip.sourceProvenance.sourceKind.riderTitle) · \(trip.sourceProvenance.freshness.displayName)")
+                            .font(.caption2.weight(.semibold))
                             .foregroundStyle(RailDesign.Palette.secondaryText)
                             .lineLimit(1)
                             .minimumScaleFactor(0.76)
@@ -897,7 +1267,7 @@ private struct SearchResultCard: View {
 
                 HStack {
                     VStack(alignment: .leading, spacing: 2) {
-                        Text(trip.origin.time)
+                        Text(formattedOriginTime)
                             .font(.headline.monospacedDigit())
                         Text(trip.origin.name)
                             .font(.caption)
@@ -909,7 +1279,7 @@ private struct SearchResultCard: View {
                         .foregroundStyle(RailDesign.Palette.secondaryText)
                     Spacer()
                     VStack(alignment: .trailing, spacing: 2) {
-                        Text(trip.destination.time)
+                        Text(formattedDestinationTime)
                             .font(.headline.monospacedDigit())
                         Text(trip.destination.name)
                             .font(.caption)
@@ -1129,10 +1499,15 @@ private struct BoardSection: View {
 
 private struct StationBoardRow: View {
     let trip: TrainTrip
+    @AppStorage("trainy.timeFormat") private var timeFormatRaw = UserPreferences.TimeFormat.hour12.rawValue
+
+    private var timeFormat: UserPreferences.TimeFormat {
+        UserPreferences.TimeFormat(rawValue: timeFormatRaw) ?? .hour12
+    }
 
     var body: some View {
         HStack(spacing: RailDesign.Spacing.s) {
-            Text(trip.origin.time.formattedAsTime(in: trip.origin.timeZone))
+            Text(trip.origin.time.formattedAsTime(in: trip.origin.timeZone, format: timeFormat))
                 .font(.headline.monospacedDigit())
                 .foregroundStyle(RailDesign.Palette.ink)
                 .frame(width: 58, alignment: .leading)
@@ -1156,9 +1531,10 @@ private struct StationBoardRow: View {
 
 private struct HistoryScreen: View {
     @ObservedObject var store: TrainStore
+    @AppStorage("trainy.unitSystem") private var unitSystemRaw = UserPreferences.UnitSystem.metric.rawValue
 
     private var metrics: RailHistoryMetrics {
-        RailHistoryMetrics(trips: store.trips)
+        RailHistoryMetrics(trips: store.trips, useMetric: unitSystemRaw != UserPreferences.UnitSystem.imperial.rawValue)
     }
 
     var body: some View {
@@ -1216,16 +1592,22 @@ private struct HistoryScreen: View {
 private struct SettingsScreen: View {
     @ObservedObject var store: TrainStore
     @AppStorage("rail.appearance") private var appearance = "System"
-    @AppStorage("trainy.timeFormat") private var timeFormatRaw = "12-hour"
-    @State private var delayNotifications = true
-    @State private var platformNotifications = true
-    @State private var calendarSync = false
-    @State private var useMetricUnits = true
-    @State private var shareAnalytics = false
+    @AppStorage("trainy.timeFormat") private var timeFormatRaw = UserPreferences.TimeFormat.hour12.rawValue
+    @AppStorage("trainy.unitSystem") private var unitSystemRaw = UserPreferences.UnitSystem.metric.rawValue
+    @AppStorage("trainy.sourceLabelVerbosity") private var sourceLabelVerbosityRaw = UserPreferences.SourceLabelVerbosity.compact.rawValue
+    @AppStorage("trainy.localDelayNoticesEnabled") private var delayNotifications = false
+    @AppStorage("trainy.localPlatformNoticesEnabled") private var platformNotifications = false
+    @AppStorage("trainy.diagnosticsConsent") private var diagnosticsConsent = false
 
-    private var timeFormat: UserPreferences.TimeFormat {
-        get { UserPreferences.TimeFormat(rawValue: timeFormatRaw) ?? .hour12 }
-        set { timeFormatRaw = newValue.rawValue }
+    private var usesMetricUnits: Binding<Bool> {
+        Binding(
+            get: { unitSystemRaw != UserPreferences.UnitSystem.imperial.rawValue },
+            set: { unitSystemRaw = $0 ? UserPreferences.UnitSystem.metric.rawValue : UserPreferences.UnitSystem.imperial.rawValue }
+        )
+    }
+
+    private var activeProvider: ProviderMetadata? {
+        store.providerDirectory.first { $0.id == store.activeProviderID }
     }
 
     var body: some View {
@@ -1250,17 +1632,33 @@ private struct SettingsScreen: View {
                 }
 
                 SettingsGroup(title: "Notifications") {
-                    SettingsToggleRow(symbol: "bell.badge", title: "Delay and disruption alerts", detail: "Notify me when a tracked train reports a delay, cancellation, or service disruption.", isOn: $delayNotifications)
-                    SettingsToggleRow(symbol: "rectangle.split.3x1", title: "Platform changes", detail: "Notify me when a saved journey moves to a different platform or track.", isOn: $platformNotifications)
+                    SettingsToggleRow(symbol: "bell.badge", title: "Local delay notice preference", detail: "Prototype preference only. This build does not request system notification permission or schedule delay alerts.", isOn: $delayNotifications)
+                    SettingsToggleRow(symbol: "rectangle.split.3x1", title: "Local platform notice preference", detail: "Prototype preference only. Platform-change notifications are not scheduled in this build.", isOn: $platformNotifications)
                 }
 
                 SettingsGroup(title: "Time and Units") {
-                    SettingsPickerRow(symbol: "clock", title: "Time format", selection: $timeFormatRaw, options: ["12-hour", "24-hour"])
-                    SettingsToggleRow(symbol: "ruler", title: "Metric units", detail: "Use kilometers and 24-hour times where route data supports it.", isOn: $useMetricUnits)
-                    SettingsPickerRow(symbol: "paintpalette", title: "Appearance", selection: $appearance, options: ["System", "Light", "Dark"])
+                    SettingsPickerRow(symbol: "clock", title: "Time format", detail: "Applies to trip cards, station boards, detail timelines, ETA labels, and shared journey text.", selection: $timeFormatRaw, options: UserPreferences.TimeFormat.allCases.map(\.rawValue))
+                    SettingsToggleRow(symbol: "ruler", title: "Metric units", detail: "Applies to source-backed speed and distance values when a provider supplies numeric metric data.", isOn: usesMetricUnits)
+                    SettingsPickerRow(symbol: "tag", title: "Source labels", detail: "Controls whether source badges use compact labels or longer rider-facing source names.", selection: $sourceLabelVerbosityRaw, options: UserPreferences.SourceLabelVerbosity.allCases.map(\.rawValue))
+                    SettingsPickerRow(symbol: "paintpalette", title: "Appearance", detail: "Stored as a display preference; app-wide appearance switching is not applied in this build.", selection: $appearance, options: ["System", "Light", "Dark"])
+                    SettingsInfoRow(symbol: "calendar.badge.clock", title: "Calendar sync", detail: "Not connected in this build. Saved journeys stay inside Trainy unless you share them manually.")
                 }
 
                 SettingsGroup(title: "Providers") {
+                    if let activeProvider {
+                        ProviderActiveSummary(provider: activeProvider)
+                        Divider()
+                            .background(RailDesign.Palette.hairline)
+                    }
+                    SettingsNavigationRow(
+                        symbol: "globe.asia.australia.fill",
+                        title: "Supported regions",
+                        detail: "Japan is active; the rest of the globe remains muted in this build."
+                    ) {
+                        SupportedRegionsScreen(store: store)
+                    }
+                    Divider()
+                        .background(RailDesign.Palette.hairline)
                     ProviderRegionPicker(store: store)
                     Divider()
                         .background(RailDesign.Palette.hairline)
@@ -1268,13 +1666,24 @@ private struct SettingsScreen: View {
                 }
 
                 SettingsGroup(title: "Privacy") {
-                    SettingsToggleRow(symbol: "hand.raised", title: "Share diagnostics", detail: "Send anonymous rail search reliability signals. Station names and personal notes stay on this device.", isOn: $shareAnalytics)
+                    SettingsToggleRow(symbol: "hand.raised", title: "Diagnostics sharing consent", detail: "Off by default and stored locally. This build sends no diagnostics; future diagnostics must exclude station names, trip IDs, notes, provider keys, and contact details.", isOn: $diagnosticsConsent)
                     SettingsInfoRow(symbol: "lock.shield", title: "Saved trip data", detail: "Tracked journeys, favorite stations, and alert choices are stored locally by this build.")
                 }
 
                 SettingsGroup(title: "Support") {
                     SettingsInfoRow(symbol: "questionmark.circle", title: "Help", detail: "Get guidance for train numbers, platforms, transfers, and offline saved journeys.")
                     SettingsInfoRow(symbol: "info.circle", title: "About", detail: "Trainy is an original rail companion interface built with system fonts, SF Symbols, and app-owned data.")
+                }
+
+                SettingsGroup(title: "Developer") {
+                    SettingsActionRow(
+                        symbol: "arrow.counterclockwise.circle",
+                        title: "Reset first-run",
+                        detail: "Show the data-scope onboarding again for fixture, copy, and simulator checks.",
+                        actionTitle: "Reset"
+                    ) {
+                        store.resetFirstRun()
+                    }
                 }
             }
             .padding(RailDesign.Spacing.m)
@@ -1286,12 +1695,532 @@ private struct SettingsScreen: View {
     }
 }
 
+private struct SupportedRegionsScreen: View {
+    @ObservedObject var store: TrainStore
+
+    private var activeProviders: [ProviderMetadata] {
+        store.providerDirectory.filter { $0.implementationStatus == .active }
+    }
+
+    private var plannedProviders: [ProviderMetadata] {
+        store.providerDirectory.filter { $0.implementationStatus != .active }
+    }
+
+    private var activeRegionIDs: Set<String> {
+        Set(activeProviders.map(\.region.id))
+    }
+
+    private var plannedRegionIDs: Set<String> {
+        Set(plannedProviders.map(\.region.id))
+    }
+
+    private var plannedRegionNames: [String] {
+        var seen: Set<String> = []
+        return plannedProviders
+            .map(\.region)
+            .sorted { lhs, rhs in lhs.displayName.localizedStandardCompare(rhs.displayName) == .orderedAscending }
+            .compactMap { region in
+                guard !seen.contains(region.id) else { return nil }
+                seen.insert(region.id)
+                return region.displayName
+            }
+    }
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: RailDesign.Spacing.l) {
+                GlassPanel(cornerRadius: RailDesign.Radius.hero, tint: RailDesign.Palette.marine.opacity(0.18)) {
+                    VStack(alignment: .leading, spacing: RailDesign.Spacing.m) {
+                        HStack(alignment: .top, spacing: RailDesign.Spacing.m) {
+                            Image(systemName: "globe.asia.australia.fill")
+                                .font(.system(size: 42, weight: .semibold))
+                                .symbolRenderingMode(.hierarchical)
+                                .foregroundStyle(RailDesign.Palette.marine)
+                                .frame(width: 52, height: 52)
+
+                            VStack(alignment: .leading, spacing: RailDesign.Spacing.xs) {
+                                Text("Supported regions")
+                                    .font(.title2.weight(.bold))
+                                    .foregroundStyle(RailDesign.Palette.ink)
+                                    .fixedSize(horizontal: false, vertical: true)
+                                Text("Japan is the active rail region. Planned providers stay muted until their adapters, credentials, fixtures, and source labels are ready.")
+                                    .font(.subheadline)
+                                    .foregroundStyle(RailDesign.Palette.secondaryText)
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
+                        }
+
+                        SupportedRegionsMap(
+                            activeRegionIDs: activeRegionIDs,
+                            plannedRegionIDs: plannedRegionIDs
+                        )
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 318)
+
+                        HStack(spacing: RailDesign.Spacing.s) {
+                            CoverageLegendItem(title: "Active", tint: RailDesign.Palette.mint)
+                            CoverageLegendItem(title: "Muted", tint: RailDesign.Palette.secondaryText.opacity(0.55))
+                        }
+                    }
+                }
+
+                SettingsGroup(title: "Search coverage") {
+                    ForEach(activeProviders) { provider in
+                        SupportedRegionProviderRow(provider: provider, isActive: true)
+                    }
+                }
+
+                SettingsGroup(title: "Muted regions") {
+                    VStack(alignment: .leading, spacing: RailDesign.Spacing.s) {
+                        Text("These regions are visible in the provider registry, but are not selectable or searchable in this build.")
+                            .font(.caption)
+                            .foregroundStyle(RailDesign.Palette.secondaryText)
+                            .fixedSize(horizontal: false, vertical: true)
+
+                        SupportedRegionPillGrid(names: plannedRegionNames)
+                    }
+                    .padding(.vertical, RailDesign.Spacing.s)
+                }
+            }
+            .padding(RailDesign.Spacing.m)
+            .padding(.bottom, RailDesign.Spacing.xxl)
+        }
+        .background(RailGradientBackground().ignoresSafeArea())
+        .navigationTitle("Supported Regions")
+        .navigationBarTitleDisplayMode(.inline)
+        .railScreenChrome()
+    }
+}
+
+private struct SupportedRegionsMap: View {
+    let activeRegionIDs: Set<String>
+    let plannedRegionIDs: Set<String>
+
+    private var markers: [CoverageMapMarker] {
+        activeRegionIDs
+            .union(plannedRegionIDs)
+            .compactMap(Self.marker)
+            .sorted { lhs, rhs in
+                let lhsActive = activeRegionIDs.contains(lhs.id)
+                let rhsActive = activeRegionIDs.contains(rhs.id)
+                if lhsActive != rhsActive { return lhsActive }
+                return lhs.name.localizedStandardCompare(rhs.name) == .orderedAscending
+            }
+    }
+
+    var body: some View {
+        GeometryReader { proxy in
+            let diameter = min(proxy.size.width, proxy.size.height)
+
+            ZStack {
+                NativeCoverageGlobeView(markers: markers, activeRegionIDs: activeRegionIDs)
+                    .frame(width: diameter, height: diameter)
+                    .clipShape(Circle())
+                    .overlay {
+                        Circle()
+                            .strokeBorder(RailDesign.Palette.hairline.opacity(0.90), lineWidth: 1.2)
+                    }
+                    .shadow(color: RailDesign.Palette.ink.opacity(0.16), radius: 26, y: 18)
+
+                Circle()
+                    .strokeBorder(
+                        LinearGradient(
+                            colors: [
+                                .white.opacity(0.86),
+                                RailDesign.Palette.mint.opacity(0.24),
+                                RailDesign.Palette.ink.opacity(0.08)
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        ),
+                        lineWidth: 1.4
+                    )
+                    .frame(width: diameter, height: diameter)
+                    .allowsHitTesting(false)
+            }
+            .frame(width: proxy.size.width, height: proxy.size.height)
+        }
+        .aspectRatio(1, contentMode: .fit)
+        .allowsHitTesting(false)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Supported regions map")
+        .accessibilityValue("Japan is highlighted with native Apple map data. Other regions are muted.")
+    }
+
+    private static func marker(for regionID: String) -> CoverageMapMarker? {
+        switch regionID {
+        case ProviderRegion.japan.id:
+            return CoverageMapMarker(id: regionID, name: "Japan", coordinate: CLLocationCoordinate2D(latitude: 36.2, longitude: 138.2))
+        case ProviderRegion.taiwan.id:
+            return CoverageMapMarker(id: regionID, name: "Taiwan", coordinate: CLLocationCoordinate2D(latitude: 23.8, longitude: 121.0))
+        case ProviderRegion.hongKong.id:
+            return CoverageMapMarker(id: regionID, name: "Hong Kong", coordinate: CLLocationCoordinate2D(latitude: 22.32, longitude: 114.17))
+        case ProviderRegion.germany.id:
+            return CoverageMapMarker(id: regionID, name: "Germany", coordinate: CLLocationCoordinate2D(latitude: 51.2, longitude: 10.4))
+        case ProviderRegion.switzerland.id:
+            return CoverageMapMarker(id: regionID, name: "Switzerland", coordinate: CLLocationCoordinate2D(latitude: 46.8, longitude: 8.2))
+        case ProviderRegion.unitedKingdom.id:
+            return CoverageMapMarker(id: regionID, name: "United Kingdom", coordinate: CLLocationCoordinate2D(latitude: 54.0, longitude: -2.0))
+        case ProviderRegion.australia.id:
+            return CoverageMapMarker(id: regionID, name: "Australia", coordinate: CLLocationCoordinate2D(latitude: -33.9, longitude: 151.2))
+        case ProviderRegion.unitedStates.id:
+            return CoverageMapMarker(id: regionID, name: "United States", coordinate: CLLocationCoordinate2D(latitude: 40.75, longitude: -73.9))
+        case ProviderRegion.netherlands.id:
+            return CoverageMapMarker(id: regionID, name: "Netherlands", coordinate: CLLocationCoordinate2D(latitude: 52.2, longitude: 5.3))
+        case ProviderRegion.southKorea.id:
+            return CoverageMapMarker(id: regionID, name: "South Korea", coordinate: CLLocationCoordinate2D(latitude: 36.2, longitude: 127.8))
+        case ProviderRegion.france.id:
+            return CoverageMapMarker(id: regionID, name: "France", coordinate: CLLocationCoordinate2D(latitude: 46.2, longitude: 2.2))
+        default:
+            return nil
+        }
+    }
+}
+
+private struct CoverageMapMarker: Identifiable {
+    let id: String
+    let name: String
+    let coordinate: CLLocationCoordinate2D
+}
+
+private struct NativeCoverageGlobeView: UIViewRepresentable {
+    let markers: [CoverageMapMarker]
+    let activeRegionIDs: Set<String>
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(activeRegionIDs: activeRegionIDs)
+    }
+
+    func makeUIView(context: Context) -> CoverageGlobeMapView {
+        let mapView = CoverageGlobeMapView()
+        mapView.apply(
+            markers: markers,
+            activeRegionIDs: activeRegionIDs,
+            camera: Self.coverageCamera,
+            coordinator: context.coordinator
+        )
+        return mapView
+    }
+
+    func updateUIView(_ mapView: CoverageGlobeMapView, context: Context) {
+        context.coordinator.activeRegionIDs = activeRegionIDs
+        mapView.apply(
+            markers: markers,
+            activeRegionIDs: activeRegionIDs,
+            camera: Self.coverageCamera,
+            coordinator: context.coordinator
+        )
+    }
+
+    private static let coverageCamera = MKMapCamera(
+        lookingAtCenter: CLLocationCoordinate2D(latitude: 33.5, longitude: 127.6),
+        fromDistance: 8_650_000,
+        pitch: 16,
+        heading: -8
+    )
+
+    final class Coordinator: NSObject, MKMapViewDelegate {
+        static let activeMarkerReuseID = "activeCoverageMarker"
+        static let mutedMarkerReuseID = "mutedCoverageMarker"
+
+        var activeRegionIDs: Set<String>
+
+        init(activeRegionIDs: Set<String>) {
+            self.activeRegionIDs = activeRegionIDs
+        }
+
+        func apply(markers: [CoverageMapMarker], to mapView: MKMapView) {
+            let annotations = markers.map { marker in
+                CoverageMapAnnotation(marker: marker, isActive: activeRegionIDs.contains(marker.id))
+            }
+            let overlays = annotations.map { annotation in
+                MKCircle(
+                    center: annotation.coordinate,
+                    radius: annotation.isActive ? 430_000 : 230_000
+                )
+            }
+
+            mapView.removeAnnotations(mapView.annotations.compactMap { $0 as? CoverageMapAnnotation })
+            mapView.removeOverlays(mapView.overlays)
+            mapView.addOverlays(overlays, level: .aboveLabels)
+            mapView.addAnnotations(annotations)
+        }
+
+        func mapView(_ mapView: MKMapView, rendererFor overlay: MKOverlay) -> MKOverlayRenderer {
+            guard let circle = overlay as? MKCircle else {
+                return MKOverlayRenderer(overlay: overlay)
+            }
+
+            let renderer = MKCircleRenderer(circle: circle)
+            let isActive = circle.radius > 300_000
+            renderer.fillColor = UIColor(isActive ? .clear : RailDesign.Palette.secondaryText.opacity(0.08))
+            renderer.strokeColor = UIColor(isActive ? RailDesign.Palette.mint.opacity(0.82) : RailDesign.Palette.secondaryText.opacity(0.28))
+            renderer.lineWidth = isActive ? 1.5 : 0.8
+            renderer.alpha = isActive ? 0.78 : 0.30
+            return renderer
+        }
+
+        func mapView(_ mapView: MKMapView, viewFor annotation: MKAnnotation) -> MKAnnotationView? {
+            guard let coverageAnnotation = annotation as? CoverageMapAnnotation else {
+                return nil
+            }
+
+            let reuseID = coverageAnnotation.isActive ? Self.activeMarkerReuseID : Self.mutedMarkerReuseID
+            guard let markerView = mapView.dequeueReusableAnnotationView(
+                withIdentifier: reuseID,
+                for: coverageAnnotation
+            ) as? MKMarkerAnnotationView else {
+                return nil
+            }
+
+            markerView.annotation = coverageAnnotation
+            markerView.canShowCallout = false
+            markerView.animatesWhenAdded = false
+            markerView.collisionMode = .circle
+            markerView.displayPriority = coverageAnnotation.isActive ? .required : .defaultLow
+            markerView.zPriority = coverageAnnotation.isActive ? .max : .min
+            markerView.alpha = coverageAnnotation.isActive ? 1.0 : 0.28
+            markerView.titleVisibility = coverageAnnotation.isActive ? .visible : .hidden
+            markerView.subtitleVisibility = .hidden
+            markerView.markerTintColor = UIColor(
+                coverageAnnotation.isActive
+                ? RailDesign.Palette.mint
+                : RailDesign.Palette.secondaryText.opacity(0.44)
+            )
+            markerView.glyphTintColor = .white
+            markerView.glyphImage = coverageAnnotation.isActive ? UIImage(systemName: "train.side.front.car.fill") : nil
+            return markerView
+        }
+    }
+}
+
+private final class CoverageGlobeMapView: UIView {
+    private let mapView = MKMapView(frame: .zero)
+    private let unsupportedMaskLayer = CAShapeLayer()
+    private let activeFocusLayer = CAShapeLayer()
+    private var activeCoordinate: CLLocationCoordinate2D?
+
+    override init(frame: CGRect) {
+        super.init(frame: frame)
+        configure()
+    }
+
+    required init?(coder: NSCoder) {
+        super.init(coder: coder)
+        configure()
+    }
+
+    func apply(
+        markers: [CoverageMapMarker],
+        activeRegionIDs: Set<String>,
+        camera: MKMapCamera,
+        coordinator: NativeCoverageGlobeView.Coordinator
+    ) {
+        activeCoordinate = markers.first { activeRegionIDs.contains($0.id) }?.coordinate
+        mapView.delegate = coordinator
+        coordinator.activeRegionIDs = activeRegionIDs
+        coordinator.apply(markers: markers, to: mapView)
+        mapView.setCamera(camera, animated: false)
+
+        setNeedsLayout()
+        DispatchQueue.main.async { [weak self] in
+            self?.updateRegionTreatment()
+        }
+    }
+
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        mapView.frame = bounds
+        layer.cornerRadius = min(bounds.width, bounds.height) / 2
+        layer.masksToBounds = true
+        updateRegionTreatment()
+    }
+
+    private func configure() {
+        let configuration = MKStandardMapConfiguration(elevationStyle: .realistic, emphasisStyle: .default)
+        configuration.pointOfInterestFilter = .excludingAll
+        configuration.showsTraffic = false
+
+        backgroundColor = .clear
+        clipsToBounds = true
+        mapView.preferredConfiguration = configuration
+        mapView.isScrollEnabled = false
+        mapView.isZoomEnabled = false
+        mapView.isRotateEnabled = false
+        mapView.isPitchEnabled = false
+        mapView.isUserInteractionEnabled = false
+        mapView.showsCompass = false
+        mapView.showsScale = false
+        mapView.layoutMargins = .zero
+        mapView.register(MKMarkerAnnotationView.self, forAnnotationViewWithReuseIdentifier: NativeCoverageGlobeView.Coordinator.activeMarkerReuseID)
+        mapView.register(MKMarkerAnnotationView.self, forAnnotationViewWithReuseIdentifier: NativeCoverageGlobeView.Coordinator.mutedMarkerReuseID)
+
+        unsupportedMaskLayer.fillRule = .evenOdd
+        unsupportedMaskLayer.fillColor = UIColor { traits in
+            traits.userInterfaceStyle == .dark
+                ? UIColor(red: 0.028, green: 0.034, blue: 0.038, alpha: 0.56)
+                : UIColor(red: 0.790, green: 0.825, blue: 0.820, alpha: 0.56)
+        }.cgColor
+
+        activeFocusLayer.fillColor = UIColor.clear.cgColor
+        activeFocusLayer.strokeColor = UIColor(RailDesign.Palette.mint.opacity(0.96)).cgColor
+        activeFocusLayer.lineWidth = 1.7
+        activeFocusLayer.shadowColor = UIColor(RailDesign.Palette.mint.opacity(0.55)).cgColor
+        activeFocusLayer.shadowOpacity = 1.0
+        activeFocusLayer.shadowRadius = 12
+        activeFocusLayer.shadowOffset = CGSize(width: 0, height: 5)
+
+        addSubview(mapView)
+        layer.addSublayer(unsupportedMaskLayer)
+        layer.addSublayer(activeFocusLayer)
+    }
+
+    private func updateRegionTreatment() {
+        guard !bounds.isEmpty else { return }
+
+        let diameter = min(bounds.width, bounds.height)
+        let globeRect = CGRect(
+            x: (bounds.width - diameter) / 2,
+            y: (bounds.height - diameter) / 2,
+            width: diameter,
+            height: diameter
+        ).insetBy(dx: 0.5, dy: 0.5)
+        let maskPath = UIBezierPath(ovalIn: globeRect)
+
+        if let spotlightRect {
+            maskPath.append(UIBezierPath(roundedRect: spotlightRect, cornerRadius: spotlightRect.height / 2))
+            activeFocusLayer.path = UIBezierPath(roundedRect: spotlightRect.insetBy(dx: 1.5, dy: 1.5), cornerRadius: spotlightRect.height / 2).cgPath
+        } else {
+            activeFocusLayer.path = nil
+        }
+
+        unsupportedMaskLayer.frame = bounds
+        unsupportedMaskLayer.path = maskPath.cgPath
+        activeFocusLayer.frame = bounds
+    }
+
+    private var spotlightRect: CGRect? {
+        guard let activeCoordinate else { return nil }
+
+        let activePoint = mapView.convert(activeCoordinate, toPointTo: self)
+        guard bounds.insetBy(dx: -80, dy: -80).contains(activePoint) else { return nil }
+
+        let diameter = min(bounds.width, bounds.height)
+        let width = max(78, diameter * 0.24)
+        let height = max(118, diameter * 0.36)
+        let rect = CGRect(
+            x: activePoint.x - width * 0.50,
+            y: activePoint.y - height * 0.50,
+            width: width,
+            height: height
+        )
+        return rect.intersection(bounds.insetBy(dx: 8, dy: 8))
+    }
+}
+
+private final class CoverageMapAnnotation: NSObject, MKAnnotation {
+    let id: String
+    let name: String
+    let isActive: Bool
+    let coordinate: CLLocationCoordinate2D
+
+    var title: String? { name }
+
+    init(marker: CoverageMapMarker, isActive: Bool) {
+        self.id = marker.id
+        self.name = marker.name
+        self.isActive = isActive
+        self.coordinate = marker.coordinate
+    }
+}
+
+private struct CoverageLegendItem: View {
+    let title: LocalizedStringKey
+    let tint: Color
+
+    var body: some View {
+        HStack(spacing: RailDesign.Spacing.xs) {
+            Circle()
+                .fill(tint)
+                .frame(width: 9, height: 9)
+            Text(title)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(RailDesign.Palette.secondaryText)
+        }
+    }
+}
+
+private struct SupportedRegionProviderRow: View {
+    let provider: ProviderMetadata
+    let isActive: Bool
+
+    private var tint: Color {
+        isActive ? RailDesign.Palette.mint : RailDesign.Palette.secondaryText
+    }
+
+    var body: some View {
+        HStack(alignment: .top, spacing: RailDesign.Spacing.s) {
+            Image(systemName: isActive ? "checkmark.seal.fill" : "circle.dashed")
+                .font(.headline)
+                .symbolRenderingMode(.hierarchical)
+                .foregroundStyle(tint)
+                .frame(width: 30)
+
+            VStack(alignment: .leading, spacing: RailDesign.Spacing.xs) {
+                HStack(alignment: .firstTextBaseline, spacing: RailDesign.Spacing.xs) {
+                    Text(provider.region.displayName)
+                        .font(.subheadline.weight(.bold))
+                        .foregroundStyle(RailDesign.Palette.ink)
+                    ProviderStatusPill(text: isActive ? "Active" : "Muted", tint: tint)
+                }
+
+                Text(provider.displayName)
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(RailDesign.Palette.secondaryText)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                Text(provider.availability.message)
+                    .font(.caption)
+                    .foregroundStyle(RailDesign.Palette.secondaryText)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .padding(.vertical, RailDesign.Spacing.s)
+        .accessibilityElement(children: .combine)
+    }
+}
+
+private struct SupportedRegionPillGrid: View {
+    let names: [String]
+
+    var body: some View {
+        LazyVGrid(columns: [GridItem(.adaptive(minimum: 118), spacing: RailDesign.Spacing.xs)], alignment: .leading, spacing: RailDesign.Spacing.xs) {
+            ForEach(names, id: \.self) { name in
+                Text(name)
+                    .font(.caption2.weight(.semibold))
+                    .foregroundStyle(RailDesign.Palette.secondaryText)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.72)
+                    .padding(.horizontal, RailDesign.Spacing.xs)
+                    .padding(.vertical, 6)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(RailDesign.Palette.hairline.opacity(0.78), in: Capsule())
+            }
+        }
+    }
+}
+
 private struct TrainDetailView: View {
     @ObservedObject var store: TrainStore
     let tripID: TrainTrip.ID
+    @AppStorage("trainy.unitSystem") private var unitSystemRaw = UserPreferences.UnitSystem.metric.rawValue
 
     private var trip: TrainTrip {
         store.trips.first { $0.id == tripID } ?? store.selectedTrip
+    }
+
+    private var useMetric: Bool {
+        unitSystemRaw != UserPreferences.UnitSystem.imperial.rawValue
     }
 
     var body: some View {
@@ -1327,10 +2256,10 @@ private struct TrainDetailView: View {
                     SectionHeader(title: "Carriage and platform", subtitle: "Boarding position, train length, seat cue, and platform/track")
                     GlassPanel {
                         VStack(alignment: .leading, spacing: RailDesign.Spacing.m) {
-                            InfoLine(symbol: "rectangle.split.3x1.fill", title: "Platform", value: trip.platform)
+                            InfoLine(symbol: "rectangle.split.3x1.fill", title: "Platform", value: trip.displayPlatform)
                             InfoLine(symbol: "train.side.front.car", title: "Carriage", value: "Car \(trip.bestCar) of \(trip.cars)")
                             InfoLine(symbol: "seat", title: "Seat note", value: trip.seat)
-                            InfoLine(symbol: "speedometer", title: "Speed", value: trip.speed)
+                            InfoLine(symbol: "speedometer", title: "Speed", value: UnitConverter.displaySpeed(trip.speed, useMetric: useMetric))
                         }
                     }
                 }
@@ -1436,13 +2365,18 @@ private struct HeaderStation: View {
     let label: LocalizedStringKey
     var alignment: HorizontalAlignment = .leading
     var timeZone: TimeZone = TimeZone(identifier: "Asia/Tokyo")!
+    @AppStorage("trainy.timeFormat") private var timeFormatRaw = UserPreferences.TimeFormat.hour12.rawValue
+
+    private var timeFormat: UserPreferences.TimeFormat {
+        UserPreferences.TimeFormat(rawValue: timeFormatRaw) ?? .hour12
+    }
 
     var body: some View {
         VStack(alignment: alignment, spacing: RailDesign.Spacing.xxs) {
             Text(label)
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(RailDesign.Palette.secondaryText)
-            Text(time.formattedAsTime(in: timeZone))
+            Text(time.formattedAsTime(in: timeZone, format: timeFormat))
                 .font(.title2.monospacedDigit().weight(.bold))
                 .foregroundStyle(RailDesign.Palette.ink)
             Text(station)
@@ -1464,13 +2398,23 @@ private struct StatusSummaryPanel: View {
                 HStack(spacing: RailDesign.Spacing.m) {
                     StatusSummaryItem(title: "Status", value: trip.status, symbol: RailServiceStatus.from(trip).symbolName, tint: RailServiceStatus.from(trip).tint)
                     Divider()
-                    StatusSummaryItem(title: "Platform", value: trip.platform, symbol: "rectangle.split.3x1", tint: RailDesign.Palette.blue)
+                    StatusSummaryItem(
+                        title: "Platform",
+                        value: trip.displayPlatform,
+                        symbol: "rectangle.split.3x1",
+                        tint: trip.platformDisplayState.isKnown ? RailDesign.Palette.blue : RailDesign.Palette.secondaryText
+                    )
                     Divider()
                     StatusSummaryItem(title: "Updated", value: trip.updated, symbol: "arrow.clockwise", tint: RailDesign.Palette.violet)
                 }
                 VStack(spacing: RailDesign.Spacing.m) {
                     StatusSummaryItem(title: "Status", value: trip.status, symbol: RailServiceStatus.from(trip).symbolName, tint: RailServiceStatus.from(trip).tint)
-                    StatusSummaryItem(title: "Platform", value: trip.platform, symbol: "rectangle.split.3x1", tint: RailDesign.Palette.blue)
+                    StatusSummaryItem(
+                        title: "Platform",
+                        value: trip.displayPlatform,
+                        symbol: "rectangle.split.3x1",
+                        tint: trip.platformDisplayState.isKnown ? RailDesign.Palette.blue : RailDesign.Palette.secondaryText
+                    )
                     StatusSummaryItem(title: "Updated", value: trip.updated, symbol: "arrow.clockwise", tint: RailDesign.Palette.violet)
                 }
             }
@@ -1505,7 +2449,7 @@ private struct SourceProvenancePanel: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: RailDesign.Spacing.s) {
-                    SectionHeader(title: "Source", subtitle: "Source, type, confidence, freshness, and license for this trip's visible data")
+            SectionHeader(title: "Source", subtitle: "Source, type, confidence, freshness, and license for this trip's visible data")
             GlassPanel {
                 VStack(alignment: .leading, spacing: RailDesign.Spacing.m) {
                     Button {
@@ -1516,10 +2460,16 @@ private struct SourceProvenancePanel: View {
                     .buttonStyle(.plain)
                     .accessibilityHint("Opens source details")
 
+                    if trip.sourceStateDisplayState.needsVisibleCallout {
+                        SourceStateCallout(state: trip.sourceStateDisplayState)
+                    }
+
                     InfoLine(symbol: "building.columns", title: "Provider", value: provenance.providerName)
                     InfoLine(symbol: "doc.text.magnifyingglass", title: "Source", value: provenance.sourceName)
                     InfoLine(symbol: "checkmark.seal", title: "Confidence", value: provenance.summaryText)
                     InfoLine(symbol: "clock.badge.checkmark", title: "Freshness", value: freshnessText)
+                    InfoLine(symbol: trip.vehiclePositionDisplayState.symbolName, title: "Map marker", value: trip.vehiclePositionDisplayState.detailText)
+                    InfoLine(symbol: "rectangle.split.3x1", title: "Platform", value: trip.platformDisplayState.detailText)
                     InfoLine(symbol: "info.circle", title: "Meaning", value: provenance.riderExplanation)
                     InfoLine(symbol: "doc.plaintext", title: "License", value: provenance.licenseAttributionText)
                     InfoLine(symbol: "list.bullet.rectangle", title: "Fact mix", value: trip.sourceBreakdownText)
@@ -1546,6 +2496,46 @@ private struct SourceProvenancePanel: View {
         .sheet(item: $sourceDetailTrip) { trip in
             SourceDetailSheet(trip: trip)
         }
+    }
+}
+
+private struct SourceStateCallout: View {
+    let state: RailSourceStateDisplayState
+
+    private var tint: Color {
+        switch state.kind {
+        case .current:
+            return RailDesign.Palette.mint
+        case .staleSaved:
+            return RailDesign.Palette.amber
+        case .expired:
+            return RailDesign.Palette.red
+        case .unknown:
+            return RailDesign.Palette.secondaryText
+        }
+    }
+
+    var body: some View {
+        HStack(alignment: .top, spacing: RailDesign.Spacing.s) {
+            Image(systemName: state.symbolName)
+                .font(.headline)
+                .foregroundStyle(tint)
+                .frame(width: 28)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(state.title)
+                    .font(.subheadline.weight(.bold))
+                    .foregroundStyle(RailDesign.Palette.ink)
+                Text(state.detailText)
+                    .font(.caption)
+                    .foregroundStyle(RailDesign.Palette.secondaryText)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(RailDesign.Spacing.s)
+        .railLiquidGlass(cornerRadius: RailDesign.Radius.control, tint: tint.opacity(0.13), strokeOpacity: 0.24)
+        .accessibilityElement(children: .combine)
     }
 }
 
@@ -1578,6 +2568,15 @@ private struct StatusSummaryItem: View {
 
 private struct JourneyProgressPanel: View {
     let trip: TrainTrip
+    @AppStorage("trainy.timeFormat") private var timeFormatRaw = UserPreferences.TimeFormat.hour12.rawValue
+
+    private var timeFormat: UserPreferences.TimeFormat {
+        UserPreferences.TimeFormat(rawValue: timeFormatRaw) ?? .hour12
+    }
+
+    private var formattedETA: String {
+        trip.eta.formattedAsTime(in: trip.destination.timeZone, format: timeFormat)
+    }
 
     var body: some View {
         GlassPanel(tint: RailDesign.Palette.accent.opacity(0.14)) {
@@ -1588,7 +2587,7 @@ private struct JourneyProgressPanel: View {
                 HStack {
                     InfoLine(symbol: "location.north.line.fill", title: "Next stop", value: trip.nextStop)
                     Spacer(minLength: RailDesign.Spacing.s)
-                    InfoLine(symbol: "clock", title: "ETA", value: trip.eta)
+                    InfoLine(symbol: "clock", title: "ETA", value: formattedETA)
                 }
             }
         }
@@ -1743,12 +2742,13 @@ private struct SettingsToggleRow: View {
 private struct SettingsPickerRow: View {
     let symbol: String
     let title: LocalizedStringKey
+    let detail: LocalizedStringKey
     @Binding var selection: String
     let options: [String]
 
     var body: some View {
         HStack {
-            SettingsRowLabel(symbol: symbol, title: title, detail: "Choose how the rail companion adapts to system appearance.")
+            SettingsRowLabel(symbol: symbol, title: title, detail: detail)
             Picker("", selection: $selection) {
                 ForEach(options, id: \.self) { option in
                     Text(option).tag(option)
@@ -1854,12 +2854,17 @@ private struct ProviderDirectoryRow: View {
                 ProviderCapabilityStrip(capabilities: provider.capabilities)
             }
 
-            Text(provider.requirementSummary)
-                .font(.caption2)
-                .foregroundStyle(RailDesign.Palette.secondaryText)
-                .fixedSize(horizontal: false, vertical: true)
+            ProviderRequirementSummary(provider: provider)
 
-            ProviderSourceLinks(links: provider.sourceLinks)
+            ProviderSourceDisclosure(provider: provider)
+
+            #if DEBUG
+            ProviderDeveloperCredentialStatus(provider: provider)
+            #endif
+
+            if !canSearch {
+                ProviderSearchGate(provider: provider)
+            }
 
             if canSearch && !isSelected {
                 Button(action: selectProvider) {
@@ -1881,6 +2886,49 @@ private struct ProviderDirectoryRow: View {
     }
 }
 
+private struct ProviderActiveSummary: View {
+    let provider: ProviderMetadata
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: RailDesign.Spacing.s) {
+            HStack(alignment: .top, spacing: RailDesign.Spacing.s) {
+                Image(systemName: "checkmark.seal.fill")
+                    .font(.title3)
+                    .symbolRenderingMode(.hierarchical)
+                    .foregroundStyle(RailDesign.Palette.mint)
+                    .frame(width: 30)
+
+                VStack(alignment: .leading, spacing: RailDesign.Spacing.xs) {
+                    HStack(alignment: .firstTextBaseline, spacing: RailDesign.Spacing.xs) {
+                        Text("Active provider")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(RailDesign.Palette.secondaryText)
+                        ProviderStatusPill(text: provider.availability.status.displayName, tint: provider.availability.status.tint)
+                    }
+
+                    Text(provider.displayName)
+                        .font(.headline.weight(.bold))
+                        .foregroundStyle(RailDesign.Palette.ink)
+                        .fixedSize(horizontal: false, vertical: true)
+
+                    Text("\(provider.region.displayName) / \(provider.capabilitySummary)")
+                        .font(.caption)
+                        .foregroundStyle(RailDesign.Palette.secondaryText)
+                        .fixedSize(horizontal: false, vertical: true)
+
+                    Text(provider.availability.message)
+                        .font(.caption)
+                        .foregroundStyle(RailDesign.Palette.secondaryText)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+        }
+        .padding(.vertical, RailDesign.Spacing.s)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Active provider \(provider.displayName), \(provider.region.displayName)")
+    }
+}
+
 private struct ProviderStatusPill: View {
     let text: String
     let tint: Color
@@ -1894,6 +2942,19 @@ private struct ProviderStatusPill: View {
             .background(tint.opacity(0.12), in: Capsule())
             .lineLimit(1)
             .minimumScaleFactor(0.8)
+    }
+}
+
+private struct ProviderRequirementSummary: View {
+    let provider: ProviderMetadata
+
+    var body: some View {
+        if !provider.operationalRequirements.isEmpty {
+            ProviderPillGrid(
+                items: provider.operationalRequirements,
+                tint: RailDesign.Palette.secondaryText
+            )
+        }
     }
 }
 
@@ -1923,20 +2984,205 @@ private struct ProviderCapabilityStrip: View {
     }
 }
 
-private struct ProviderSourceLinks: View {
-    let links: [ProviderSourceLink]
+private struct ProviderSourceDisclosure: View {
+    let provider: ProviderMetadata
 
     var body: some View {
-        VStack(alignment: .leading, spacing: RailDesign.Spacing.xxs) {
-            ForEach(Array(links.prefix(2))) { link in
-                Link(destination: link.url) {
-                    Label(link.title, systemImage: "arrow.up.right.square")
-                        .font(.caption2.weight(.semibold))
-                        .foregroundStyle(RailDesign.Palette.accent)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.72)
+        VStack(alignment: .leading, spacing: RailDesign.Spacing.xs) {
+            if !provider.sourceLinks.isEmpty {
+                VStack(alignment: .leading, spacing: RailDesign.Spacing.xxs) {
+                    Text("Sources")
+                        .font(.caption2.weight(.bold))
+                        .foregroundStyle(RailDesign.Palette.secondaryText)
+                    ForEach(Array(provider.sourceLinks.prefix(3))) { link in
+                        Link(destination: link.url) {
+                            Label(link.title, systemImage: "arrow.up.right.square")
+                                .font(.caption2.weight(.semibold))
+                                .foregroundStyle(RailDesign.Palette.accent)
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.72)
+                        }
+                    }
                 }
             }
+
+            if !provider.sourcePolicyRequirements.isEmpty {
+                VStack(alignment: .leading, spacing: RailDesign.Spacing.xxs) {
+                    Text("Attribution and terms")
+                        .font(.caption2.weight(.bold))
+                        .foregroundStyle(RailDesign.Palette.secondaryText)
+                    ProviderPillGrid(
+                        items: provider.sourcePolicyRequirements,
+                        tint: RailDesign.Palette.marine
+                    )
+                }
+            }
+        }
+    }
+}
+
+private struct ProviderDeveloperCredentialStatus: View {
+    let provider: ProviderMetadata
+
+    var body: some View {
+        Label(credentialText, systemImage: credentialSymbol)
+            .font(.caption2.weight(.semibold))
+            .foregroundStyle(credentialTint)
+            .fixedSize(horizontal: false, vertical: true)
+            .padding(.horizontal, RailDesign.Spacing.xs)
+            .padding(.vertical, 6)
+            .background(credentialTint.opacity(0.12), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+            .accessibilityLabel("Developer credential status")
+            .accessibilityValue(credentialText)
+    }
+
+    private var credentialText: String {
+        switch provider.authStrategy {
+        case .none:
+            return "No provider credential required."
+        case .localKey(let environmentVariable, _):
+            switch provider.availability.status {
+            case .degraded:
+                return "\(environmentVariable) missing; starter catalog fallback is active."
+            case .available:
+                return "\(environmentVariable) configured for this build."
+            default:
+                return "\(environmentVariable) required before full provider coverage."
+            }
+        case .proxy:
+            return "Requires a provider proxy; not selectable in this build."
+        case .oauth:
+            return "Requires OAuth/provider account setup before search."
+        case .custom(let label):
+            return "\(label) required before search."
+        }
+    }
+
+    private var credentialSymbol: String {
+        switch provider.availability.status {
+        case .available:
+            return "checkmark.shield.fill"
+        case .degraded:
+            return "exclamationmark.shield.fill"
+        case .requiresConfiguration, .requiresProxy, .unavailable:
+            return "lock.shield"
+        }
+    }
+
+    private var credentialTint: Color {
+        switch provider.availability.status {
+        case .available:
+            return RailDesign.Palette.mint
+        case .degraded:
+            return RailDesign.Palette.amber
+        case .requiresConfiguration, .requiresProxy:
+            return RailDesign.Palette.copper
+        case .unavailable:
+            return RailDesign.Palette.secondaryText
+        }
+    }
+}
+
+private struct ProviderSearchGate: View {
+    let provider: ProviderMetadata
+
+    var body: some View {
+        Label(searchGateText, systemImage: "lock")
+            .font(.caption2.weight(.semibold))
+            .foregroundStyle(RailDesign.Palette.secondaryText)
+            .fixedSize(horizontal: false, vertical: true)
+            .padding(.horizontal, RailDesign.Spacing.xs)
+            .padding(.vertical, 6)
+            .background(RailDesign.Palette.hairline.opacity(0.75), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+    }
+
+    private var searchGateText: String {
+        switch provider.implementationStatus {
+        case .active:
+            return "Search unavailable until required provider setup is complete."
+        case .planned:
+            return "Planned provider: not selectable or searchable in this build."
+        case .disabled:
+            return "Disabled provider: not selectable or searchable."
+        }
+    }
+}
+
+private struct ProviderPillGrid: View {
+    let items: [String]
+    let tint: Color
+
+    var body: some View {
+        LazyVGrid(columns: [GridItem(.adaptive(minimum: 128), spacing: RailDesign.Spacing.xs)], alignment: .leading, spacing: RailDesign.Spacing.xs) {
+            ForEach(items, id: \.self) { item in
+                Text(item)
+                    .font(.caption2.weight(.semibold))
+                    .foregroundStyle(tint)
+                    .lineLimit(2)
+                    .minimumScaleFactor(0.72)
+                    .padding(.horizontal, RailDesign.Spacing.xs)
+                    .padding(.vertical, 5)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(tint.opacity(0.10), in: Capsule())
+            }
+        }
+    }
+}
+
+private extension ProviderMetadata {
+    var sourcePolicyRequirements: [String] {
+        requirements.compactMap { requirement in
+            switch requirement {
+            case .attribution(let label):
+                return "Attribution: \(label)"
+            case .terms(let label):
+                return "Terms: \(label)"
+            case .networkAccess, .localKey, .proxy, .providerAccount:
+                return nil
+            }
+        }
+        .sorted { $0.localizedStandardCompare($1) == .orderedAscending }
+    }
+
+    var operationalRequirements: [String] {
+        requirements.compactMap { requirement in
+            switch requirement {
+            case .networkAccess, .localKey, .proxy, .providerAccount:
+                return requirement.displayName
+            case .attribution, .terms:
+                return nil
+            }
+        }
+        .sorted { $0.localizedStandardCompare($1) == .orderedAscending }
+    }
+}
+
+private extension ProviderAvailability.Status {
+    var displayName: String {
+        switch self {
+        case .available:
+            return "Available"
+        case .degraded:
+            return "Fallback"
+        case .requiresConfiguration:
+            return "Needs setup"
+        case .requiresProxy:
+            return "Needs proxy"
+        case .unavailable:
+            return "Unavailable"
+        }
+    }
+
+    var tint: Color {
+        switch self {
+        case .available:
+            return RailDesign.Palette.mint
+        case .degraded:
+            return RailDesign.Palette.amber
+        case .requiresConfiguration, .requiresProxy:
+            return RailDesign.Palette.copper
+        case .unavailable:
+            return RailDesign.Palette.secondaryText
         }
     }
 }
@@ -1949,6 +3195,72 @@ private struct SettingsInfoRow: View {
     var body: some View {
         SettingsRowLabel(symbol: symbol, title: title, detail: detail)
             .padding(.vertical, RailDesign.Spacing.s)
+    }
+}
+
+private struct SettingsNavigationRow<Destination: View>: View {
+    let symbol: String
+    let title: LocalizedStringKey
+    let detail: LocalizedStringKey
+    let destination: Destination
+
+    init(
+        symbol: String,
+        title: LocalizedStringKey,
+        detail: LocalizedStringKey,
+        @ViewBuilder destination: () -> Destination
+    ) {
+        self.symbol = symbol
+        self.title = title
+        self.detail = detail
+        self.destination = destination()
+    }
+
+    var body: some View {
+        NavigationLink {
+            destination
+        } label: {
+            HStack(alignment: .center, spacing: RailDesign.Spacing.s) {
+                SettingsRowLabel(symbol: symbol, title: title, detail: detail)
+                Spacer(minLength: RailDesign.Spacing.s)
+                Image(systemName: "chevron.right")
+                    .font(.caption.weight(.bold))
+                    .foregroundStyle(RailDesign.Palette.secondaryText)
+            }
+            .contentShape(Rectangle())
+            .padding(.vertical, RailDesign.Spacing.s)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(title)
+        .accessibilityHint(detail)
+    }
+}
+
+private struct SettingsActionRow: View {
+    let symbol: String
+    let title: LocalizedStringKey
+    let detail: LocalizedStringKey
+    let actionTitle: LocalizedStringKey
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            HStack(alignment: .center, spacing: RailDesign.Spacing.s) {
+                SettingsRowLabel(symbol: symbol, title: title, detail: detail)
+                Spacer(minLength: RailDesign.Spacing.s)
+                Text(actionTitle)
+                    .font(.caption.weight(.bold))
+                    .foregroundStyle(RailDesign.Palette.accent)
+                    .padding(.horizontal, RailDesign.Spacing.s)
+                    .padding(.vertical, 8)
+                    .background(RailDesign.Palette.accent.opacity(0.12), in: Capsule())
+            }
+            .contentShape(Rectangle())
+            .padding(.vertical, RailDesign.Spacing.s)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(title)
+        .accessibilityHint(detail)
     }
 }
 
@@ -1977,6 +3289,7 @@ private struct SettingsRowLabel: View {
 
 private struct RailHistoryMetrics {
     let trips: [TrainTrip]
+    let useMetric: Bool
 
     var tripCount: Int {
         trips.count
@@ -1999,7 +3312,10 @@ private struct RailHistoryMetrics {
     }
 
     var distanceText: String {
-        "Not logged"
+        trips
+            .compactMap(\.distanceText)
+            .map { UnitConverter.displayDistance($0, useMetric: useMetric) }
+            .first { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty } ?? "Not logged"
     }
 
     var hoursText: String {
@@ -2055,8 +3371,8 @@ private struct StationSnapshot: Identifiable, Hashable {
         Array(
             Set(
                 trips.flatMap { trip in
-                    ([trip.origin.name: trip.platform][name].map { [$0] } ?? []) +
-                    trip.stops.filter { $0.name == name }.map(\.platform)
+                    ([trip.origin.name: trip.displayPlatform][name].map { [$0] } ?? []) +
+                    trip.stops.filter { $0.name == name }.map(\.displayPlatform)
                 }
             )
         )
@@ -2114,7 +3430,8 @@ private extension TrainStore {
 
 private extension TrainTrip {
     var shareText: String {
-        "\(train): \(origin.name) to \(destination.name), \(status), platform \(platform), ETA \(eta). Source: \(sourceProvenance.sourceKind.riderTitle), \(sourceProvenance.freshness.displayName)."
+        let formattedETA = eta.formattedAsTime(in: destination.timeZone)
+        return "\(train): \(origin.name) to \(destination.name), \(status), platform \(displayPlatform), ETA \(formattedETA). Source: \(sourceProvenance.sourceKind.riderTitle), \(sourceProvenance.freshness.displayName)."
     }
 
     var transferSummary: String {

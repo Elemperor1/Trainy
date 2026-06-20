@@ -9,7 +9,7 @@ enum ProviderTextUtilities {
     }
 
     static func lastIdentifierComponent(_ value: String) -> String {
-        value.split(separator: ".").last.map(String.init) ?? value
+        value.split { $0 == "." || $0 == ":" }.last.map(String.init) ?? value
     }
 
     static func spacedCamelCase(_ value: String) -> String {

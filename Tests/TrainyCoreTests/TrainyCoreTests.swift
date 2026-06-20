@@ -84,6 +84,97 @@ final class TrainyTests: XCTestCase {
         XCTAssertTrue(SourceProvenance.providerUnavailableText(message: "quota reached").localizedCaseInsensitiveContains("source provider unavailable"))
     }
 
+    func testDetailAndMapDisplayStatesStayHonestAboutPositionPlatformAndStaleData() throws {
+        let starter = TrainTrip.samples[0]
+        XCTAssertEqual(starter.vehiclePositionDisplayState.kind, .routeMarker)
+        XCTAssertFalse(starter.vehiclePositionDisplayState.isLiveVehiclePosition)
+        XCTAssertTrue(starter.vehiclePositionDisplayState.rendersMapMarker)
+        XCTAssertTrue(starter.vehiclePositionDisplayState.mapLabel.localizedCaseInsensitiveContains("route marker"))
+        XCTAssertFalse(starter.vehiclePositionDisplayState.detailText.localizedCaseInsensitiveContains("live"))
+        XCTAssertEqual(starter.platformDisplayState.kind, .known)
+
+        let vehicleSource = SourceProvenance(
+            providerID: "vehicle-test",
+            providerName: "Vehicle test provider",
+            sourceName: "Vehicle positions",
+            sourceKind: .vehiclePosition,
+            confidence: .confirmed,
+            freshness: .fresh
+        )
+        let liveTrip = tripVariant(
+            from: starter,
+            vehicleLatitude: 35.6812,
+            vehicleLongitude: 139.7671,
+            sourceProvenance: vehicleSource,
+            factProvenance: [
+                FactProvenance(
+                    fact: .vehiclePosition,
+                    source: vehicleSource,
+                    confidence: .confirmed,
+                    note: "Provider vehicle-position coordinate."
+                )
+            ]
+        )
+        XCTAssertEqual(liveTrip.vehiclePositionDisplayState.kind, .liveVehicle)
+        XCTAssertTrue(liveTrip.vehiclePositionDisplayState.isLiveVehiclePosition)
+        XCTAssertTrue(liveTrip.vehiclePositionDisplayState.detailText.localizedCaseInsensitiveContains("vehicle-position feed"))
+
+        let unknownPositionTrip = tripVariant(
+            from: starter,
+            clearsVehicleCoordinate: true,
+            sourceProvenance: SourceProvenance(
+                providerID: "unknown-position",
+                providerName: "Unknown position provider",
+                sourceName: "Saved source",
+                sourceKind: .inferred,
+                confidence: .unknown,
+                freshness: .unknown
+            ),
+            factProvenance: [
+                FactProvenance(
+                    fact: .vehiclePosition,
+                    sourceName: "Saved source",
+                    sourceKind: .inferred,
+                    confidence: .unknown,
+                    note: "No vehicle position source is connected."
+                )
+            ]
+        )
+        XCTAssertEqual(unknownPositionTrip.vehiclePositionDisplayState.kind, .unavailable)
+        XCTAssertFalse(unknownPositionTrip.vehiclePositionDisplayState.rendersMapMarker)
+        XCTAssertEqual(unknownPositionTrip.vehiclePositionDisplayState.mapLabel, "No vehicle position")
+
+        let noPlatformTrip = tripVariant(
+            from: starter,
+            platform: "TBD",
+            stops: [
+                StationStop(name: "Tokyo", time: "09:21", platform: "Unknown", note: "Origin", state: .done),
+                StationStop(name: "Nagoya", time: "10:59", platform: "", note: "Next", state: .current)
+            ]
+        )
+        XCTAssertEqual(noPlatformTrip.platformDisplayState.kind, .unavailable)
+        XCTAssertEqual(noPlatformTrip.displayPlatform, "Not available")
+        XCTAssertEqual(noPlatformTrip.stops[0].displayPlatform, "Not available")
+        XCTAssertTrue(noPlatformTrip.platformDisplayState.detailText.localizedCaseInsensitiveContains("not supplied"))
+
+        let staleSource = SourceProvenance(
+            providerID: "saved",
+            providerName: "Saved trip",
+            sourceName: "Legacy saved source",
+            sourceKind: .inferred,
+            confidence: .unknown,
+            freshness: .stale
+        )
+        let staleTrip = tripVariant(
+            from: starter,
+            sourceProvenance: staleSource,
+            factProvenance: FactProvenance.legacyFacts(for: staleSource)
+        )
+        XCTAssertEqual(staleTrip.sourceStateDisplayState.kind, .staleSaved)
+        XCTAssertTrue(staleTrip.sourceStateDisplayState.needsVisibleCallout)
+        XCTAssertEqual(staleTrip.sourceStateDisplayState.title, "Stale saved trip")
+    }
+
     func testFallbackBehavior() throws {
         let provider = ShinkansenTrainProvider(consumerKey: nil)
         XCTAssertFalse(provider.isODPTConfigured)
@@ -101,11 +192,238 @@ final class TrainyTests: XCTestCase {
         XCTAssertTrue(trips.contains { $0.sourceProvenance.sourceKind == .starterCatalog })
     }
 
+    func testSearchExamplesAndStarterSearchStayScopedToJapanProvider() async throws {
+        let suiteName = "TrainyTests-\(UUID().uuidString)"
+        guard let defaults = UserDefaults(suiteName: suiteName) else {
+            XCTFail("Could not create UserDefaults suite")
+            return
+        }
+        defer {
+            defaults.removePersistentDomain(forName: suiteName)
+        }
+
+        let store = TrainStore(defaults: defaults, provider: ShinkansenTrainProvider(consumerKey: nil))
+        XCTAssertEqual(store.activeProviderRegion, .japan)
+        XCTAssertTrue(store.searchExamples.contains("Tokyo to Shin-Osaka"))
+
+        await store.searchLiveTrips(matching: "Tokyo to Shin-Osaka")
+        let results = store.searchableResults
+
+        XCTAssertFalse(results.isEmpty)
+        XCTAssertTrue(results.allSatisfy { $0.providerID == "shinkansen" })
+        XCTAssertTrue(results.contains { $0.sourceProvenance.sourceKind == .starterCatalog })
+        XCTAssertNil(store.searchEmptyState(for: "Tokyo to Shin-Osaka", results: results))
+    }
+
+    func testSearchEmptyStateDistinguishesNoMatchesFromProviderUnavailable() async throws {
+        let suiteName = "TrainyTests-\(UUID().uuidString)"
+        guard let defaults = UserDefaults(suiteName: suiteName) else {
+            XCTFail("Could not create UserDefaults suite")
+            return
+        }
+        defer {
+            defaults.removePersistentDomain(forName: suiteName)
+        }
+
+        let store = TrainStore(defaults: defaults, provider: ShinkansenTrainProvider(consumerKey: nil))
+        store.query = "zzzz-not-a-route"
+        await store.searchLiveTrips(matching: "zzzz-not-a-route")
+        let noMatchState = try XCTUnwrap(store.searchEmptyState(for: "zzzz-not-a-route", results: store.searchableResults))
+        XCTAssertEqual(noMatchState.kind, .noMatches)
+        XCTAssertTrue(noMatchState.title.localizedCaseInsensitiveContains("Japan"))
+        XCTAssertTrue(noMatchState.message.localizedCaseInsensitiveContains("starter catalog"))
+        XCTAssertEqual(noMatchState.actionTitle, "Manual note only")
+
+        let unavailableProvider = SearchFixtureProvider(
+            providerID: "blocked-provider",
+            displayName: "Blocked Provider",
+            region: .unitedKingdom,
+            capabilities: [.schedule],
+            availability: .requiresConfiguration("Missing provider credentials.", requirements: [.localKey("BLOCKED_KEY")]),
+            catalog: [TrainTrip.samples[0]]
+        )
+        let unavailableStore = TrainStore(defaults: defaults, provider: unavailableProvider)
+        unavailableStore.query = "London"
+        await unavailableStore.searchLiveTrips(matching: "London")
+        let unavailableState = try XCTUnwrap(unavailableStore.searchEmptyState(for: "London", results: unavailableStore.searchableResults))
+        XCTAssertEqual(unavailableState.kind, .providerUnavailable)
+        XCTAssertTrue(unavailableState.title.localizedCaseInsensitiveContains("Provider unavailable"))
+        XCTAssertTrue(unavailableState.message.localizedCaseInsensitiveContains("Missing provider credentials"))
+        XCTAssertNil(unavailableState.actionTitle)
+    }
+
+    func testSearchDistinguishesRealtimeUnavailableFromScheduleUnavailable() async throws {
+        let shinkansenSuiteName = "TrainyTests-\(UUID().uuidString)"
+        let schedulelessSuiteName = "TrainyTests-\(UUID().uuidString)"
+        let shinkansenDefaults = try XCTUnwrap(UserDefaults(suiteName: shinkansenSuiteName))
+        let schedulelessDefaults = try XCTUnwrap(UserDefaults(suiteName: schedulelessSuiteName))
+        defer {
+            shinkansenDefaults.removePersistentDomain(forName: shinkansenSuiteName)
+            schedulelessDefaults.removePersistentDomain(forName: schedulelessSuiteName)
+        }
+
+        let shinkansenStore = TrainStore(defaults: shinkansenDefaults, provider: ShinkansenTrainProvider(consumerKey: nil))
+        let realtimeNotice = try XCTUnwrap(shinkansenStore.searchCapabilityNotice)
+        XCTAssertEqual(realtimeNotice.kind, .realtimeUnavailable)
+        XCTAssertTrue(realtimeNotice.message.localizedCaseInsensitiveContains("Prediction labels"))
+
+        let schedulelessProvider = SearchFixtureProvider(
+            providerID: "board-only",
+            displayName: "Board Only",
+            region: .hongKong,
+            capabilities: [.stationBoard],
+            availability: .available("Station board only."),
+            catalog: [TrainTrip.samples[0]]
+        )
+        let schedulelessStore = TrainStore(defaults: schedulelessDefaults, provider: schedulelessProvider)
+        schedulelessStore.query = "Central"
+        await schedulelessStore.searchLiveTrips(matching: "Central")
+        let scheduleState = try XCTUnwrap(schedulelessStore.searchEmptyState(for: "Central", results: schedulelessStore.searchableResults))
+
+        XCTAssertEqual(schedulelessStore.searchCapabilityNotice?.kind, .scheduleUnavailable)
+        XCTAssertEqual(scheduleState.kind, .scheduleUnavailable)
+        XCTAssertTrue(scheduleState.message.localizedCaseInsensitiveContains("scheduled trip search"))
+        XCTAssertNil(scheduleState.actionTitle)
+    }
+
+    func testODPTTimetableFixtureMapsToNormalizedTrip() throws {
+        let timetableData = try fixtureData("odpt_train_timetable_tokaido", fileExtension: "json")
+        let timetables = try JSONDecoder().decode([ODPTTrainTimetable].self, from: timetableData)
+        let route = try XCTUnwrap(ShinkansenTrainProvider.routes.first { $0.id == "tokaido" })
+        let railwayRef = try XCTUnwrap(ShinkansenTrainProvider.odptRailwaysByRouteID["tokaido"]?.first)
+        let starterTrips = ShinkansenTrainProvider.allTrips.filter { $0.routeID == route.id }
+
+        let informationData = try fixtureData("odpt_train_information_tokaido", fileExtension: "json")
+        let information = try JSONDecoder().decode([ODPTTrainInformation].self, from: informationData)
+        let serviceNotice = try XCTUnwrap(information.first)
+        let status = try XCTUnwrap(serviceNotice.status?.displayText)
+        let detail = try XCTUnwrap(serviceNotice.text?.displayText)
+        let alerts = [
+            TrainAlert(
+                title: status,
+                detail: detail,
+                tone: status.localizedCaseInsensitiveContains("normal") ? .good : .watch
+            )
+        ]
+
+        let trips = timetables.compactMap { timetable in
+            ShinkansenTrainProvider.trip(
+                from: timetable,
+                route: route,
+                railwayRef: railwayRef,
+                starterTrips: starterTrips,
+                alerts: alerts
+            )
+        }
+        let trip = try XCTUnwrap(trips.first)
+
+        XCTAssertEqual(trip.providerID, "shinkansen")
+        XCTAssertEqual(trip.routeID, "tokaido")
+        XCTAssertEqual(trip.train, "Nozomi 231")
+        XCTAssertEqual(trip.operatorName, "JR Central")
+        XCTAssertEqual(trip.origin.name, "Tokyo")
+        XCTAssertEqual(trip.destination.name, "Shin-Osaka")
+        XCTAssertEqual(trip.duration, "2h 27m")
+        XCTAssertEqual(trip.sourceProvenance.providerID, "odpt")
+        XCTAssertEqual(trip.sourceProvenance.sourceKind, .officialTimetable)
+        XCTAssertEqual(trip.factProvenance.first { $0.fact == .schedule }?.confidence, .confirmed)
+        XCTAssertEqual(trip.stops.map(\.name), ["Tokyo", "Shin-Yokohama", "Nagoya", "Kyoto", "Shin-Osaka"])
+        XCTAssertEqual(trip.stops.map(\.time), ["09:21", "09:39", "10:59", "11:35", "11:48"])
+        XCTAssertTrue(trip.alerts.contains { $0.title == "Normal service" })
+    }
+
+    func testJREastHTMLFixtureMapsToTimetableTrip() throws {
+        let html = try fixtureString("jr_east_train_timetable_tohoku", fileExtension: "html")
+        let sourceURL = URL(string: "https://timetables.jreast.co.jp/en/train/fixture-hayabusa-17.html")!
+        let timetable = try XCTUnwrap(JREastTimetableClient.trainTimetable(from: html, sourceURL: sourceURL))
+        let route = try XCTUnwrap(ShinkansenTrainProvider.routes.first { $0.id == "tohoku" })
+        let reference = try XCTUnwrap(ShinkansenTrainProvider.jrEastTimetableReferencesByRouteID["tohoku"])
+        let starterTrips = ShinkansenTrainProvider.allTrips.filter { $0.routeID == route.id }
+        let trip = try XCTUnwrap(
+            ShinkansenTrainProvider.trip(
+                from: timetable,
+                route: route,
+                reference: reference,
+                starterTrips: starterTrips
+            )
+        )
+
+        XCTAssertEqual(timetable.trainName, "Hayabusa 17")
+        XCTAssertEqual(timetable.trainNumber, "17B")
+        XCTAssertEqual(timetable.stops.map(\.stationName), ["Tokyo", "Omiya", "Sendai", "Morioka", "Shin-Aomori"])
+        XCTAssertEqual(trip.providerID, "shinkansen")
+        XCTAssertEqual(trip.routeID, "tohoku")
+        XCTAssertEqual(trip.liveTripID, "17B")
+        XCTAssertEqual(trip.train, "Hayabusa 17")
+        XCTAssertEqual(trip.origin.name, "Tokyo")
+        XCTAssertEqual(trip.destination.name, "Shin-Aomori")
+        XCTAssertEqual(trip.duration, "3h 13m")
+        XCTAssertEqual(trip.sourceProvenance.providerID, "jr-east")
+        XCTAssertEqual(trip.sourceProvenance.sourceKind, .officialTimetable)
+        XCTAssertEqual(trip.factProvenance.first { $0.fact == .schedule }?.confidence, .confirmed)
+    }
+
+    func testStarterCatalogExpectationFixtureMatchesFallbackWithoutNetwork() async throws {
+        let expectationData = try fixtureData("starter_catalog_expectations", fileExtension: "json")
+        let expectation = try JSONDecoder().decode(StarterCatalogExpectation.self, from: expectationData)
+        let provider = ShinkansenTrainProvider(consumerKey: nil)
+
+        XCTAssertFalse(expectation.requiresNetwork)
+        XCTAssertFalse(provider.isODPTConfigured)
+        XCTAssertEqual(provider.providerID, expectation.providerID)
+        XCTAssertEqual(provider.defaultTrips.map(\.id), expectation.expectedTripIDs)
+        XCTAssertEqual(provider.defaultTrips.count, expectation.defaultTripCount)
+
+        let trips = try await provider.fetchTrips(matching: expectation.fallbackQuery, knownRoutes: ShinkansenTrainProvider.routes)
+        XCTAssertFalse(trips.isEmpty)
+        XCTAssertTrue(trips.contains { $0.routeID == expectation.expectedFallbackRouteID })
+        XCTAssertTrue(trips.allSatisfy { $0.sourceProvenance.sourceKind.rawValue == expectation.expectedSourceKind })
+    }
+
+    func testFixtureFilesDoNotContainCredentialMarkers() throws {
+        let forbiddenMarkers = [
+            "ODPT_CONSUMER_KEY",
+            "NS_SUBSCRIPTION_KEY",
+            "TDX_CLIENT_ID",
+            "TDX_CLIENT_SECRET",
+            "TFNSW_API_KEY",
+            "SWISS_OPEN_TRANSPORT_API_KEY",
+            "SWISS_GTFS_RT_API_KEY",
+            "TRANSPORT_DATA_GOUV_FR_TOKEN",
+            "SNCF_API_TOKEN",
+            "UK_DARWIN",
+            "acl:consumerKey",
+            "Ocp-Apim-Subscription-Key",
+            "Authorization:",
+            "Bearer ",
+            "apikey ",
+            "client_secret",
+            "x-api-key",
+            "password=",
+            "secret=",
+            "token="
+        ]
+
+        let fixtureURLs = try allFixtureFileURLs()
+        XCTAssertFalse(fixtureURLs.isEmpty)
+
+        for fixtureURL in fixtureURLs {
+            let contents = try String(contentsOf: fixtureURL, encoding: .utf8)
+            for marker in forbiddenMarkers {
+                XCTAssertFalse(
+                    contents.localizedCaseInsensitiveContains(marker),
+                    "\(fixtureURL.lastPathComponent) should not contain credential marker \(marker)."
+                )
+            }
+        }
+    }
+
     func testStationNormalization() {
         XCTAssertEqual(ProviderTextUtilities.normalizedStationKey("Tokyo"), "tokyo")
         XCTAssertEqual(ProviderTextUtilities.normalizedStationKey("Shin-Osaka"), "shinosaka")
         XCTAssertEqual(ProviderTextUtilities.normalizedStationKey("odpt.Station.ShinOsaka"), "odptstationshinosaka")
         XCTAssertEqual(ShinkansenTrainProvider.stationName(from: "odpt.Station.ShinOsaka"), "Shin-Osaka")
+        XCTAssertEqual(ShinkansenTrainProvider.operatorName(from: "odpt.Operator:JR-Central"), "JR Central")
         XCTAssertEqual(ShinkansenTrainProvider.point(for: "odpt.Station.Tokyo", time: "09:21").name, "Tokyo")
         XCTAssertEqual(ShinkansenTrainProvider.point(for: "odpt.Station.ShinOsaka", time: "11:48").name, "Shin-Osaka")
     }
@@ -119,6 +437,56 @@ final class TrainyTests: XCTestCase {
         XCTAssertEqual(ShinkansenTrainProvider.progress(currentIndex: 0, count: 1), 0)
         XCTAssertEqual(ShinkansenTrainProvider.progress(currentIndex: 0, count: 3), 0)
         XCTAssertEqual(ShinkansenTrainProvider.progress(currentIndex: 2, count: 3), 0.98)
+    }
+
+    func testDisplayPreferencesPersistAndFormatWithoutProviderCredentials() throws {
+        let suiteName = "TrainyTests-\(UUID().uuidString)"
+        guard let defaults = UserDefaults(suiteName: suiteName) else {
+            XCTFail("Could not create UserDefaults suite")
+            return
+        }
+        defer {
+            defaults.removePersistentDomain(forName: suiteName)
+        }
+
+        var preferences = UserPreferences(defaults: defaults)
+        XCTAssertEqual(preferences.timeFormat, .hour12)
+        XCTAssertEqual(preferences.unitSystem, .metric)
+        XCTAssertEqual(preferences.sourceLabelVerbosity, .compact)
+
+        preferences.timeFormat = .hour24
+        preferences.unitSystem = .imperial
+        preferences.sourceLabelVerbosity = .detailed
+        defaults.set(true, forKey: "trainy.localDelayNoticesEnabled")
+        defaults.set(true, forKey: "trainy.localPlatformNoticesEnabled")
+        defaults.set(true, forKey: "trainy.diagnosticsConsent")
+
+        let returningPreferences = UserPreferences(defaults: defaults)
+        XCTAssertEqual(returningPreferences.timeFormat, .hour24)
+        XCTAssertEqual(returningPreferences.unitSystem, .imperial)
+        XCTAssertEqual(returningPreferences.sourceLabelVerbosity, .detailed)
+        XCTAssertTrue(defaults.bool(forKey: "trainy.localDelayNoticesEnabled"))
+        XCTAssertTrue(defaults.bool(forKey: "trainy.localPlatformNoticesEnabled"))
+        XCTAssertTrue(defaults.bool(forKey: "trainy.diagnosticsConsent"))
+
+        let tokyo = TimeZone(identifier: "Asia/Tokyo")!
+        XCTAssertEqual("09:21".formattedAsTime(in: tokyo, format: .hour12), "9:21 AM")
+        XCTAssertEqual("09:21".formattedAsTime(in: tokyo, format: returningPreferences.timeFormat), "09:21")
+
+        let noKeyProvider = ShinkansenTrainProvider(consumerKey: nil)
+        let store = TrainStore(defaults: defaults, provider: noKeyProvider)
+        XCTAssertFalse(noKeyProvider.isODPTConfigured)
+        XCTAssertFalse(store.trips.isEmpty)
+        XCTAssertEqual(store.providerDirectory.first { $0.id == store.activeProviderID }?.region, .japan)
+    }
+
+    func testUnitConverterKeepsUnsupportedDisplayStringsAndConvertsMetricValues() {
+        XCTAssertEqual(UnitConverter.displaySpeed("300 km/h", useMetric: true), "300 km/h")
+        XCTAssertEqual(UnitConverter.displaySpeed("300 km/h", useMetric: false), "186 mph")
+        XCTAssertEqual(UnitConverter.displaySpeed("Timetable", useMetric: false), "Timetable")
+        XCTAssertEqual(UnitConverter.displayDistance("515.4 km", useMetric: true), "515.4 km")
+        XCTAssertEqual(UnitConverter.displayDistance("515.4 km", useMetric: false), "320.3 mi")
+        XCTAssertEqual(UnitConverter.displayDistance("5 stops", useMetric: false), "5 stops")
     }
 
     func testPersistenceMigrationByDataScope() throws {
@@ -153,6 +521,111 @@ final class TrainyTests: XCTestCase {
         let currentStore = TrainStore(defaults: defaults, provider: provider)
         XCTAssertEqual(currentStore.trips.map(\.id), [currentTrip.id])
         XCTAssertEqual(currentStore.selectedTripID, currentTrip.id)
+    }
+
+    func testFirstRunStatePersistsAndCanReset() throws {
+        let suiteName = "TrainyTests-\(UUID().uuidString)"
+        guard let defaults = UserDefaults(suiteName: suiteName) else {
+            XCTFail("Could not create UserDefaults suite")
+            return
+        }
+        defer {
+            defaults.removePersistentDomain(forName: suiteName)
+        }
+
+        let store = TrainStore(defaults: defaults, registry: .default)
+        XCTAssertTrue(store.shouldShowFirstRun)
+        XCTAssertEqual(store.activeProviderID, "shinkansen")
+        XCTAssertEqual(store.selectedProviderID, "shinkansen")
+        XCTAssertEqual(store.providerDirectory.first { $0.id == store.activeProviderID }?.region, .japan)
+
+        store.startFirstRunWithShinkansen()
+        XCTAssertFalse(store.shouldShowFirstRun)
+        XCTAssertEqual(store.selectedProviderID, "shinkansen")
+        XCTAssertEqual(store.selectedRegionID, ProviderRegion.japan.id)
+
+        let returningStore = TrainStore(defaults: defaults, registry: .default)
+        XCTAssertFalse(returningStore.shouldShowFirstRun)
+        XCTAssertEqual(returningStore.selectedProviderID, "shinkansen")
+        XCTAssertEqual(returningStore.selectedRegionID, ProviderRegion.japan.id)
+
+        returningStore.resetFirstRun()
+        XCTAssertTrue(returningStore.shouldShowFirstRun)
+
+        let resetStore = TrainStore(defaults: defaults, registry: .default)
+        XCTAssertTrue(resetStore.shouldShowFirstRun)
+    }
+
+    func testFirstRunExplorePlannedRegionsKeepsProvidersUnavailable() throws {
+        let suiteName = "TrainyTests-\(UUID().uuidString)"
+        guard let defaults = UserDefaults(suiteName: suiteName) else {
+            XCTFail("Could not create UserDefaults suite")
+            return
+        }
+        defer {
+            defaults.removePersistentDomain(forName: suiteName)
+        }
+
+        let store = TrainStore(defaults: defaults, registry: .default)
+        store.explorePlannedRegionsFromFirstRun()
+
+        XCTAssertFalse(store.shouldShowFirstRun)
+        XCTAssertEqual(store.selectedRegionID, ProviderRegion.all.id)
+        XCTAssertTrue(store.visibleProviderDirectory.contains { $0.id == "taiwan-tdx" })
+        XCTAssertTrue(store.visibleProviderDirectory.contains { $0.implementationStatus == .planned })
+        XCTAssertFalse(store.providerCanSearch("taiwan-tdx"))
+        XCTAssertFalse(store.providerCanSearch("hong-kong-mtr"))
+
+        let returningStore = TrainStore(defaults: defaults, registry: .default)
+        XCTAssertFalse(returningStore.shouldShowFirstRun)
+        XCTAssertEqual(returningStore.selectedRegionID, ProviderRegion.all.id)
+        XCTAssertFalse(returningStore.providerCanSearch("taiwan-tdx"))
+    }
+
+    func testProviderSettingsMetadataShowsFallbackCredentialState() throws {
+        let provider = ShinkansenTrainProvider(consumerKey: nil)
+        let registry = ProviderRegistry(providers: [provider], defaultProviderID: provider.providerID)
+        let metadata = try XCTUnwrap(registry.metadata(id: provider.providerID))
+
+        XCTAssertEqual(metadata.displayName, "Japan Shinkansen")
+        XCTAssertEqual(metadata.region, .japan)
+        XCTAssertEqual(metadata.implementationStatus, .active)
+        XCTAssertEqual(metadata.availability.status, .degraded)
+        XCTAssertTrue(metadata.availability.canSearch)
+        XCTAssertTrue(metadata.availability.message.localizedCaseInsensitiveContains("Starter catalog fallback"))
+        XCTAssertTrue(metadata.availability.message.localizedCaseInsensitiveContains("ODPT_CONSUMER_KEY"))
+        XCTAssertTrue(metadata.capabilities.contains(.schedule))
+        XCTAssertFalse(metadata.capabilities.contains(.serviceAlerts))
+        XCTAssertTrue(metadata.requirements.contains(.localKey("ODPT_CONSUMER_KEY")))
+        XCTAssertTrue(metadata.requirements.contains(.attribution("ODPT developer terms and JR timetable attribution")))
+        XCTAssertTrue(metadata.requirements.contains(.terms("ODPT developer terms and JR timetable terms")))
+        XCTAssertTrue(metadata.sourceLinks.contains { $0.title.localizedCaseInsensitiveContains("ODPT") })
+        XCTAssertTrue(metadata.sourceLinks.contains { $0.title.localizedCaseInsensitiveContains("JR East") })
+    }
+
+    func testPlannedProvidersRemainUnavailableForSettingsSelection() throws {
+        let suiteName = "TrainyTests-\(UUID().uuidString)"
+        guard let defaults = UserDefaults(suiteName: suiteName) else {
+            XCTFail("Could not create UserDefaults suite")
+            return
+        }
+        defer {
+            defaults.removePersistentDomain(forName: suiteName)
+        }
+
+        let registry = ProviderRegistry.default
+        let store = TrainStore(defaults: defaults, registry: registry)
+        let planned = try XCTUnwrap(registry.metadata(id: "taiwan-tdx"))
+
+        XCTAssertEqual(planned.implementationStatus, .planned)
+        XCTAssertFalse(planned.isSearchable)
+        XCTAssertFalse(planned.availability.canSearch)
+        XCTAssertFalse(registry.canSearch(providerID: planned.id))
+        XCTAssertTrue(planned.availability.message.localizedCaseInsensitiveContains("Needs"))
+
+        store.selectProvider(planned.id)
+        XCTAssertEqual(store.selectedProviderID, "shinkansen")
+        XCTAssertEqual(store.activeProviderID, "shinkansen")
     }
 
     func testProviderErrorToUserMessageMapping() {
@@ -207,6 +680,49 @@ final class TrainyTests: XCTestCase {
         )
     }
 
+    private func fixtureData(_ name: String, fileExtension: String) throws -> Data {
+        try Data(contentsOf: fixtureURL("\(name).\(fileExtension)"))
+    }
+
+    private func fixtureString(_ name: String, fileExtension: String) throws -> String {
+        try fixtureString("\(name).\(fileExtension)")
+    }
+
+    private func fixtureString(_ fileName: String) throws -> String {
+        try String(contentsOf: fixtureURL(fileName), encoding: .utf8)
+    }
+
+    private func fixtureURL(_ fileName: String) -> URL {
+        fixtureRootURL()
+            .appendingPathComponent(fileName)
+    }
+
+    private func fixtureRootURL() -> URL {
+        URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .appendingPathComponent("Fixtures")
+    }
+
+    private func allFixtureFileURLs() throws -> [URL] {
+        let rootURL = fixtureRootURL()
+        guard let enumerator = FileManager.default.enumerator(
+            at: rootURL,
+            includingPropertiesForKeys: [.isRegularFileKey],
+            options: [.skipsHiddenFiles]
+        ) else {
+            return []
+        }
+
+        var urls: [URL] = []
+        for case let url as URL in enumerator {
+            let values = try url.resourceValues(forKeys: [.isRegularFileKey])
+            if values.isRegularFile == true {
+                urls.append(url)
+            }
+        }
+        return urls
+    }
+
     private func legacyPayloadWithoutNewSourceFields(from trip: TrainTrip) throws -> Data {
         let encoded = try JSONEncoder().encode(trip)
         guard var object = try JSONSerialization.jsonObject(with: encoded) as? [String: Any] else {
@@ -226,6 +742,87 @@ final class TrainyTests: XCTestCase {
         object["providerID"] = "legacy-us"
         object["routeID"] = "legacy-us-route"
         return try JSONSerialization.data(withJSONObject: [object])
+    }
+
+    private func tripVariant(
+        from trip: TrainTrip,
+        platform: String? = nil,
+        stops: [StationStop]? = nil,
+        vehicleLatitude: Double? = nil,
+        vehicleLongitude: Double? = nil,
+        clearsVehicleCoordinate: Bool = false,
+        sourceProvenance: SourceProvenance? = nil,
+        factProvenance: [FactProvenance]? = nil
+    ) -> TrainTrip {
+        TrainTrip(
+            id: trip.id,
+            providerID: trip.providerID,
+            routeID: trip.routeID,
+            liveTripID: trip.liveTripID,
+            train: trip.train,
+            operatorName: trip.operatorName,
+            service: trip.service,
+            origin: trip.origin,
+            destination: trip.destination,
+            duration: trip.duration,
+            status: trip.status,
+            statusTone: trip.statusTone,
+            category: trip.category,
+            platform: platform ?? trip.platform,
+            nextStop: trip.nextStop,
+            eta: trip.eta,
+            speed: trip.speed,
+            progress: trip.progress,
+            bestCar: trip.bestCar,
+            cars: trip.cars,
+            seat: trip.seat,
+            updated: trip.updated,
+            callout: trip.callout,
+            signal: trip.signal,
+            signalCopy: trip.signalCopy,
+            stops: stops ?? trip.stops,
+            alerts: trip.alerts,
+            pulse: trip.pulse,
+            vehicleLatitude: clearsVehicleCoordinate ? nil : (vehicleLatitude ?? trip.vehicleLatitude),
+            vehicleLongitude: clearsVehicleCoordinate ? nil : (vehicleLongitude ?? trip.vehicleLongitude),
+            distanceText: trip.distanceText,
+            dataSource: trip.dataSource,
+            sourceProvenance: sourceProvenance ?? trip.sourceProvenance,
+            factProvenance: factProvenance ?? trip.factProvenance
+        )
+    }
+}
+
+private struct StarterCatalogExpectation: Decodable {
+    let providerID: String
+    let defaultTripCount: Int
+    let expectedTripIDs: [String]
+    let fallbackQuery: String
+    let expectedFallbackRouteID: String
+    let expectedSourceKind: String
+    let requiresNetwork: Bool
+}
+
+private struct SearchFixtureProvider: ScheduleFeedProvider {
+    let providerID: String
+    let displayName: String
+    let region: ProviderRegion
+    let capabilities: Set<ProviderCapability>
+    let availability: ProviderAvailability
+    var feedLabel: String = "Fixture feed"
+    var catalog: [TrainTrip] = []
+    var includesCatalogResultsInSearch = false
+    var tripsToReturn: [TrainTrip] = []
+
+    func fetchRoutes() async throws -> [LiveTrainRoute] {
+        ShinkansenTrainProvider.routes
+    }
+
+    func fetchTrips(matching query: String, knownRoutes: [LiveTrainRoute]) async throws -> [TrainTrip] {
+        if tripsToReturn.isEmpty {
+            throw TrainDataProviderError.noLiveTrips
+        }
+        return tripsToReturn
     }
 }
 

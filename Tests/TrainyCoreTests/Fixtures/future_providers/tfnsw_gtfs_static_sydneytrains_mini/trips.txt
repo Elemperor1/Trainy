@@ -1,0 +1,2 @@
+route_id,service_id,trip_id,trip_headsign,trip_short_name,direction_id,block_id,shape_id,wheelchair_accessible,vehicle_category_id
+WST_1a,1380.127.124,161D.1380.127.124.A.8.90014357,Penrith,,0,485658,WST_1a,0,A8

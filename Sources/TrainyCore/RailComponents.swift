@@ -4,8 +4,8 @@ import SwiftUI
 
 extension String {
     /// Formats a HH:MM time string according to user preferences in the given time zone
-    func formattedAsTime(in timeZone: TimeZone) -> String {
-        let prefs = UserPreferences.shared
+    func formattedAsTime(in timeZone: TimeZone, format: UserPreferences.TimeFormat? = nil) -> String {
+        let resolvedFormat = format ?? UserPreferences.shared.timeFormat
         let pieces = split(separator: ":").compactMap { Int($0) }
         guard pieces.count >= 2 else { return self }
 
@@ -22,11 +22,7 @@ extension String {
         dateComponents.minute = pieces[1]
 
         if let date = calendar.date(from: dateComponents) {
-            let formatter = DateFormatter()
-            formatter.timeZone = timeZone
-            formatter.timeStyle = prefs.timeFormat.timeStyle
-            formatter.dateStyle = .none
-            return formatter.string(from: date)
+            return resolvedFormat.makeFormatter(timeZone: timeZone).string(from: date)
         }
         return self
     }
@@ -187,9 +183,36 @@ struct SourceBadge: View {
 
     let trip: TrainTrip
     var style: Style = .compact
+    @AppStorage("trainy.sourceLabelVerbosity") private var sourceLabelVerbosityRaw = UserPreferences.SourceLabelVerbosity.compact.rawValue
 
     private var source: SourceProvenance {
         trip.sourceProvenance
+    }
+
+    private var verbosity: UserPreferences.SourceLabelVerbosity {
+        UserPreferences.SourceLabelVerbosity(rawValue: sourceLabelVerbosityRaw) ?? .compact
+    }
+
+    private var title: String {
+        switch verbosity {
+        case .compact:
+            return source.sourceKind.badgeTitle
+        case .detailed:
+            return source.sourceKind.riderTitle
+        }
+    }
+
+    private var width: CGFloat {
+        switch (style, verbosity) {
+        case (.compact, .compact):
+            return style.width
+        case (.regular, .compact):
+            return style.width
+        case (.compact, .detailed):
+            return 172
+        case (.regular, .detailed):
+            return 220
+        }
     }
 
     var body: some View {
@@ -198,7 +221,7 @@ struct SourceBadge: View {
                 .imageScale(.small)
                 .frame(width: 14)
 
-            Text(source.sourceKind.badgeTitle)
+            Text(title)
                 .font(.caption.weight(.bold))
                 .lineLimit(1)
                 .minimumScaleFactor(0.72)
@@ -207,7 +230,7 @@ struct SourceBadge: View {
         }
         .foregroundStyle(source.sourceKind.badgeTint)
         .padding(.horizontal, RailDesign.Spacing.xs)
-        .frame(width: style.width, height: style.height, alignment: .leading)
+        .frame(width: width, height: style.height, alignment: .leading)
         .railLiquidGlass(cornerRadius: RailDesign.Radius.chip, tint: source.sourceKind.badgeTint.opacity(0.12))
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("\(source.sourceKind.riderTitle) source, \(source.confidence.displayName) confidence, \(source.freshness.displayName)")
@@ -427,6 +450,7 @@ struct PlatformChip: View {
 struct TrainTripCard: View {
     let trip: TrainTrip
     var role: Role = .upcoming
+    @AppStorage("trainy.timeFormat") private var timeFormatRaw = UserPreferences.TimeFormat.hour12.rawValue
 
     enum Role {
         case upcoming
@@ -437,6 +461,14 @@ struct TrainTripCard: View {
 
     private var status: RailServiceStatus {
         RailServiceStatus.from(trip)
+    }
+
+    private var timeFormat: UserPreferences.TimeFormat {
+        UserPreferences.TimeFormat(rawValue: timeFormatRaw) ?? .hour12
+    }
+
+    private var formattedETA: String {
+        trip.eta.formattedAsTime(in: trip.destination.timeZone, format: timeFormat)
     }
 
     var body: some View {
@@ -496,7 +528,7 @@ struct TrainTripCard: View {
                             Text(trip.nextStop)
                                 .font(.subheadline.weight(.semibold))
                                 .foregroundStyle(RailDesign.Palette.ink)
-                            Text("ETA \(trip.eta)")
+                            Text("ETA \(formattedETA)")
                                 .font(.caption)
                                 .foregroundStyle(status.tint)
                         }
@@ -509,7 +541,7 @@ struct TrainTripCard: View {
             }
         }
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("\(trip.train), \(trip.origin.name) to \(trip.destination.name), \(trip.status), platform \(trip.platform), \(trip.sourceProvenance.sourceKind.riderTitle) source, \(trip.sourceProvenance.freshness.displayName)")
+        .accessibilityLabel("\(trip.train), \(trip.origin.name) to \(trip.destination.name), \(trip.status), platform \(trip.displayPlatform), \(trip.sourceProvenance.sourceKind.riderTitle) source, \(trip.sourceProvenance.freshness.displayName)")
     }
 }
 
@@ -527,6 +559,7 @@ private struct TripOpenCue: View {
 struct StopTimelineRow: View {
     let stop: StationStop
     let isLast: Bool
+    @AppStorage("trainy.timeFormat") private var timeFormatRaw = UserPreferences.TimeFormat.hour12.rawValue
 
     private var tint: Color {
         switch stop.state {
@@ -556,6 +589,14 @@ struct StopTimelineRow: View {
             .replacingOccurrences(of: "gate", with: "platform")
     }
 
+    private var timeFormat: UserPreferences.TimeFormat {
+        UserPreferences.TimeFormat(rawValue: timeFormatRaw) ?? .hour12
+    }
+
+    private var timeZone: TimeZone {
+        TimeZone(identifier: "Asia/Tokyo")!
+    }
+
     var body: some View {
         HStack(alignment: .top, spacing: RailDesign.Spacing.s) {
             VStack(spacing: 0) {
@@ -583,7 +624,7 @@ struct StopTimelineRow: View {
 
             VStack(alignment: .leading, spacing: RailDesign.Spacing.xs) {
                 HStack(alignment: .firstTextBaseline) {
-                    Text(stop.time)
+                    Text(stop.time.formattedAsTime(in: timeZone, format: timeFormat))
                         .font(.subheadline.monospacedDigit().weight(.semibold))
                         .foregroundStyle(RailDesign.Palette.ink)
                     Text(stop.name)
@@ -801,6 +842,7 @@ private struct StationColumn: View {
     let time: String
     let timeZone: TimeZone
     var alignment: HorizontalAlignment = .leading
+    @AppStorage("trainy.timeFormat") private var timeFormatRaw = UserPreferences.TimeFormat.hour12.rawValue
 
     init(title: String, time: String, alignment: HorizontalAlignment = .leading) {
         self.title = title
@@ -811,7 +853,7 @@ private struct StationColumn: View {
 
     var body: some View {
         VStack(alignment: alignment, spacing: RailDesign.Spacing.xxs) {
-            Text(time.formattedAsTime(in: timeZone))
+            Text(time.formattedAsTime(in: timeZone, format: timeFormat))
                 .font(.title3.monospacedDigit().weight(.bold))
                 .foregroundStyle(RailDesign.Palette.ink)
                 .lineLimit(1)
@@ -823,6 +865,10 @@ private struct StationColumn: View {
                 .minimumScaleFactor(0.78)
         }
         .frame(maxWidth: .infinity, alignment: alignment == .leading ? .leading : .trailing)
+    }
+
+    private var timeFormat: UserPreferences.TimeFormat {
+        UserPreferences.TimeFormat(rawValue: timeFormatRaw) ?? .hour12
     }
 }
 

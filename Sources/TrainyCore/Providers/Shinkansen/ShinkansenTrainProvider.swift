@@ -28,7 +28,8 @@ struct ShinkansenTrainProvider: ScheduleFeedProvider, RealtimeFeedProvider {
     var requirements: Set<ProviderRequirement> {
         authStrategy.requirements.union([
             .networkAccess,
-            .attribution("ODPT developer terms and JR timetable attribution")
+            .attribution("ODPT developer terms and JR timetable attribution"),
+            .terms("ODPT developer terms and JR timetable terms")
         ])
     }
 
@@ -51,7 +52,7 @@ struct ShinkansenTrainProvider: ScheduleFeedProvider, RealtimeFeedProvider {
         if isODPTConfigured {
             return .available("ODPT timetable and service-alert lookups are configured.", requirements: requirements)
         }
-        return .available("Starter catalog is available. Configure ODPT_CONSUMER_KEY for ODPT timetable and alert feeds.", requirements: requirements)
+        return .degraded("Starter catalog fallback is active. Configure ODPT_CONSUMER_KEY for ODPT timetable and alert feeds.", requirements: requirements)
     }
 
     var feedLabel: String {

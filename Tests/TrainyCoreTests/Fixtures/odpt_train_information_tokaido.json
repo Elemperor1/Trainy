@@ -1,0 +1,16 @@
+[
+  {
+    "odpt:trainInformationStatus": {
+      "ja": "Normal service",
+      "en": "Normal service"
+    },
+    "odpt:trainInformationText": {
+      "ja": "Tokaido Shinkansen services are operating to the scheduled timetable.",
+      "en": "Tokaido Shinkansen services are operating to the scheduled timetable."
+    },
+    "odpt:trainInformationArea": {
+      "ja": "Tokaido Shinkansen",
+      "en": "Tokaido Shinkansen"
+    }
+  }
+]

@@ -92,8 +92,10 @@ struct RailJourneyMapPanel: View {
                         }
                     }
 
-                    Annotation("", coordinate: model.trainCoordinate) {
-                        RailMapTrainPin(status: model.status)
+                    if let positionCoordinate = model.positionCoordinate {
+                        Annotation("", coordinate: positionCoordinate) {
+                            RailMapPositionPin(state: model.positionState, status: model.status)
+                        }
                     }
                 }
                 .mapStyle(.standard(elevation: .realistic, pointsOfInterest: .excludingAll))
@@ -245,6 +247,8 @@ private struct RailMapModel {
     let stops: [RailMapStop]
     let routeCoordinates: [CLLocationCoordinate2D]
     let trainCoordinate: CLLocationCoordinate2D
+    let positionCoordinate: CLLocationCoordinate2D?
+    let positionState: RailVehiclePositionDisplayState
     let status: RailServiceStatus
 
     init(trip: TrainTrip) {
@@ -253,6 +257,16 @@ private struct RailMapModel {
         self.stops = Self.makeStops(for: trip)
         self.routeCoordinates = Self.curvedRouteCoordinates(from: stops.map(\.coordinate))
         self.trainCoordinate = Self.coordinate(at: trip.progress, in: routeCoordinates)
+        let resolvedPositionState = trip.vehiclePositionDisplayState
+        self.positionState = resolvedPositionState
+        switch resolvedPositionState.kind {
+        case .liveVehicle:
+            self.positionCoordinate = trip.vehicleMapCoordinate ?? trainCoordinate
+        case .routeMarker:
+            self.positionCoordinate = trainCoordinate
+        case .unavailable:
+            self.positionCoordinate = nil
+        }
     }
 
     var completedCoordinates: [CLLocationCoordinate2D] {
@@ -295,22 +309,37 @@ private struct RailMapModel {
     var insights: [RailMapInsight] {
         var items: [RailMapInsight] = []
 
+        items.append(
+            RailMapInsight(
+                title: trip.vehiclePositionDisplayState.title,
+                detail: trip.vehiclePositionDisplayState.detailText,
+                symbolName: trip.vehiclePositionDisplayState.symbolName,
+                tint: trip.vehiclePositionDisplayState.isLiveVehiclePosition ? RailDesign.Palette.blue : RailDesign.Palette.marine
+            )
+        )
+
         if let nextStop {
+            let platform = nextStop.platformDisplayState
             items.append(
                 RailMapInsight(
-                    title: "Platform confirmed at \(nextStop.name)",
-                    detail: "Arrive around \(nextStop.time) on platform \(nextStop.platform). Keep this as the next station check.",
+                    title: platform.isKnown ? "Platform \(platform.displayText) at \(nextStop.name)" : "Platform not available at \(nextStop.name)",
+                    detail: platform.isKnown
+                        ? "Arrive around \(nextStop.time) on platform \(platform.displayText). Keep this as the next station check."
+                        : "Arrive around \(nextStop.time). This source has not supplied a platform for the next station.",
                     symbolName: "rectangle.split.3x1.fill",
-                    tint: RailDesign.Palette.accent
+                    tint: platform.isKnown ? RailDesign.Palette.accent : RailDesign.Palette.secondaryText
                 )
             )
         }
 
         if let transferStop = stops.first(where: \.isTransferPoint) {
+            let platform = transferStop.platformDisplayState
             items.append(
                 RailMapInsight(
                     title: "\(transferStop.name) transfer cue",
-                    detail: "Watch platform \(transferStop.platform) and the split/through-service note before changing trains.",
+                    detail: platform.isKnown
+                        ? "Watch platform \(platform.displayText) and the split/through-service note before changing trains."
+                        : "Watch the split/through-service note before changing trains; platform is not available from this source.",
                     symbolName: "arrow.triangle.branch",
                     tint: RailDesign.Palette.amber
                 )
@@ -378,7 +407,8 @@ private struct RailMapModel {
                 index: index,
                 name: stop.name,
                 time: stop.time,
-                platform: stop.platform,
+                platform: stop.displayPlatform,
+                platformDisplayState: stop.platformDisplayState,
                 note: stop.displayNote,
                 state: stop.state,
                 coordinate: coordinate(for: stop, index: index, count: rawStops.count, trip: trip),
@@ -500,6 +530,7 @@ private struct RailMapStop: Identifiable, Hashable {
     let name: String
     let time: String
     let platform: String
+    let platformDisplayState: RailPlatformDisplayState
     let note: String
     let state: StationStop.StopState
     let coordinate: CLLocationCoordinate2D
@@ -523,6 +554,12 @@ private struct RailMapStop: Identifiable, Hashable {
     }
 }
 
+private extension RailMapStop {
+    func formattedTime(format: UserPreferences.TimeFormat) -> String {
+        time.formattedAsTime(in: TimeZone(identifier: "Asia/Tokyo")!, format: format)
+    }
+}
+
 private struct RailMapInsight: Identifiable {
     let id = UUID()
     let title: String
@@ -533,6 +570,19 @@ private struct RailMapInsight: Identifiable {
 
 private struct RailMapStatusOverlay: View {
     let model: RailMapModel
+    @AppStorage("trainy.timeFormat") private var timeFormatRaw = UserPreferences.TimeFormat.hour12.rawValue
+
+    private var timeFormat: UserPreferences.TimeFormat {
+        UserPreferences.TimeFormat(rawValue: timeFormatRaw) ?? .hour12
+    }
+
+    private var formattedETA: String {
+        model.trip.eta.formattedAsTime(in: model.trip.destination.timeZone, format: timeFormat)
+    }
+
+    private var platformText: String {
+        model.nextStop?.platformDisplayState.displayText ?? model.trip.displayPlatform
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: RailDesign.Spacing.xs) {
@@ -546,6 +596,14 @@ private struct RailMapStatusOverlay: View {
                     .background(RailDesign.Palette.textSurface, in: Capsule())
             }
             SourceBadge(trip: model.trip)
+            Label(model.positionState.mapLabel, systemImage: model.positionState.symbolName)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(model.positionState.isLiveVehiclePosition ? RailDesign.Palette.blue : RailDesign.Palette.secondaryText)
+                .lineLimit(1)
+                .minimumScaleFactor(0.74)
+                .padding(.horizontal, RailDesign.Spacing.xs)
+                .padding(.vertical, 6)
+                .background(RailDesign.Palette.textSurface, in: Capsule())
 
             VStack(alignment: .leading, spacing: 2) {
                 Text("Next stop")
@@ -556,7 +614,7 @@ private struct RailMapStatusOverlay: View {
                     .foregroundStyle(RailDesign.Palette.ink)
                     .lineLimit(1)
                     .minimumScaleFactor(0.72)
-                Text("Platform \(model.nextStop?.platform ?? model.trip.platform) - \(model.trip.eta)")
+                Text("Platform \(platformText) - \(formattedETA)")
                     .font(.caption.weight(.medium))
                     .foregroundStyle(RailDesign.Palette.ink.opacity(0.74))
             }
@@ -643,20 +701,33 @@ private struct RailMapStopRail: View {
 private struct RailMapStopCard: View {
     let stop: RailMapStop
     let status: RailServiceStatus
+    @AppStorage("trainy.timeFormat") private var timeFormatRaw = UserPreferences.TimeFormat.hour12.rawValue
+
+    private var timeFormat: UserPreferences.TimeFormat {
+        UserPreferences.TimeFormat(rawValue: timeFormatRaw) ?? .hour12
+    }
+
+    private var platformBadgeText: String {
+        stop.platformDisplayState.isKnown ? "P\(stop.platform)" : "Platform n/a"
+    }
+
+    private var platformTint: Color {
+        stop.platformDisplayState.isKnown ? status.tint : RailDesign.Palette.secondaryText
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: RailDesign.Spacing.xs) {
             HStack {
-                Text(stop.time)
+                Text(stop.formattedTime(format: timeFormat))
                     .font(.caption.monospacedDigit().weight(.bold))
                     .foregroundStyle(RailDesign.Palette.ink)
                 Spacer()
-                Text("P\(stop.platform)")
+                Text(platformBadgeText)
                     .font(.caption2.weight(.bold))
-                    .foregroundStyle(status.tint)
+                    .foregroundStyle(platformTint)
                     .padding(.horizontal, 7)
                     .padding(.vertical, 4)
-                    .background(status.tint.opacity(0.12), in: Capsule())
+                    .background(platformTint.opacity(0.12), in: Capsule())
             }
             Text(stop.name)
                 .font(.subheadline.weight(.bold))
@@ -679,6 +750,11 @@ private struct RailMapStopDetailCard: View {
     let stop: RailMapStop
     let isNext: Bool
     let status: RailServiceStatus
+    @AppStorage("trainy.timeFormat") private var timeFormatRaw = UserPreferences.TimeFormat.hour12.rawValue
+
+    private var timeFormat: UserPreferences.TimeFormat {
+        UserPreferences.TimeFormat(rawValue: timeFormatRaw) ?? .hour12
+    }
 
     var body: some View {
         HStack(spacing: RailDesign.Spacing.s) {
@@ -687,7 +763,7 @@ private struct RailMapStopDetailCard: View {
                 Text(stop.name)
                     .font(.headline.weight(.bold))
                     .foregroundStyle(RailDesign.Palette.ink)
-                Text("\(stop.time) - Platform \(stop.platform)")
+                Text("\(stop.formattedTime(format: timeFormat)) - Platform \(stop.platformDisplayState.displayText)")
                     .font(.subheadline.weight(.medium))
                     .foregroundStyle(RailDesign.Palette.ink.opacity(0.74))
                 Text(stop.note)
@@ -742,7 +818,7 @@ private struct RailMapStationPin: View {
                     .shadow(color: RailDesign.Palette.ink.opacity(0.08), radius: 4, y: 2)
             }
         }
-        .accessibilityLabel("\(stop.name), platform \(stop.platform), \(stop.note)")
+        .accessibilityLabel("\(stop.name), platform \(stop.platformDisplayState.displayText), \(stop.note)")
     }
 
     private var fillColor: Color {
@@ -763,35 +839,41 @@ private struct RailMapStationPin: View {
     }
 }
 
-private struct RailMapTrainPin: View {
+private struct RailMapPositionPin: View {
+    let state: RailVehiclePositionDisplayState
     let status: RailServiceStatus
+
+    private var tint: Color {
+        state.isLiveVehiclePosition ? status.tint : RailDesign.Palette.marine
+    }
 
     var body: some View {
         VStack(spacing: 6) {
             ZStack {
                 Circle()
-                    .fill(status.tint.opacity(0.16))
-                    .frame(width: 76, height: 76)
-                    .overlay(Circle().stroke(.white.opacity(0.62), lineWidth: 1))
+                    .fill(tint.opacity(state.isLiveVehiclePosition ? 0.16 : 0.10))
+                    .frame(width: state.isLiveVehiclePosition ? 76 : 58, height: state.isLiveVehiclePosition ? 76 : 58)
+                    .overlay(Circle().stroke(.white.opacity(0.58), lineWidth: 1))
                 Circle()
-                    .stroke(status.tint.opacity(0.38), lineWidth: 3)
-                    .frame(width: 60, height: 60)
-                Image(systemName: "train.side.front.car")
-                    .font(.title3.weight(.black))
+                    .stroke(tint.opacity(state.isLiveVehiclePosition ? 0.38 : 0.30), lineWidth: state.isLiveVehiclePosition ? 3 : 2)
+                    .frame(width: state.isLiveVehiclePosition ? 60 : 44, height: state.isLiveVehiclePosition ? 60 : 44)
+                Image(systemName: state.isLiveVehiclePosition ? "train.side.front.car" : state.symbolName)
+                    .font(state.isLiveVehiclePosition ? .title3.weight(.black) : .subheadline.weight(.black))
                     .foregroundStyle(.white)
-                    .padding(14)
-                    .background(status.tint, in: Circle())
+                    .padding(state.isLiveVehiclePosition ? 14 : 11)
+                    .background(tint, in: Circle())
                     .overlay(Circle().stroke(.white.opacity(0.88), lineWidth: 2))
             }
-            Text("Map position")
+            Text(state.mapLabel)
                 .font(.system(size: 10, weight: .bold, design: .rounded))
                 .foregroundStyle(RailDesign.Palette.ink)
                 .padding(.horizontal, 8)
                 .padding(.vertical, 4)
                 .background(RailDesign.Palette.textSurface, in: Capsule())
         }
-        .shadow(color: status.tint.opacity(0.30), radius: 14, y: 5)
-        .accessibilityLabel("Map position")
+        .shadow(color: tint.opacity(0.26), radius: state.isLiveVehiclePosition ? 14 : 9, y: 5)
+        .accessibilityLabel(state.mapLabel)
+        .accessibilityValue(state.detailText)
     }
 }
 
