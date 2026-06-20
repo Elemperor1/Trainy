@@ -364,6 +364,11 @@ final class TrainStore: ObservableObject {
     }
 
     func loadLiveRoutes() async {
+        guard provider.availability.canSearch else {
+            liveResults = []
+            liveLoadState = .offline(provider.availability.message)
+            return
+        }
         guard provider.supports(.schedule) else {
             liveLoadState = .empty("\(provider.displayName) does not support schedule search")
             return
@@ -380,6 +385,11 @@ final class TrainStore: ObservableObject {
     }
 
     func searchLiveTrips(matching query: String) async {
+        guard provider.availability.canSearch else {
+            liveResults = []
+            liveLoadState = .offline(provider.availability.message)
+            return
+        }
         guard provider.supports(.schedule) else {
             liveResults = []
             liveLoadState = .empty("\(provider.displayName) does not support schedule search")
