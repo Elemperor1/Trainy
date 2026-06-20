@@ -2854,12 +2854,17 @@ private struct ProviderDirectoryRow: View {
                 ProviderCapabilityStrip(capabilities: provider.capabilities)
             }
 
-            Text(provider.requirementSummary)
-                .font(.caption2)
-                .foregroundStyle(RailDesign.Palette.secondaryText)
-                .fixedSize(horizontal: false, vertical: true)
+            ProviderRequirementSummary(provider: provider)
 
-            ProviderSourceLinks(links: provider.sourceLinks)
+            ProviderSourceDisclosure(provider: provider)
+
+            #if DEBUG
+            ProviderDeveloperCredentialStatus(provider: provider)
+            #endif
+
+            if !canSearch {
+                ProviderSearchGate(provider: provider)
+            }
 
             if canSearch && !isSelected {
                 Button(action: selectProvider) {
@@ -2881,6 +2886,49 @@ private struct ProviderDirectoryRow: View {
     }
 }
 
+private struct ProviderActiveSummary: View {
+    let provider: ProviderMetadata
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: RailDesign.Spacing.s) {
+            HStack(alignment: .top, spacing: RailDesign.Spacing.s) {
+                Image(systemName: "checkmark.seal.fill")
+                    .font(.title3)
+                    .symbolRenderingMode(.hierarchical)
+                    .foregroundStyle(RailDesign.Palette.mint)
+                    .frame(width: 30)
+
+                VStack(alignment: .leading, spacing: RailDesign.Spacing.xs) {
+                    HStack(alignment: .firstTextBaseline, spacing: RailDesign.Spacing.xs) {
+                        Text("Active provider")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(RailDesign.Palette.secondaryText)
+                        ProviderStatusPill(text: provider.availability.status.displayName, tint: provider.availability.status.tint)
+                    }
+
+                    Text(provider.displayName)
+                        .font(.headline.weight(.bold))
+                        .foregroundStyle(RailDesign.Palette.ink)
+                        .fixedSize(horizontal: false, vertical: true)
+
+                    Text("\(provider.region.displayName) / \(provider.capabilitySummary)")
+                        .font(.caption)
+                        .foregroundStyle(RailDesign.Palette.secondaryText)
+                        .fixedSize(horizontal: false, vertical: true)
+
+                    Text(provider.availability.message)
+                        .font(.caption)
+                        .foregroundStyle(RailDesign.Palette.secondaryText)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+        }
+        .padding(.vertical, RailDesign.Spacing.s)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Active provider \(provider.displayName), \(provider.region.displayName)")
+    }
+}
+
 private struct ProviderStatusPill: View {
     let text: String
     let tint: Color
@@ -2894,6 +2942,19 @@ private struct ProviderStatusPill: View {
             .background(tint.opacity(0.12), in: Capsule())
             .lineLimit(1)
             .minimumScaleFactor(0.8)
+    }
+}
+
+private struct ProviderRequirementSummary: View {
+    let provider: ProviderMetadata
+
+    var body: some View {
+        if !provider.operationalRequirements.isEmpty {
+            ProviderPillGrid(
+                items: provider.operationalRequirements,
+                tint: RailDesign.Palette.secondaryText
+            )
+        }
     }
 }
 
@@ -2923,20 +2984,205 @@ private struct ProviderCapabilityStrip: View {
     }
 }
 
-private struct ProviderSourceLinks: View {
-    let links: [ProviderSourceLink]
+private struct ProviderSourceDisclosure: View {
+    let provider: ProviderMetadata
 
     var body: some View {
-        VStack(alignment: .leading, spacing: RailDesign.Spacing.xxs) {
-            ForEach(Array(links.prefix(2))) { link in
-                Link(destination: link.url) {
-                    Label(link.title, systemImage: "arrow.up.right.square")
-                        .font(.caption2.weight(.semibold))
-                        .foregroundStyle(RailDesign.Palette.accent)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.72)
+        VStack(alignment: .leading, spacing: RailDesign.Spacing.xs) {
+            if !provider.sourceLinks.isEmpty {
+                VStack(alignment: .leading, spacing: RailDesign.Spacing.xxs) {
+                    Text("Sources")
+                        .font(.caption2.weight(.bold))
+                        .foregroundStyle(RailDesign.Palette.secondaryText)
+                    ForEach(Array(provider.sourceLinks.prefix(3))) { link in
+                        Link(destination: link.url) {
+                            Label(link.title, systemImage: "arrow.up.right.square")
+                                .font(.caption2.weight(.semibold))
+                                .foregroundStyle(RailDesign.Palette.accent)
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.72)
+                        }
+                    }
                 }
             }
+
+            if !provider.sourcePolicyRequirements.isEmpty {
+                VStack(alignment: .leading, spacing: RailDesign.Spacing.xxs) {
+                    Text("Attribution and terms")
+                        .font(.caption2.weight(.bold))
+                        .foregroundStyle(RailDesign.Palette.secondaryText)
+                    ProviderPillGrid(
+                        items: provider.sourcePolicyRequirements,
+                        tint: RailDesign.Palette.marine
+                    )
+                }
+            }
+        }
+    }
+}
+
+private struct ProviderDeveloperCredentialStatus: View {
+    let provider: ProviderMetadata
+
+    var body: some View {
+        Label(credentialText, systemImage: credentialSymbol)
+            .font(.caption2.weight(.semibold))
+            .foregroundStyle(credentialTint)
+            .fixedSize(horizontal: false, vertical: true)
+            .padding(.horizontal, RailDesign.Spacing.xs)
+            .padding(.vertical, 6)
+            .background(credentialTint.opacity(0.12), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+            .accessibilityLabel("Developer credential status")
+            .accessibilityValue(credentialText)
+    }
+
+    private var credentialText: String {
+        switch provider.authStrategy {
+        case .none:
+            return "No provider credential required."
+        case .localKey(let environmentVariable, _):
+            switch provider.availability.status {
+            case .degraded:
+                return "\(environmentVariable) missing; starter catalog fallback is active."
+            case .available:
+                return "\(environmentVariable) configured for this build."
+            default:
+                return "\(environmentVariable) required before full provider coverage."
+            }
+        case .proxy:
+            return "Requires a provider proxy; not selectable in this build."
+        case .oauth:
+            return "Requires OAuth/provider account setup before search."
+        case .custom(let label):
+            return "\(label) required before search."
+        }
+    }
+
+    private var credentialSymbol: String {
+        switch provider.availability.status {
+        case .available:
+            return "checkmark.shield.fill"
+        case .degraded:
+            return "exclamationmark.shield.fill"
+        case .requiresConfiguration, .requiresProxy, .unavailable:
+            return "lock.shield"
+        }
+    }
+
+    private var credentialTint: Color {
+        switch provider.availability.status {
+        case .available:
+            return RailDesign.Palette.mint
+        case .degraded:
+            return RailDesign.Palette.amber
+        case .requiresConfiguration, .requiresProxy:
+            return RailDesign.Palette.copper
+        case .unavailable:
+            return RailDesign.Palette.secondaryText
+        }
+    }
+}
+
+private struct ProviderSearchGate: View {
+    let provider: ProviderMetadata
+
+    var body: some View {
+        Label(searchGateText, systemImage: "lock")
+            .font(.caption2.weight(.semibold))
+            .foregroundStyle(RailDesign.Palette.secondaryText)
+            .fixedSize(horizontal: false, vertical: true)
+            .padding(.horizontal, RailDesign.Spacing.xs)
+            .padding(.vertical, 6)
+            .background(RailDesign.Palette.hairline.opacity(0.75), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+    }
+
+    private var searchGateText: String {
+        switch provider.implementationStatus {
+        case .active:
+            return "Search unavailable until required provider setup is complete."
+        case .planned:
+            return "Planned provider: not selectable or searchable in this build."
+        case .disabled:
+            return "Disabled provider: not selectable or searchable."
+        }
+    }
+}
+
+private struct ProviderPillGrid: View {
+    let items: [String]
+    let tint: Color
+
+    var body: some View {
+        LazyVGrid(columns: [GridItem(.adaptive(minimum: 128), spacing: RailDesign.Spacing.xs)], alignment: .leading, spacing: RailDesign.Spacing.xs) {
+            ForEach(items, id: \.self) { item in
+                Text(item)
+                    .font(.caption2.weight(.semibold))
+                    .foregroundStyle(tint)
+                    .lineLimit(2)
+                    .minimumScaleFactor(0.72)
+                    .padding(.horizontal, RailDesign.Spacing.xs)
+                    .padding(.vertical, 5)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(tint.opacity(0.10), in: Capsule())
+            }
+        }
+    }
+}
+
+private extension ProviderMetadata {
+    var sourcePolicyRequirements: [String] {
+        requirements.compactMap { requirement in
+            switch requirement {
+            case .attribution(let label):
+                return "Attribution: \(label)"
+            case .terms(let label):
+                return "Terms: \(label)"
+            case .networkAccess, .localKey, .proxy, .providerAccount:
+                return nil
+            }
+        }
+        .sorted { $0.localizedStandardCompare($1) == .orderedAscending }
+    }
+
+    var operationalRequirements: [String] {
+        requirements.compactMap { requirement in
+            switch requirement {
+            case .networkAccess, .localKey, .proxy, .providerAccount:
+                return requirement.displayName
+            case .attribution, .terms:
+                return nil
+            }
+        }
+        .sorted { $0.localizedStandardCompare($1) == .orderedAscending }
+    }
+}
+
+private extension ProviderAvailability.Status {
+    var displayName: String {
+        switch self {
+        case .available:
+            return "Available"
+        case .degraded:
+            return "Fallback"
+        case .requiresConfiguration:
+            return "Needs setup"
+        case .requiresProxy:
+            return "Needs proxy"
+        case .unavailable:
+            return "Unavailable"
+        }
+    }
+
+    var tint: Color {
+        switch self {
+        case .available:
+            return RailDesign.Palette.mint
+        case .degraded:
+            return RailDesign.Palette.amber
+        case .requiresConfiguration, .requiresProxy:
+            return RailDesign.Palette.copper
+        case .unavailable:
+            return RailDesign.Palette.secondaryText
         }
     }
 }
