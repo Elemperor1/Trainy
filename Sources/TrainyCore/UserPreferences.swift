@@ -48,6 +48,14 @@ struct UserPreferences: @unchecked Sendable {
         }
     }
 
+    /// Source label display preference for reusable provenance badges.
+    enum SourceLabelVerbosity: String, CaseIterable, Codable, Sendable {
+        case compact = "Compact"
+        case detailed = "Detailed"
+
+        var displayName: String { rawValue }
+    }
+
     /// Shared instance for app-wide access
     static let shared = UserPreferences()
 

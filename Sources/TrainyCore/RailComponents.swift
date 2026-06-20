@@ -183,9 +183,36 @@ struct SourceBadge: View {
 
     let trip: TrainTrip
     var style: Style = .compact
+    @AppStorage("trainy.sourceLabelVerbosity") private var sourceLabelVerbosityRaw = UserPreferences.SourceLabelVerbosity.compact.rawValue
 
     private var source: SourceProvenance {
         trip.sourceProvenance
+    }
+
+    private var verbosity: UserPreferences.SourceLabelVerbosity {
+        UserPreferences.SourceLabelVerbosity(rawValue: sourceLabelVerbosityRaw) ?? .compact
+    }
+
+    private var title: String {
+        switch verbosity {
+        case .compact:
+            return source.sourceKind.badgeTitle
+        case .detailed:
+            return source.sourceKind.riderTitle
+        }
+    }
+
+    private var width: CGFloat {
+        switch (style, verbosity) {
+        case (.compact, .compact):
+            return style.width
+        case (.regular, .compact):
+            return style.width
+        case (.compact, .detailed):
+            return 172
+        case (.regular, .detailed):
+            return 220
+        }
     }
 
     var body: some View {
@@ -194,7 +221,7 @@ struct SourceBadge: View {
                 .imageScale(.small)
                 .frame(width: 14)
 
-            Text(source.sourceKind.badgeTitle)
+            Text(title)
                 .font(.caption.weight(.bold))
                 .lineLimit(1)
                 .minimumScaleFactor(0.72)
@@ -203,7 +230,7 @@ struct SourceBadge: View {
         }
         .foregroundStyle(source.sourceKind.badgeTint)
         .padding(.horizontal, RailDesign.Spacing.xs)
-        .frame(width: style.width, height: style.height, alignment: .leading)
+        .frame(width: width, height: style.height, alignment: .leading)
         .railLiquidGlass(cornerRadius: RailDesign.Radius.chip, tint: source.sourceKind.badgeTint.opacity(0.12))
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("\(source.sourceKind.riderTitle) source, \(source.confidence.displayName) confidence, \(source.freshness.displayName)")
