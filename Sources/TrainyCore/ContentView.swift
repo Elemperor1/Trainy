@@ -1668,12 +1668,532 @@ private struct SettingsScreen: View {
     }
 }
 
+private struct SupportedRegionsScreen: View {
+    @ObservedObject var store: TrainStore
+
+    private var activeProviders: [ProviderMetadata] {
+        store.providerDirectory.filter { $0.implementationStatus == .active }
+    }
+
+    private var plannedProviders: [ProviderMetadata] {
+        store.providerDirectory.filter { $0.implementationStatus != .active }
+    }
+
+    private var activeRegionIDs: Set<String> {
+        Set(activeProviders.map(\.region.id))
+    }
+
+    private var plannedRegionIDs: Set<String> {
+        Set(plannedProviders.map(\.region.id))
+    }
+
+    private var plannedRegionNames: [String] {
+        var seen: Set<String> = []
+        return plannedProviders
+            .map(\.region)
+            .sorted { lhs, rhs in lhs.displayName.localizedStandardCompare(rhs.displayName) == .orderedAscending }
+            .compactMap { region in
+                guard !seen.contains(region.id) else { return nil }
+                seen.insert(region.id)
+                return region.displayName
+            }
+    }
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: RailDesign.Spacing.l) {
+                GlassPanel(cornerRadius: RailDesign.Radius.hero, tint: RailDesign.Palette.marine.opacity(0.18)) {
+                    VStack(alignment: .leading, spacing: RailDesign.Spacing.m) {
+                        HStack(alignment: .top, spacing: RailDesign.Spacing.m) {
+                            Image(systemName: "globe.asia.australia.fill")
+                                .font(.system(size: 42, weight: .semibold))
+                                .symbolRenderingMode(.hierarchical)
+                                .foregroundStyle(RailDesign.Palette.marine)
+                                .frame(width: 52, height: 52)
+
+                            VStack(alignment: .leading, spacing: RailDesign.Spacing.xs) {
+                                Text("Supported regions")
+                                    .font(.title2.weight(.bold))
+                                    .foregroundStyle(RailDesign.Palette.ink)
+                                    .fixedSize(horizontal: false, vertical: true)
+                                Text("Japan is the active rail region. Planned providers stay muted until their adapters, credentials, fixtures, and source labels are ready.")
+                                    .font(.subheadline)
+                                    .foregroundStyle(RailDesign.Palette.secondaryText)
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
+                        }
+
+                        SupportedRegionsMap(
+                            activeRegionIDs: activeRegionIDs,
+                            plannedRegionIDs: plannedRegionIDs
+                        )
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 318)
+
+                        HStack(spacing: RailDesign.Spacing.s) {
+                            CoverageLegendItem(title: "Active", tint: RailDesign.Palette.mint)
+                            CoverageLegendItem(title: "Muted", tint: RailDesign.Palette.secondaryText.opacity(0.55))
+                        }
+                    }
+                }
+
+                SettingsGroup(title: "Search coverage") {
+                    ForEach(activeProviders) { provider in
+                        SupportedRegionProviderRow(provider: provider, isActive: true)
+                    }
+                }
+
+                SettingsGroup(title: "Muted regions") {
+                    VStack(alignment: .leading, spacing: RailDesign.Spacing.s) {
+                        Text("These regions are visible in the provider registry, but are not selectable or searchable in this build.")
+                            .font(.caption)
+                            .foregroundStyle(RailDesign.Palette.secondaryText)
+                            .fixedSize(horizontal: false, vertical: true)
+
+                        SupportedRegionPillGrid(names: plannedRegionNames)
+                    }
+                    .padding(.vertical, RailDesign.Spacing.s)
+                }
+            }
+            .padding(RailDesign.Spacing.m)
+            .padding(.bottom, RailDesign.Spacing.xxl)
+        }
+        .background(RailGradientBackground().ignoresSafeArea())
+        .navigationTitle("Supported Regions")
+        .navigationBarTitleDisplayMode(.inline)
+        .railScreenChrome()
+    }
+}
+
+private struct SupportedRegionsMap: View {
+    let activeRegionIDs: Set<String>
+    let plannedRegionIDs: Set<String>
+
+    private var markers: [CoverageMapMarker] {
+        activeRegionIDs
+            .union(plannedRegionIDs)
+            .compactMap(Self.marker)
+            .sorted { lhs, rhs in
+                let lhsActive = activeRegionIDs.contains(lhs.id)
+                let rhsActive = activeRegionIDs.contains(rhs.id)
+                if lhsActive != rhsActive { return lhsActive }
+                return lhs.name.localizedStandardCompare(rhs.name) == .orderedAscending
+            }
+    }
+
+    var body: some View {
+        GeometryReader { proxy in
+            let diameter = min(proxy.size.width, proxy.size.height)
+
+            ZStack {
+                NativeCoverageGlobeView(markers: markers, activeRegionIDs: activeRegionIDs)
+                    .frame(width: diameter, height: diameter)
+                    .clipShape(Circle())
+                    .overlay {
+                        Circle()
+                            .strokeBorder(RailDesign.Palette.hairline.opacity(0.90), lineWidth: 1.2)
+                    }
+                    .shadow(color: RailDesign.Palette.ink.opacity(0.16), radius: 26, y: 18)
+
+                Circle()
+                    .strokeBorder(
+                        LinearGradient(
+                            colors: [
+                                .white.opacity(0.86),
+                                RailDesign.Palette.mint.opacity(0.24),
+                                RailDesign.Palette.ink.opacity(0.08)
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        ),
+                        lineWidth: 1.4
+                    )
+                    .frame(width: diameter, height: diameter)
+                    .allowsHitTesting(false)
+            }
+            .frame(width: proxy.size.width, height: proxy.size.height)
+        }
+        .aspectRatio(1, contentMode: .fit)
+        .allowsHitTesting(false)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Supported regions map")
+        .accessibilityValue("Japan is highlighted with native Apple map data. Other regions are muted.")
+    }
+
+    private static func marker(for regionID: String) -> CoverageMapMarker? {
+        switch regionID {
+        case ProviderRegion.japan.id:
+            return CoverageMapMarker(id: regionID, name: "Japan", coordinate: CLLocationCoordinate2D(latitude: 36.2, longitude: 138.2))
+        case ProviderRegion.taiwan.id:
+            return CoverageMapMarker(id: regionID, name: "Taiwan", coordinate: CLLocationCoordinate2D(latitude: 23.8, longitude: 121.0))
+        case ProviderRegion.hongKong.id:
+            return CoverageMapMarker(id: regionID, name: "Hong Kong", coordinate: CLLocationCoordinate2D(latitude: 22.32, longitude: 114.17))
+        case ProviderRegion.germany.id:
+            return CoverageMapMarker(id: regionID, name: "Germany", coordinate: CLLocationCoordinate2D(latitude: 51.2, longitude: 10.4))
+        case ProviderRegion.switzerland.id:
+            return CoverageMapMarker(id: regionID, name: "Switzerland", coordinate: CLLocationCoordinate2D(latitude: 46.8, longitude: 8.2))
+        case ProviderRegion.unitedKingdom.id:
+            return CoverageMapMarker(id: regionID, name: "United Kingdom", coordinate: CLLocationCoordinate2D(latitude: 54.0, longitude: -2.0))
+        case ProviderRegion.australia.id:
+            return CoverageMapMarker(id: regionID, name: "Australia", coordinate: CLLocationCoordinate2D(latitude: -33.9, longitude: 151.2))
+        case ProviderRegion.unitedStates.id:
+            return CoverageMapMarker(id: regionID, name: "United States", coordinate: CLLocationCoordinate2D(latitude: 40.75, longitude: -73.9))
+        case ProviderRegion.netherlands.id:
+            return CoverageMapMarker(id: regionID, name: "Netherlands", coordinate: CLLocationCoordinate2D(latitude: 52.2, longitude: 5.3))
+        case ProviderRegion.southKorea.id:
+            return CoverageMapMarker(id: regionID, name: "South Korea", coordinate: CLLocationCoordinate2D(latitude: 36.2, longitude: 127.8))
+        case ProviderRegion.france.id:
+            return CoverageMapMarker(id: regionID, name: "France", coordinate: CLLocationCoordinate2D(latitude: 46.2, longitude: 2.2))
+        default:
+            return nil
+        }
+    }
+}
+
+private struct CoverageMapMarker: Identifiable {
+    let id: String
+    let name: String
+    let coordinate: CLLocationCoordinate2D
+}
+
+private struct NativeCoverageGlobeView: UIViewRepresentable {
+    let markers: [CoverageMapMarker]
+    let activeRegionIDs: Set<String>
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(activeRegionIDs: activeRegionIDs)
+    }
+
+    func makeUIView(context: Context) -> CoverageGlobeMapView {
+        let mapView = CoverageGlobeMapView()
+        mapView.apply(
+            markers: markers,
+            activeRegionIDs: activeRegionIDs,
+            camera: Self.coverageCamera,
+            coordinator: context.coordinator
+        )
+        return mapView
+    }
+
+    func updateUIView(_ mapView: CoverageGlobeMapView, context: Context) {
+        context.coordinator.activeRegionIDs = activeRegionIDs
+        mapView.apply(
+            markers: markers,
+            activeRegionIDs: activeRegionIDs,
+            camera: Self.coverageCamera,
+            coordinator: context.coordinator
+        )
+    }
+
+    private static let coverageCamera = MKMapCamera(
+        lookingAtCenter: CLLocationCoordinate2D(latitude: 33.5, longitude: 127.6),
+        fromDistance: 8_650_000,
+        pitch: 16,
+        heading: -8
+    )
+
+    final class Coordinator: NSObject, MKMapViewDelegate {
+        static let activeMarkerReuseID = "activeCoverageMarker"
+        static let mutedMarkerReuseID = "mutedCoverageMarker"
+
+        var activeRegionIDs: Set<String>
+
+        init(activeRegionIDs: Set<String>) {
+            self.activeRegionIDs = activeRegionIDs
+        }
+
+        func apply(markers: [CoverageMapMarker], to mapView: MKMapView) {
+            let annotations = markers.map { marker in
+                CoverageMapAnnotation(marker: marker, isActive: activeRegionIDs.contains(marker.id))
+            }
+            let overlays = annotations.map { annotation in
+                MKCircle(
+                    center: annotation.coordinate,
+                    radius: annotation.isActive ? 430_000 : 230_000
+                )
+            }
+
+            mapView.removeAnnotations(mapView.annotations.compactMap { $0 as? CoverageMapAnnotation })
+            mapView.removeOverlays(mapView.overlays)
+            mapView.addOverlays(overlays, level: .aboveLabels)
+            mapView.addAnnotations(annotations)
+        }
+
+        func mapView(_ mapView: MKMapView, rendererFor overlay: MKOverlay) -> MKOverlayRenderer {
+            guard let circle = overlay as? MKCircle else {
+                return MKOverlayRenderer(overlay: overlay)
+            }
+
+            let renderer = MKCircleRenderer(circle: circle)
+            let isActive = circle.radius > 300_000
+            renderer.fillColor = UIColor(isActive ? .clear : RailDesign.Palette.secondaryText.opacity(0.08))
+            renderer.strokeColor = UIColor(isActive ? RailDesign.Palette.mint.opacity(0.82) : RailDesign.Palette.secondaryText.opacity(0.28))
+            renderer.lineWidth = isActive ? 1.5 : 0.8
+            renderer.alpha = isActive ? 0.78 : 0.30
+            return renderer
+        }
+
+        func mapView(_ mapView: MKMapView, viewFor annotation: MKAnnotation) -> MKAnnotationView? {
+            guard let coverageAnnotation = annotation as? CoverageMapAnnotation else {
+                return nil
+            }
+
+            let reuseID = coverageAnnotation.isActive ? Self.activeMarkerReuseID : Self.mutedMarkerReuseID
+            guard let markerView = mapView.dequeueReusableAnnotationView(
+                withIdentifier: reuseID,
+                for: coverageAnnotation
+            ) as? MKMarkerAnnotationView else {
+                return nil
+            }
+
+            markerView.annotation = coverageAnnotation
+            markerView.canShowCallout = false
+            markerView.animatesWhenAdded = false
+            markerView.collisionMode = .circle
+            markerView.displayPriority = coverageAnnotation.isActive ? .required : .defaultLow
+            markerView.zPriority = coverageAnnotation.isActive ? .max : .min
+            markerView.alpha = coverageAnnotation.isActive ? 1.0 : 0.28
+            markerView.titleVisibility = coverageAnnotation.isActive ? .visible : .hidden
+            markerView.subtitleVisibility = .hidden
+            markerView.markerTintColor = UIColor(
+                coverageAnnotation.isActive
+                ? RailDesign.Palette.mint
+                : RailDesign.Palette.secondaryText.opacity(0.44)
+            )
+            markerView.glyphTintColor = .white
+            markerView.glyphImage = coverageAnnotation.isActive ? UIImage(systemName: "train.side.front.car.fill") : nil
+            return markerView
+        }
+    }
+}
+
+private final class CoverageGlobeMapView: UIView {
+    private let mapView = MKMapView(frame: .zero)
+    private let unsupportedMaskLayer = CAShapeLayer()
+    private let activeFocusLayer = CAShapeLayer()
+    private var activeCoordinate: CLLocationCoordinate2D?
+
+    override init(frame: CGRect) {
+        super.init(frame: frame)
+        configure()
+    }
+
+    required init?(coder: NSCoder) {
+        super.init(coder: coder)
+        configure()
+    }
+
+    func apply(
+        markers: [CoverageMapMarker],
+        activeRegionIDs: Set<String>,
+        camera: MKMapCamera,
+        coordinator: NativeCoverageGlobeView.Coordinator
+    ) {
+        activeCoordinate = markers.first { activeRegionIDs.contains($0.id) }?.coordinate
+        mapView.delegate = coordinator
+        coordinator.activeRegionIDs = activeRegionIDs
+        coordinator.apply(markers: markers, to: mapView)
+        mapView.setCamera(camera, animated: false)
+
+        setNeedsLayout()
+        DispatchQueue.main.async { [weak self] in
+            self?.updateRegionTreatment()
+        }
+    }
+
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        mapView.frame = bounds
+        layer.cornerRadius = min(bounds.width, bounds.height) / 2
+        layer.masksToBounds = true
+        updateRegionTreatment()
+    }
+
+    private func configure() {
+        let configuration = MKStandardMapConfiguration(elevationStyle: .realistic, emphasisStyle: .default)
+        configuration.pointOfInterestFilter = .excludingAll
+        configuration.showsTraffic = false
+
+        backgroundColor = .clear
+        clipsToBounds = true
+        mapView.preferredConfiguration = configuration
+        mapView.isScrollEnabled = false
+        mapView.isZoomEnabled = false
+        mapView.isRotateEnabled = false
+        mapView.isPitchEnabled = false
+        mapView.isUserInteractionEnabled = false
+        mapView.showsCompass = false
+        mapView.showsScale = false
+        mapView.layoutMargins = .zero
+        mapView.register(MKMarkerAnnotationView.self, forAnnotationViewWithReuseIdentifier: NativeCoverageGlobeView.Coordinator.activeMarkerReuseID)
+        mapView.register(MKMarkerAnnotationView.self, forAnnotationViewWithReuseIdentifier: NativeCoverageGlobeView.Coordinator.mutedMarkerReuseID)
+
+        unsupportedMaskLayer.fillRule = .evenOdd
+        unsupportedMaskLayer.fillColor = UIColor { traits in
+            traits.userInterfaceStyle == .dark
+                ? UIColor(red: 0.028, green: 0.034, blue: 0.038, alpha: 0.56)
+                : UIColor(red: 0.790, green: 0.825, blue: 0.820, alpha: 0.56)
+        }.cgColor
+
+        activeFocusLayer.fillColor = UIColor.clear.cgColor
+        activeFocusLayer.strokeColor = UIColor(RailDesign.Palette.mint.opacity(0.96)).cgColor
+        activeFocusLayer.lineWidth = 1.7
+        activeFocusLayer.shadowColor = UIColor(RailDesign.Palette.mint.opacity(0.55)).cgColor
+        activeFocusLayer.shadowOpacity = 1.0
+        activeFocusLayer.shadowRadius = 12
+        activeFocusLayer.shadowOffset = CGSize(width: 0, height: 5)
+
+        addSubview(mapView)
+        layer.addSublayer(unsupportedMaskLayer)
+        layer.addSublayer(activeFocusLayer)
+    }
+
+    private func updateRegionTreatment() {
+        guard !bounds.isEmpty else { return }
+
+        let diameter = min(bounds.width, bounds.height)
+        let globeRect = CGRect(
+            x: (bounds.width - diameter) / 2,
+            y: (bounds.height - diameter) / 2,
+            width: diameter,
+            height: diameter
+        ).insetBy(dx: 0.5, dy: 0.5)
+        let maskPath = UIBezierPath(ovalIn: globeRect)
+
+        if let spotlightRect {
+            maskPath.append(UIBezierPath(roundedRect: spotlightRect, cornerRadius: spotlightRect.height / 2))
+            activeFocusLayer.path = UIBezierPath(roundedRect: spotlightRect.insetBy(dx: 1.5, dy: 1.5), cornerRadius: spotlightRect.height / 2).cgPath
+        } else {
+            activeFocusLayer.path = nil
+        }
+
+        unsupportedMaskLayer.frame = bounds
+        unsupportedMaskLayer.path = maskPath.cgPath
+        activeFocusLayer.frame = bounds
+    }
+
+    private var spotlightRect: CGRect? {
+        guard let activeCoordinate else { return nil }
+
+        let activePoint = mapView.convert(activeCoordinate, toPointTo: self)
+        guard bounds.insetBy(dx: -80, dy: -80).contains(activePoint) else { return nil }
+
+        let diameter = min(bounds.width, bounds.height)
+        let width = max(78, diameter * 0.24)
+        let height = max(118, diameter * 0.36)
+        let rect = CGRect(
+            x: activePoint.x - width * 0.50,
+            y: activePoint.y - height * 0.50,
+            width: width,
+            height: height
+        )
+        return rect.intersection(bounds.insetBy(dx: 8, dy: 8))
+    }
+}
+
+private final class CoverageMapAnnotation: NSObject, MKAnnotation {
+    let id: String
+    let name: String
+    let isActive: Bool
+    let coordinate: CLLocationCoordinate2D
+
+    var title: String? { name }
+
+    init(marker: CoverageMapMarker, isActive: Bool) {
+        self.id = marker.id
+        self.name = marker.name
+        self.isActive = isActive
+        self.coordinate = marker.coordinate
+    }
+}
+
+private struct CoverageLegendItem: View {
+    let title: LocalizedStringKey
+    let tint: Color
+
+    var body: some View {
+        HStack(spacing: RailDesign.Spacing.xs) {
+            Circle()
+                .fill(tint)
+                .frame(width: 9, height: 9)
+            Text(title)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(RailDesign.Palette.secondaryText)
+        }
+    }
+}
+
+private struct SupportedRegionProviderRow: View {
+    let provider: ProviderMetadata
+    let isActive: Bool
+
+    private var tint: Color {
+        isActive ? RailDesign.Palette.mint : RailDesign.Palette.secondaryText
+    }
+
+    var body: some View {
+        HStack(alignment: .top, spacing: RailDesign.Spacing.s) {
+            Image(systemName: isActive ? "checkmark.seal.fill" : "circle.dashed")
+                .font(.headline)
+                .symbolRenderingMode(.hierarchical)
+                .foregroundStyle(tint)
+                .frame(width: 30)
+
+            VStack(alignment: .leading, spacing: RailDesign.Spacing.xs) {
+                HStack(alignment: .firstTextBaseline, spacing: RailDesign.Spacing.xs) {
+                    Text(provider.region.displayName)
+                        .font(.subheadline.weight(.bold))
+                        .foregroundStyle(RailDesign.Palette.ink)
+                    ProviderStatusPill(text: isActive ? "Active" : "Muted", tint: tint)
+                }
+
+                Text(provider.displayName)
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(RailDesign.Palette.secondaryText)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                Text(provider.availability.message)
+                    .font(.caption)
+                    .foregroundStyle(RailDesign.Palette.secondaryText)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .padding(.vertical, RailDesign.Spacing.s)
+        .accessibilityElement(children: .combine)
+    }
+}
+
+private struct SupportedRegionPillGrid: View {
+    let names: [String]
+
+    var body: some View {
+        LazyVGrid(columns: [GridItem(.adaptive(minimum: 118), spacing: RailDesign.Spacing.xs)], alignment: .leading, spacing: RailDesign.Spacing.xs) {
+            ForEach(names, id: \.self) { name in
+                Text(name)
+                    .font(.caption2.weight(.semibold))
+                    .foregroundStyle(RailDesign.Palette.secondaryText)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.72)
+                    .padding(.horizontal, RailDesign.Spacing.xs)
+                    .padding(.vertical, 6)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(RailDesign.Palette.hairline.opacity(0.78), in: Capsule())
+            }
+        }
+    }
+}
+
 private struct TrainDetailView: View {
     @ObservedObject var store: TrainStore
     let tripID: TrainTrip.ID
+    @AppStorage("trainy.unitSystem") private var unitSystemRaw = UserPreferences.UnitSystem.metric.rawValue
 
     private var trip: TrainTrip {
         store.trips.first { $0.id == tripID } ?? store.selectedTrip
+    }
+
+    private var useMetric: Bool {
+        unitSystemRaw != UserPreferences.UnitSystem.imperial.rawValue
     }
 
     var body: some View {
@@ -1709,10 +2229,10 @@ private struct TrainDetailView: View {
                     SectionHeader(title: "Carriage and platform", subtitle: "Boarding position, train length, seat cue, and platform/track")
                     GlassPanel {
                         VStack(alignment: .leading, spacing: RailDesign.Spacing.m) {
-                            InfoLine(symbol: "rectangle.split.3x1.fill", title: "Platform", value: trip.platform)
+                            InfoLine(symbol: "rectangle.split.3x1.fill", title: "Platform", value: trip.displayPlatform)
                             InfoLine(symbol: "train.side.front.car", title: "Carriage", value: "Car \(trip.bestCar) of \(trip.cars)")
                             InfoLine(symbol: "seat", title: "Seat note", value: trip.seat)
-                            InfoLine(symbol: "speedometer", title: "Speed", value: trip.speed)
+                            InfoLine(symbol: "speedometer", title: "Speed", value: UnitConverter.displaySpeed(trip.speed, useMetric: useMetric))
                         }
                     }
                 }
@@ -2355,6 +2875,72 @@ private struct SettingsInfoRow: View {
     var body: some View {
         SettingsRowLabel(symbol: symbol, title: title, detail: detail)
             .padding(.vertical, RailDesign.Spacing.s)
+    }
+}
+
+private struct SettingsNavigationRow<Destination: View>: View {
+    let symbol: String
+    let title: LocalizedStringKey
+    let detail: LocalizedStringKey
+    let destination: Destination
+
+    init(
+        symbol: String,
+        title: LocalizedStringKey,
+        detail: LocalizedStringKey,
+        @ViewBuilder destination: () -> Destination
+    ) {
+        self.symbol = symbol
+        self.title = title
+        self.detail = detail
+        self.destination = destination()
+    }
+
+    var body: some View {
+        NavigationLink {
+            destination
+        } label: {
+            HStack(alignment: .center, spacing: RailDesign.Spacing.s) {
+                SettingsRowLabel(symbol: symbol, title: title, detail: detail)
+                Spacer(minLength: RailDesign.Spacing.s)
+                Image(systemName: "chevron.right")
+                    .font(.caption.weight(.bold))
+                    .foregroundStyle(RailDesign.Palette.secondaryText)
+            }
+            .contentShape(Rectangle())
+            .padding(.vertical, RailDesign.Spacing.s)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(title)
+        .accessibilityHint(detail)
+    }
+}
+
+private struct SettingsActionRow: View {
+    let symbol: String
+    let title: LocalizedStringKey
+    let detail: LocalizedStringKey
+    let actionTitle: LocalizedStringKey
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            HStack(alignment: .center, spacing: RailDesign.Spacing.s) {
+                SettingsRowLabel(symbol: symbol, title: title, detail: detail)
+                Spacer(minLength: RailDesign.Spacing.s)
+                Text(actionTitle)
+                    .font(.caption.weight(.bold))
+                    .foregroundStyle(RailDesign.Palette.accent)
+                    .padding(.horizontal, RailDesign.Spacing.s)
+                    .padding(.vertical, 8)
+                    .background(RailDesign.Palette.accent.opacity(0.12), in: Capsule())
+            }
+            .contentShape(Rectangle())
+            .padding(.vertical, RailDesign.Spacing.s)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(title)
+        .accessibilityHint(detail)
     }
 }
 
