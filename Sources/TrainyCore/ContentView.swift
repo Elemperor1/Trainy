@@ -5,6 +5,7 @@ import UIKit
 public struct ContentView: View {
     @StateObject private var store = TrainStore()
     @State private var selectedTab: RailTab = .trips
+    @State private var presentedSheet: RailSheet?
 
     public init() {
         let appearance = UITabBarAppearance()
@@ -61,6 +62,42 @@ public struct ContentView: View {
         .task {
             await store.bootstrapLiveData()
         }
+        .onAppear {
+            presentFirstRunIfNeeded()
+        }
+        .onChange(of: store.shouldShowFirstRun) { _, shouldShowFirstRun in
+            presentedSheet = shouldShowFirstRun ? .firstRun : nil
+        }
+        .sheet(item: $presentedSheet) { sheet in
+            switch sheet {
+            case .firstRun:
+                FirstRunExperienceSheet(
+                    store: store,
+                    startWithShinkansen: {
+                        store.startFirstRunWithShinkansen()
+                        selectedTab = .trips
+                        presentedSheet = nil
+                    },
+                    explorePlannedRegions: {
+                        store.explorePlannedRegionsFromFirstRun()
+                        selectedTab = .settings
+                        presentedSheet = nil
+                    },
+                    skip: {
+                        store.completeFirstRun()
+                        presentedSheet = nil
+                    }
+                )
+                .interactiveDismissDisabled()
+                .presentationDetents([.large])
+                .presentationDragIndicator(.hidden)
+            }
+        }
+    }
+
+    private func presentFirstRunIfNeeded() {
+        guard store.shouldShowFirstRun else { return }
+        presentedSheet = .firstRun
     }
 }
 
@@ -99,6 +136,236 @@ private enum RailTab: Hashable {
         case .settings:
             return "gearshape"
         }
+    }
+}
+
+private enum RailSheet: Identifiable {
+    case firstRun
+
+    var id: String {
+        switch self {
+        case .firstRun:
+            return "first-run"
+        }
+    }
+}
+
+private struct FirstRunExperienceSheet: View {
+    @ObservedObject var store: TrainStore
+    let startWithShinkansen: () -> Void
+    let explorePlannedRegions: () -> Void
+    let skip: () -> Void
+
+    private var activeProvider: ProviderMetadata? {
+        store.providerDirectory.first { $0.id == store.activeProviderID }
+    }
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: RailDesign.Spacing.l) {
+                    FirstRunHeader()
+
+                    FirstRunDefaultProviderCard(provider: activeProvider)
+
+                    VStack(alignment: .leading, spacing: RailDesign.Spacing.s) {
+                        SectionHeader(title: "Data scope", subtitle: "What each label means before global providers arrive")
+                        GlassPanel {
+                            VStack(spacing: 0) {
+                                FirstRunScopeRow(
+                                    symbol: "books.vertical.fill",
+                                    title: "Starter catalog",
+                                    detail: "Curated Shinkansen examples are available even without provider credentials."
+                                )
+                                Divider()
+                                    .background(RailDesign.Palette.hairline)
+                                FirstRunScopeRow(
+                                    symbol: "calendar.badge.checkmark",
+                                    title: "Official timetable",
+                                    detail: "ODPT and JR timetable results are shown as scheduled data when those sources return trips."
+                                )
+                                Divider()
+                                    .background(RailDesign.Palette.hairline)
+                                FirstRunScopeRow(
+                                    symbol: "dot.radiowaves.left.and.right",
+                                    title: "Realtime",
+                                    detail: "Predictions and vehicle positions stay off unless a provider supplies those exact feeds."
+                                )
+                            }
+                        }
+                    }
+
+                    GlassPanel(tint: RailDesign.Palette.amber.opacity(0.12)) {
+                        HStack(alignment: .top, spacing: RailDesign.Spacing.s) {
+                            Image(systemName: "hammer.circle.fill")
+                                .font(.title3)
+                                .symbolRenderingMode(.hierarchical)
+                                .foregroundStyle(RailDesign.Palette.amber)
+                                .frame(width: 30)
+
+                            VStack(alignment: .leading, spacing: RailDesign.Spacing.xs) {
+                                Text("Planned regions are roadmap entries")
+                                    .font(.subheadline.weight(.bold))
+                                    .foregroundStyle(RailDesign.Palette.ink)
+                                Text("They remain unavailable for search until credentials, fixtures, source labels, and provider adapters are complete.")
+                                    .font(.caption)
+                                    .foregroundStyle(RailDesign.Palette.secondaryText)
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
+                        }
+                    }
+
+                }
+                .padding(RailDesign.Spacing.m)
+                .padding(.bottom, 148)
+            }
+            .background(RailGradientBackground().ignoresSafeArea())
+            .navigationTitle("Trainy")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Skip", action: skip)
+                        .font(.subheadline.weight(.semibold))
+                }
+            }
+            .safeAreaInset(edge: .bottom) {
+                FirstRunActionBar(
+                    startWithShinkansen: startWithShinkansen,
+                    explorePlannedRegions: explorePlannedRegions
+                )
+            }
+        }
+    }
+}
+
+private struct FirstRunHeader: View {
+    var body: some View {
+        VStack(alignment: .leading, spacing: RailDesign.Spacing.s) {
+            Image(systemName: "checklist.checked")
+                .font(.system(size: 46, weight: .semibold))
+                .symbolRenderingMode(.hierarchical)
+                .foregroundStyle(RailDesign.Palette.accent)
+                .frame(width: 58, height: 58)
+                .background(RailDesign.Palette.accent.opacity(0.12), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+
+            VStack(alignment: .leading, spacing: RailDesign.Spacing.xs) {
+                Text("Start with the Japan Shinkansen")
+                    .font(.title2.weight(.bold))
+                    .foregroundStyle(RailDesign.Palette.ink)
+                    .fixedSize(horizontal: false, vertical: true)
+                Text("Trainy opens with one implemented provider and clear source labels. Global regions are visible in Settings as planned work, not searchable service.")
+                    .font(.subheadline)
+                    .foregroundStyle(RailDesign.Palette.secondaryText)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .accessibilityElement(children: .combine)
+    }
+}
+
+private struct FirstRunDefaultProviderCard: View {
+    let provider: ProviderMetadata?
+
+    var body: some View {
+        GlassPanel(cornerRadius: 26, tint: RailDesign.Palette.accent.opacity(0.14)) {
+            HStack(alignment: .top, spacing: RailDesign.Spacing.m) {
+                Image(systemName: "checkmark.seal.fill")
+                    .font(.title2)
+                    .symbolRenderingMode(.hierarchical)
+                    .foregroundStyle(RailDesign.Palette.mint)
+                    .frame(width: 34)
+
+                VStack(alignment: .leading, spacing: RailDesign.Spacing.xs) {
+                    HStack(alignment: .firstTextBaseline, spacing: RailDesign.Spacing.xs) {
+                        Text(provider?.displayName ?? "Japan Shinkansen")
+                            .font(.headline.weight(.bold))
+                            .foregroundStyle(RailDesign.Palette.ink)
+                            .fixedSize(horizontal: false, vertical: true)
+                        ProviderStatusPill(text: "Selected default", tint: RailDesign.Palette.mint)
+                    }
+
+                    Text("\(provider?.region.displayName ?? "Japan") / schedule-only search")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(RailDesign.Palette.secondaryText)
+                        .fixedSize(horizontal: false, vertical: true)
+
+                    Text(provider?.availability.message ?? "Uses the Shinkansen starter catalog and official timetable sources when available.")
+                        .font(.caption)
+                        .foregroundStyle(RailDesign.Palette.secondaryText)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Japan Shinkansen selected default")
+    }
+}
+
+private struct FirstRunActionBar: View {
+    let startWithShinkansen: () -> Void
+    let explorePlannedRegions: () -> Void
+
+    var body: some View {
+        VStack(spacing: RailDesign.Spacing.s) {
+            Button(action: startWithShinkansen) {
+                Label("Start with Shinkansen", systemImage: "train.side.front.car")
+                    .font(.headline.weight(.semibold))
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, RailDesign.Spacing.s)
+            }
+            .buttonStyle(.borderedProminent)
+            .controlSize(.large)
+            .tint(RailDesign.Palette.accent)
+            .accessibilityHint("Uses Japan Shinkansen as the selected rail scope.")
+
+            Button(action: explorePlannedRegions) {
+                Label("Explore planned regions", systemImage: "globe.asia.australia")
+                    .font(.subheadline.weight(.semibold))
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, RailDesign.Spacing.xs)
+            }
+            .buttonStyle(.bordered)
+            .controlSize(.large)
+            .tint(RailDesign.Palette.marine)
+            .accessibilityHint("Opens provider settings with planned regions shown as unavailable.")
+        }
+        .padding(.horizontal, RailDesign.Spacing.m)
+        .padding(.top, RailDesign.Spacing.s)
+        .padding(.bottom, RailDesign.Spacing.s)
+        .background(.ultraThinMaterial)
+        .overlay(alignment: .top) {
+            Divider()
+                .background(RailDesign.Palette.hairline)
+        }
+    }
+}
+
+private struct FirstRunScopeRow: View {
+    let symbol: String
+    let title: String
+    let detail: String
+
+    var body: some View {
+        HStack(alignment: .top, spacing: RailDesign.Spacing.s) {
+            Image(systemName: symbol)
+                .font(.headline)
+                .symbolRenderingMode(.hierarchical)
+                .foregroundStyle(RailDesign.Palette.accent)
+                .frame(width: 30)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(RailDesign.Palette.ink)
+                Text(detail)
+                    .font(.caption)
+                    .foregroundStyle(RailDesign.Palette.secondaryText)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .padding(.vertical, RailDesign.Spacing.s)
+        .accessibilityElement(children: .combine)
     }
 }
 

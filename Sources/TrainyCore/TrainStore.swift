@@ -25,6 +25,32 @@ final class TrainStore: ObservableObject {
         }
     }
 
+    struct SearchEmptyState: Equatable {
+        enum Kind: String, Equatable {
+            case noMatches
+            case providerUnavailable
+            case scheduleUnavailable
+        }
+
+        let kind: Kind
+        let title: String
+        let message: String
+        let symbolName: String
+        let actionTitle: String?
+    }
+
+    struct SearchCapabilityNotice: Equatable {
+        enum Kind: String, Equatable {
+            case realtimeUnavailable
+            case scheduleUnavailable
+        }
+
+        let kind: Kind
+        let title: String
+        let message: String
+        let symbolName: String
+    }
+
     @Published var trips: [TrainTrip]
     @Published var selectedTripID: TrainTrip.ID
     @Published var query = ""
@@ -37,6 +63,7 @@ final class TrainStore: ObservableObject {
     @Published private(set) var lastLiveRefresh: Date?
     @Published private(set) var selectedProviderID: String
     @Published private(set) var selectedRegionID: String
+    @Published private(set) var shouldShowFirstRun: Bool
 
     private let defaults: UserDefaults
     private let providerRegistry: ProviderRegistry
@@ -57,6 +84,7 @@ final class TrainStore: ObservableObject {
         let storedRegionID = defaults.string(forKey: DefaultsKey.selectedRegionID)
         let availableRegionIDs = Set(registry.regions.map(\.id))
         self.selectedRegionID = storedRegionID.flatMap { availableRegionIDs.contains($0) ? $0 : nil } ?? ProviderRegion.all.id
+        self.shouldShowFirstRun = !defaults.bool(forKey: DefaultsKey.firstRunCompleted)
         let fullCatalog = resolvedProvider.catalog
         self.catalog = fullCatalog
         let catalogIDs = Set(fullCatalog.map(\.id))
@@ -133,6 +161,65 @@ final class TrainStore: ObservableObject {
 
     var activeProviderAvailability: ProviderAvailability {
         provider.availability
+    }
+
+    var activeProviderName: String {
+        provider.displayName
+    }
+
+    var activeProviderRegion: ProviderRegion {
+        provider.region
+    }
+
+    var searchScopeText: String {
+        "\(provider.displayName) / \(provider.region.displayName)"
+    }
+
+    var searchExamples: [String] {
+        var values: [String] = []
+
+        if provider.region == .japan {
+            values.append("Tokyo to Shin-Osaka")
+        }
+
+        for trip in provider.defaultTrips + catalog {
+            values.append("\(trip.origin.name) to \(trip.destination.name)")
+            values.append(trip.train)
+            values.append(trip.service)
+        }
+
+        var seen: Set<String> = []
+        return values
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+            .filter { value in
+                let key = value.lowercased()
+                guard !seen.contains(key) else { return false }
+                seen.insert(key)
+                return true
+            }
+    }
+
+    var searchCapabilityNotice: SearchCapabilityNotice? {
+        if !provider.supports(.schedule) {
+            return SearchCapabilityNotice(
+                kind: .scheduleUnavailable,
+                title: "Schedule search unavailable",
+                message: "\(provider.displayName) is registered, but it does not expose scheduled trip search in this build.",
+                symbolName: "calendar.badge.exclamationmark"
+            )
+        }
+
+        if !provider.supports(.realtimeTripUpdates) {
+            return SearchCapabilityNotice(
+                kind: .realtimeUnavailable,
+                title: "Realtime predictions unavailable",
+                message: "\(provider.displayName) search is limited to \(provider.feedLabel). Prediction labels appear only when a provider supplies trip updates.",
+                symbolName: "dot.radiowaves.left.and.right"
+            )
+        }
+
+        return nil
     }
 
     func activeProviderSupports(_ capability: ProviderCapability) -> Bool {
@@ -302,6 +389,30 @@ final class TrainStore: ObservableObject {
         defaults.set(regionID, forKey: DefaultsKey.selectedRegionID)
     }
 
+    func startFirstRunWithShinkansen() {
+        selectedProviderID = provider.providerID
+        selectedRegionID = provider.region.id
+        defaults.set(provider.providerID, forKey: DefaultsKey.selectedProviderID)
+        defaults.set(provider.region.id, forKey: DefaultsKey.selectedRegionID)
+        completeFirstRun()
+    }
+
+    func explorePlannedRegionsFromFirstRun() {
+        selectedRegionID = ProviderRegion.all.id
+        defaults.set(ProviderRegion.all.id, forKey: DefaultsKey.selectedRegionID)
+        completeFirstRun()
+    }
+
+    func completeFirstRun() {
+        shouldShowFirstRun = false
+        defaults.set(true, forKey: DefaultsKey.firstRunCompleted)
+    }
+
+    func resetFirstRun() {
+        shouldShowFirstRun = true
+        defaults.set(false, forKey: DefaultsKey.firstRunCompleted)
+    }
+
     func discoveryResults(matching query: String) -> [TrainTrip] {
         let cleanQuery = query.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !cleanQuery.isEmpty else { return discoveryTrips }
@@ -408,6 +519,7 @@ private enum DefaultsKey {
     static let selectedTripID = "trainy.selectedTripID"
     static let selectedProviderID = "trainy.selectedProviderID"
     static let selectedRegionID = "trainy.selectedRegionID"
+    static let firstRunCompleted = "trainy.firstRunCompleted"
     static let notifiedIDs = "trainy.notifiedIDs"
     static let pinnedIDs = "trainy.pinnedIDs"
 }
