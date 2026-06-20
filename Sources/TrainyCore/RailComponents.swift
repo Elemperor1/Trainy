@@ -4,8 +4,8 @@ import SwiftUI
 
 extension String {
     /// Formats a HH:MM time string according to user preferences in the given time zone
-    func formattedAsTime(in timeZone: TimeZone) -> String {
-        let prefs = UserPreferences.shared
+    func formattedAsTime(in timeZone: TimeZone, format: UserPreferences.TimeFormat? = nil) -> String {
+        let resolvedFormat = format ?? UserPreferences.shared.timeFormat
         let pieces = split(separator: ":").compactMap { Int($0) }
         guard pieces.count >= 2 else { return self }
 
@@ -22,11 +22,7 @@ extension String {
         dateComponents.minute = pieces[1]
 
         if let date = calendar.date(from: dateComponents) {
-            let formatter = DateFormatter()
-            formatter.timeZone = timeZone
-            formatter.timeStyle = prefs.timeFormat.timeStyle
-            formatter.dateStyle = .none
-            return formatter.string(from: date)
+            return resolvedFormat.makeFormatter(timeZone: timeZone).string(from: date)
         }
         return self
     }

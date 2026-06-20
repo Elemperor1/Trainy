@@ -16,17 +16,22 @@ struct UserPreferences: @unchecked Sendable {
             }
         }
 
-        /// Returns the appropriate date style for this format preference
-        var dateStyle: DateFormatter.Style {
-            return .none
+        /// Returns the exact display pattern for this format preference.
+        var timePattern: String {
+            switch self {
+            case .hour12:
+                return "h:mm a"
+            case .hour24:
+                return "HH:mm"
+            }
         }
 
-        /// Returns the appropriate time style for this format preference
-        var timeStyle: DateFormatter.Style {
-            switch self {
-            case .hour12: return .short  // Uses locale's 12-hour format
-            case .hour24: return .medium // Forces 24-hour format in most locales
-            }
+        func makeFormatter(timeZone: TimeZone, includeDate: Bool = false) -> DateFormatter {
+            let formatter = DateFormatter()
+            formatter.locale = Locale(identifier: "en_US_POSIX")
+            formatter.timeZone = timeZone
+            formatter.dateFormat = includeDate ? "M/d/yy, \(timePattern)" : timePattern
+            return formatter
         }
     }
 
@@ -74,16 +79,19 @@ struct UserPreferences: @unchecked Sendable {
         }
     }
 
+    /// Current source label verbosity preference (defaults to compact)
+    var sourceLabelVerbosity: SourceLabelVerbosity {
+        get {
+            let rawValue = defaults.string(forKey: "trainy.sourceLabelVerbosity") ?? SourceLabelVerbosity.compact.rawValue
+            return SourceLabelVerbosity(rawValue: rawValue) ?? .compact
+        }
+        set {
+            defaults.set(newValue.rawValue, forKey: "trainy.sourceLabelVerbosity")
+        }
+    }
+
     /// Formats a time string (HH:MM format) using the provider's time zone and user's time format preference
     func formatTimeString(_ timeString: String, in timeZone: TimeZone) -> String {
-        // If already in 24-hour format and user prefers 24h, return as-is
-        // Otherwise, parse and reformat
-        let formatter = DateFormatter()
-        formatter.timeZone = timeZone
-        formatter.timeStyle = timeFormat.timeStyle
-        formatter.dateStyle = .none
-
-        // Try to parse as a simple time string (HH:MM)
         let pieces = timeString.split(separator: ":").compactMap { Int($0) }
         guard pieces.count >= 2 else { return timeString }
 
@@ -101,12 +109,7 @@ struct UserPreferences: @unchecked Sendable {
         dateComponents.minute = pieces[1]
 
         if let date = calendar.date(from: dateComponents) {
-            // Return formatted time only
-            let timeFormatter = DateFormatter()
-            timeFormatter.timeZone = timeZone
-            timeFormatter.timeStyle = timeFormat.timeStyle
-            timeFormatter.dateStyle = .none
-            return timeFormatter.string(from: date)
+            return timeFormat.makeFormatter(timeZone: timeZone).string(from: date)
         }
 
         // Fallback: return the original string if formatting fails
@@ -121,20 +124,12 @@ struct UserPreferences: @unchecked Sendable {
 
     /// Formats a date using the provider's time zone and user's time format preference
     func format(_ date: Date, in timeZone: TimeZone) -> String {
-        let formatter = DateFormatter()
-        formatter.dateStyle = timeFormat.dateStyle
-        formatter.timeStyle = timeFormat.timeStyle
-        formatter.timeZone = timeZone
-        return formatter.string(from: date)
+        timeFormat.makeFormatter(timeZone: timeZone).string(from: date)
     }
 
     /// Full timestamp formatting with date and time
     func formatFullTimestamp(_ date: Date, in timeZone: TimeZone) -> String {
-        let formatter = DateFormatter()
-        formatter.dateStyle = .short
-        formatter.timeStyle = timeFormat.timeStyle
-        formatter.timeZone = timeZone
-        return formatter.string(from: date)
+        timeFormat.makeFormatter(timeZone: timeZone, includeDate: true).string(from: date)
     }
 
     /// Returns the user's preferred unit system (metric or imperial)
