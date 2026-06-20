@@ -79,7 +79,7 @@ struct JREastTimetableClient: Sendable {
         return urls
     }
 
-    private static func trainTimetable(from html: String, sourceURL: URL) -> JREastTrainTimetable? {
+    static func trainTimetable(from html: String, sourceURL: URL) -> JREastTrainTimetable? {
         guard let titleBlock = firstCapture(pattern: #"<p class="line_name">([\s\S]*?)</p>"#, in: html) else { return nil }
         let title = cleanText(titleBlock)
         let trainName = title
