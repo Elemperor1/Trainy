@@ -1156,9 +1156,10 @@ private struct StationBoardRow: View {
 
 private struct HistoryScreen: View {
     @ObservedObject var store: TrainStore
+    @AppStorage("trainy.unitSystem") private var unitSystemRaw = UserPreferences.UnitSystem.metric.rawValue
 
     private var metrics: RailHistoryMetrics {
-        RailHistoryMetrics(trips: store.trips)
+        RailHistoryMetrics(trips: store.trips, useMetric: unitSystemRaw != UserPreferences.UnitSystem.imperial.rawValue)
     }
 
     var body: some View {
@@ -1977,6 +1978,7 @@ private struct SettingsRowLabel: View {
 
 private struct RailHistoryMetrics {
     let trips: [TrainTrip]
+    let useMetric: Bool
 
     var tripCount: Int {
         trips.count
@@ -1999,7 +2001,10 @@ private struct RailHistoryMetrics {
     }
 
     var distanceText: String {
-        "Not logged"
+        trips
+            .compactMap(\.distanceText)
+            .map { UnitConverter.displayDistance($0, useMetric: useMetric) }
+            .first { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty } ?? "Not logged"
     }
 
     var hoursText: String {
