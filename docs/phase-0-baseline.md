@@ -53,10 +53,10 @@ Milestone: Phase 0, know what is true before changing the app
 - ODPT API base URL in provider code: `https://api.odpt.org/api/v4`
 - ODPT resources in provider code: `odpt:TrainTimetable`, `odpt:TrainInformation`, using `acl:consumerKey`.
 - JR East official timetable pages in provider code:
-  - `https://timetables.jreast.co.jp/en/2606/timetable/tt1039/1039010.html`
-  - `https://timetables.jreast.co.jp/en/2606/timetable/tt1039/1039020.html`
-  - `https://timetables.jreast.co.jp/en/2606/timetable/tt1039/1039050.html`
-  - `https://timetables.jreast.co.jp/en/2606/timetable/tt1039/1039060.html`
+  - `https://timetables.jreast.co.jp/en/2607/timetable/tt1039/1039010.html`
+  - `https://timetables.jreast.co.jp/en/2607/timetable/tt1039/1039020.html`
+  - `https://timetables.jreast.co.jp/en/2607/timetable/tt1039/1039050.html`
+  - `https://timetables.jreast.co.jp/en/2607/timetable/tt1039/1039060.html`
 
 ## Done State
 

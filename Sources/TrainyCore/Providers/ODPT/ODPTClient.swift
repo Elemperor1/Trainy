@@ -45,6 +45,7 @@ struct ODPTClient: Sendable {
     }
 
     private func fetch<T: Decodable>(resource: String, queryItems: [URLQueryItem]) async throws -> T {
+        let sourceName = Self.sourceName(for: resource)
         var components = URLComponents(url: baseURL.appendingPathComponent(resource), resolvingAgainstBaseURL: false)
         components?.queryItems = [URLQueryItem(name: "acl:consumerKey", value: consumerKey)] + queryItems.compactMap { item in
             guard item.value?.isEmpty == false else { return nil }
@@ -59,14 +60,23 @@ struct ODPTClient: Sendable {
 
         let (data, response) = try await session.data(for: request)
         guard let httpResponse = response as? HTTPURLResponse else {
-            throw TrainDataProviderError.badResponse
+            throw TrainDataProviderError.badSourceResponse(source: sourceName, statusCode: nil)
         }
         if httpResponse.statusCode == 404 {
             return try decoder.decode(T.self, from: Data("[]".utf8))
         }
         guard (200..<300).contains(httpResponse.statusCode) else {
-            throw TrainDataProviderError.badResponse
+            throw TrainDataProviderError.badSourceResponse(source: sourceName, statusCode: httpResponse.statusCode)
         }
-        return try decoder.decode(T.self, from: data)
+        do {
+            return try decoder.decode(T.self, from: data)
+        } catch {
+            throw TrainDataProviderError.unreadableSourceResponse(source: sourceName)
+        }
+    }
+
+    private static func sourceName(for resource: String) -> String {
+        let trimmedResource = resource.replacingOccurrences(of: "odpt:", with: "")
+        return "ODPT \(trimmedResource) API"
     }
 }

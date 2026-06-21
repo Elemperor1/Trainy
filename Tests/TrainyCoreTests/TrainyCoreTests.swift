@@ -41,7 +41,7 @@ final class TrainyTests: XCTestCase {
         assertTimetableFacts(FactProvenance.timetableFacts(source: odpt), label: "ODPT")
 
         let jrEast = SourceProvenance.jrEastTimetable(
-            sourceName: "JR East official timetable, Jun 2026 JR JIKOKUHYO",
+            sourceName: "JR East official timetable, Jul 2026 JR JIKOKUHYO",
             sourceURL: URL(string: "https://timetables.jreast.co.jp/en/")
         )
         XCTAssertEqual(jrEast.sourceKind, .officialTimetable)
@@ -628,6 +628,289 @@ final class TrainyTests: XCTestCase {
         XCTAssertEqual(store.activeProviderID, "shinkansen")
     }
 
+    func testSelectingSearchableProviderChangesActiveProviderAndTripsImmediately() throws {
+        let suiteName = "TrainyTests-\(UUID().uuidString)"
+        guard let defaults = UserDefaults(suiteName: suiteName) else {
+            XCTFail("Could not create UserDefaults suite")
+            return
+        }
+        defer {
+            defaults.removePersistentDomain(forName: suiteName)
+        }
+
+        let firstTrip = providerTrip(
+            id: "first-provider-trip",
+            providerID: "first-provider",
+            train: "Alpha 1",
+            service: "Alpha Line"
+        )
+        let secondTrip = providerTrip(
+            id: "second-provider-trip",
+            providerID: "second-provider",
+            train: "Beta 2",
+            service: "Beta Line"
+        )
+        let firstProvider = SearchFixtureProvider(
+            providerID: "first-provider",
+            displayName: "First Provider",
+            region: .japan,
+            capabilities: [.schedule],
+            availability: .available("First provider is searchable."),
+            catalog: [firstTrip],
+            tripsToReturn: [firstTrip]
+        )
+        let secondProvider = SearchFixtureProvider(
+            providerID: "second-provider",
+            displayName: "Second Provider",
+            region: .unitedKingdom,
+            capabilities: [.schedule],
+            availability: .available("Second provider is searchable."),
+            catalog: [secondTrip],
+            tripsToReturn: [secondTrip]
+        )
+        let registry = ProviderRegistry(
+            providers: [firstProvider, secondProvider],
+            defaultProviderID: firstProvider.providerID
+        )
+        let store = TrainStore(defaults: defaults, registry: registry)
+
+        XCTAssertEqual(store.activeProviderID, "first-provider")
+        XCTAssertEqual(store.selectedProviderID, "first-provider")
+        XCTAssertEqual(store.trips.map(\.id), ["first-provider-trip"])
+
+        store.selectProvider("second-provider")
+
+        XCTAssertEqual(store.activeProviderID, "second-provider")
+        XCTAssertEqual(store.selectedProviderID, "second-provider")
+        XCTAssertEqual(store.activeProviderName, "Second Provider")
+        XCTAssertEqual(store.trips.map(\.id), ["second-provider-trip"])
+        XCTAssertEqual(store.selectedTripID, "second-provider-trip")
+        XCTAssertTrue(store.searchScopeText.localizedCaseInsensitiveContains("Second Provider"))
+        XCTAssertEqual(defaults.string(forKey: "trainy.selectedProviderID"), "second-provider")
+        XCTAssertEqual(defaults.string(forKey: "trainy.dataScope"), "second-provider")
+    }
+
+    func testSearchableProviderCanStartAndSwitchWithoutBundledTrips() throws {
+        let suiteName = "TrainyTests-\(UUID().uuidString)"
+        guard let defaults = UserDefaults(suiteName: suiteName) else {
+            XCTFail("Could not create UserDefaults suite")
+            return
+        }
+        defer {
+            defaults.removePersistentDomain(forName: suiteName)
+        }
+
+        let seededTrip = providerTrip(
+            id: "seeded-provider-trip",
+            providerID: "seeded-provider",
+            train: "Seed 1",
+            service: "Seed Line"
+        )
+        let seededProvider = SearchFixtureProvider(
+            providerID: "seeded-provider",
+            displayName: "Seeded Provider",
+            region: .japan,
+            capabilities: [.schedule],
+            availability: .available("Seeded provider is searchable."),
+            catalog: [seededTrip],
+            tripsToReturn: [seededTrip]
+        )
+        let liveOnlyProvider = SearchFixtureProvider(
+            providerID: "live-only-provider",
+            displayName: "Live Only Provider",
+            region: .unitedKingdom,
+            capabilities: [.schedule],
+            availability: .available("Live-only provider is searchable."),
+            catalog: [],
+            tripsToReturn: []
+        )
+        let registry = ProviderRegistry(
+            providers: [seededProvider, liveOnlyProvider],
+            defaultProviderID: liveOnlyProvider.providerID
+        )
+        let emptyStore = TrainStore(defaults: defaults, registry: registry)
+
+        XCTAssertEqual(emptyStore.activeProviderID, "live-only-provider")
+        XCTAssertEqual(emptyStore.selectedProviderID, "live-only-provider")
+        XCTAssertTrue(emptyStore.trips.isEmpty)
+        XCTAssertEqual(emptyStore.selectedTripID, "")
+        XCTAssertNil(emptyStore.selectedTrip)
+        XCTAssertEqual(emptyStore.shareSummary, "No selected Trainy trip.")
+
+        emptyStore.refreshSelectedTrip()
+        XCTAssertEqual(emptyStore.liveLoadState, .empty("no saved trip is selected"))
+
+        let switchDefaults = try XCTUnwrap(UserDefaults(suiteName: "\(suiteName)-switch"))
+        defer {
+            switchDefaults.removePersistentDomain(forName: "\(suiteName)-switch")
+        }
+        let seededStore = TrainStore(
+            defaults: switchDefaults,
+            registry: ProviderRegistry(providers: [seededProvider, liveOnlyProvider], defaultProviderID: seededProvider.providerID)
+        )
+        XCTAssertEqual(seededStore.trips.map(\.id), ["seeded-provider-trip"])
+
+        seededStore.selectProvider("live-only-provider")
+
+        XCTAssertEqual(seededStore.activeProviderID, "live-only-provider")
+        XCTAssertTrue(seededStore.trips.isEmpty)
+        XCTAssertNil(seededStore.selectedTrip)
+        XCTAssertEqual(seededStore.selectedTripID, "")
+        XCTAssertEqual(switchDefaults.string(forKey: "trainy.selectedProviderID"), "live-only-provider")
+        XCTAssertEqual(switchDefaults.string(forKey: "trainy.dataScope"), "live-only-provider")
+    }
+
+    func testProviderProxyConfigurationUsesOnlyBaseURLInputs() throws {
+        let environmentConfig = ProviderProxyConfiguration.current(
+            infoDictionary: [
+                ProviderProxyConfiguration.infoPlistKey: "https://plist-proxy.example.com"
+            ],
+            environment: [
+                ProviderProxyConfiguration.environmentVariable: " https://worker-proxy.example.com/trainy?debug=1 "
+            ]
+        )
+
+        XCTAssertTrue(environmentConfig.isConfigured)
+        XCTAssertEqual(environmentConfig.baseURL?.scheme, "https")
+        XCTAssertEqual(environmentConfig.displayHost, "worker-proxy.example.com")
+        XCTAssertEqual(environmentConfig.baseURL?.path, "/trainy")
+        XCTAssertNil(environmentConfig.baseURL?.query)
+
+        let infoPlistConfig = ProviderProxyConfiguration.current(
+            infoDictionary: [
+                ProviderProxyConfiguration.infoPlistKey: "https://plist-proxy.example.com/"
+            ],
+            environment: [:]
+        )
+
+        XCTAssertTrue(infoPlistConfig.isConfigured)
+        XCTAssertEqual(infoPlistConfig.displayHost, "plist-proxy.example.com")
+
+        let invalidConfig = ProviderProxyConfiguration.current(
+            infoDictionary: nil,
+            environment: [
+                ProviderProxyConfiguration.environmentVariable: "file:///tmp/provider-secret"
+            ]
+        )
+
+        XCTAssertFalse(invalidConfig.isConfigured)
+        XCTAssertNil(invalidConfig.baseURL)
+    }
+
+    func testProviderProxyHealthDecodesCompactJSONAndBuildsEndpointURL() throws {
+        let healthURL = ProviderProxyHealthClient.healthURL(from: URL(string: "https://worker-proxy.example.com/trainy")!)
+        XCTAssertEqual(healthURL.absoluteString, "https://worker-proxy.example.com/trainy/v1/health/providers")
+
+        let json = """
+        {
+          "generatedAt": "2026-06-20T00:00:00Z",
+          "providers": [
+            {
+              "id": "ns",
+              "region": "NL",
+              "configured": true,
+              "status": "ok",
+              "capabilities": ["stationDepartures", "serviceAlerts"],
+              "cache": {
+                "staticFeed": "fresh",
+                "updatedAt": "2026-06-20T00:00:00Z"
+              },
+              "checkedAt": "2026-06-20T00:00:00Z",
+              "message": "Provider reachable."
+            },
+            {
+              "id": "tdx",
+              "region": "TW",
+              "configured": false,
+              "status": "missingCredential",
+              "message": "Proxy credential is not configured."
+            }
+          ]
+        }
+        """.data(using: .utf8)!
+
+        let response = try ProviderProxyHealthClient.makeDecoder().decode(ProviderProxyHealthResponse.self, from: json)
+
+        XCTAssertEqual(response.providers.count, 2)
+        XCTAssertEqual(response.providers[0].id, "ns")
+        XCTAssertEqual(response.providers[0].status, .ok)
+        XCTAssertEqual(response.providers[0].cache?.staticFeed, .fresh)
+        XCTAssertEqual(response.providers[1].status, .missingCredential)
+        XCTAssertFalse(String(data: json, encoding: .utf8)?.localizedCaseInsensitiveContains("Tokyo to Shin-Osaka") == true)
+        XCTAssertFalse(String(data: json, encoding: .utf8)?.localizedCaseInsensitiveContains("device") == true)
+        XCTAssertFalse(String(data: json, encoding: .utf8)?.localizedCaseInsensitiveContains("secret") == true)
+    }
+
+    func testTrainStoreRefreshesProviderProxyHealthAndMatchesProviderAliases() async throws {
+        let suiteName = "TrainyTests-\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
+        defer {
+            defaults.removePersistentDomain(forName: suiteName)
+        }
+
+        let generatedAt = Date(timeIntervalSince1970: 1_781_956_800)
+        let response = ProviderProxyHealthResponse(
+            generatedAt: generatedAt,
+            providers: [
+                ProviderProxyProviderHealth(
+                    id: "ns",
+                    region: "NL",
+                    configured: true,
+                    status: .ok,
+                    capabilities: ["stationDepartures"],
+                    cache: ProviderProxyCacheHealth(staticFeed: .fresh, updatedAt: generatedAt),
+                    checkedAt: generatedAt,
+                    message: "Provider reachable."
+                ),
+                ProviderProxyProviderHealth(
+                    id: "tdx",
+                    region: "TW",
+                    configured: false,
+                    status: .missingCredential,
+                    message: "Proxy credential is not configured."
+                )
+            ]
+        )
+        let store = TrainStore(
+            defaults: defaults,
+            registry: .default,
+            proxyConfiguration: ProviderProxyConfiguration(baseURL: URL(string: "https://worker-proxy.example.com")!),
+            proxyHealthFetcher: ProviderProxyHealthFixtureFetcher(response: response)
+        )
+
+        XCTAssertEqual(store.providerProxyLoadState, .idle)
+
+        await store.refreshProviderProxyHealth()
+
+        XCTAssertEqual(store.providerProxyLoadState, .loaded(generatedAt))
+        XCTAssertEqual(store.providerProxyHealthProviders.count, 2)
+        XCTAssertEqual(store.providerProxyHealth(for: "netherlands-ns")?.id, "ns")
+        XCTAssertEqual(store.providerProxyHealth(for: "taiwan-tdx")?.status, .missingCredential)
+        XCTAssertNil(store.providerProxyHealth(for: "hong-kong-mtr"))
+    }
+
+    func testTrainStoreKeepsProxyHealthUnconfiguredWithoutBaseURL() async throws {
+        let suiteName = "TrainyTests-\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
+        defer {
+            defaults.removePersistentDomain(forName: suiteName)
+        }
+
+        let store = TrainStore(
+            defaults: defaults,
+            registry: .default,
+            proxyConfiguration: ProviderProxyConfiguration(baseURL: nil),
+            proxyHealthFetcher: ProviderProxyHealthFixtureFetcher(
+                response: ProviderProxyHealthResponse(generatedAt: nil, providers: [])
+            )
+        )
+
+        XCTAssertEqual(store.providerProxyLoadState, .notConfigured)
+        await store.refreshProviderProxyHealth()
+        XCTAssertEqual(store.providerProxyLoadState, .notConfigured)
+        XCTAssertNil(store.providerProxyHealth)
+    }
+
     func testProviderErrorToUserMessageMapping() {
         XCTAssertEqual(
             ProviderError.providerNotFound("test").errorDescription,
@@ -653,6 +936,27 @@ final class TrainyTests: XCTestCase {
             ProviderError.noResults(providerID: "test").errorDescription,
             "Provider 'test' did not return matching trips."
         )
+        XCTAssertEqual(
+            TrainDataProviderError.badSourceResponse(source: "ODPT TrainTimetable API", statusCode: 401).errorDescription,
+            "The ODPT TrainTimetable API returned HTTP 401."
+        )
+        XCTAssertEqual(
+            TrainDataProviderError.badSourceResponse(source: "JR East official timetable", statusCode: nil).errorDescription,
+            "The JR East official timetable returned an unexpected response."
+        )
+        XCTAssertEqual(
+            TrainDataProviderError.unreadableSourceResponse(source: "ODPT TrainTimetable API").errorDescription,
+            "Trainy could not read the ODPT TrainTimetable API response."
+        )
+        let chainDescription = TrainDataProviderError.sourceChainFailed(
+            primary: "The ODPT TrainTimetable API returned HTTP 401.",
+            fallback: "No scheduled Shinkansen departures matched that search."
+        ).errorDescription
+        XCTAssertEqual(
+            chainDescription,
+            "Scheduled Shinkansen lookup failed. Primary source: The ODPT TrainTimetable API returned HTTP 401. Fallback source: No scheduled Shinkansen departures matched that search."
+        )
+        XCTAssertFalse(chainDescription?.localizedCaseInsensitiveContains("consumerKey") == true)
         XCTAssertTrue(SourceProvenance.providerUnavailableText(message: "").localizedCaseInsensitiveContains("unavailable"))
         XCTAssertEqual(TrainyAPIConfig.cleanODPTKey("test-key"), "test-key")
     }
@@ -791,6 +1095,62 @@ final class TrainyTests: XCTestCase {
             factProvenance: factProvenance ?? trip.factProvenance
         )
     }
+
+    private func providerTrip(id: String, providerID: String, train: String, service: String) -> TrainTrip {
+        let sample = TrainTrip.samples[0]
+        return TrainTrip(
+            id: id,
+            providerID: providerID,
+            routeID: "\(providerID)-route",
+            liveTripID: nil,
+            train: train,
+            operatorName: "\(providerID) operator",
+            service: service,
+            origin: sample.origin,
+            destination: sample.destination,
+            duration: sample.duration,
+            status: sample.status,
+            statusTone: sample.statusTone,
+            category: sample.category,
+            platform: sample.platform,
+            nextStop: sample.nextStop,
+            eta: sample.eta,
+            speed: sample.speed,
+            progress: sample.progress,
+            bestCar: sample.bestCar,
+            cars: sample.cars,
+            seat: sample.seat,
+            updated: sample.updated,
+            callout: sample.callout,
+            signal: sample.signal,
+            signalCopy: sample.signalCopy,
+            stops: sample.stops,
+            alerts: sample.alerts,
+            pulse: sample.pulse,
+            vehicleLatitude: sample.vehicleLatitude,
+            vehicleLongitude: sample.vehicleLongitude,
+            distanceText: sample.distanceText,
+            dataSource: "\(providerID) fixture",
+            sourceProvenance: SourceProvenance(
+                providerID: providerID,
+                providerName: "\(providerID) provider",
+                sourceName: "\(providerID) fixture",
+                sourceKind: .officialTimetable,
+                confidence: .confirmed,
+                freshness: .fresh
+            ),
+            factProvenance: FactProvenance.timetableFacts(
+                source: SourceProvenance(
+                    providerID: providerID,
+                    providerName: "\(providerID) provider",
+                    sourceName: "\(providerID) fixture",
+                    sourceKind: .officialTimetable,
+                    confidence: .confirmed,
+                    freshness: .fresh
+                )
+            )
+        )
+    }
 }
 
 private struct StarterCatalogExpectation: Decodable {
@@ -823,6 +1183,14 @@ private struct SearchFixtureProvider: ScheduleFeedProvider {
             throw TrainDataProviderError.noLiveTrips
         }
         return tripsToReturn
+    }
+}
+
+private struct ProviderProxyHealthFixtureFetcher: ProviderProxyHealthFetching {
+    let response: ProviderProxyHealthResponse
+
+    func fetchProviderHealth(from baseURL: URL) async throws -> ProviderProxyHealthResponse {
+        response
     }
 }
 

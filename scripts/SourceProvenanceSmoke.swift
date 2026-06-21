@@ -122,7 +122,7 @@ struct SourceProvenanceSmoke {
         try requireTimetableFactMapping(source: odptFactory, label: "ODPT")
 
         let jrEastLegacy = SourceProvenance.legacy(
-            dataSource: "JR East official timetable, Jun 2026 JR JIKOKUHYO",
+            dataSource: "JR East official timetable, Jul 2026 JR JIKOKUHYO",
             providerID: "shinkansen",
             providerName: "JR East"
         )
@@ -132,7 +132,7 @@ struct SourceProvenanceSmoke {
         )
 
         let jrEastFactory = SourceProvenance.jrEastTimetable(
-            sourceName: "JR East official timetable, Jun 2026 JR JIKOKUHYO",
+            sourceName: "JR East official timetable, Jul 2026 JR JIKOKUHYO",
             sourceURL: URL(string: "https://timetables.jreast.co.jp/en/")
         )
         try require(

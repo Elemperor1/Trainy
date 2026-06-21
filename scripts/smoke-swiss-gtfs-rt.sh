@@ -12,11 +12,14 @@ load_trainy_provider_env "$SWISS_ENV_FILE" SWISS_GTFS_RT_API_KEY || exit 1
 require_trainy_provider_env "Swiss Open Transport Data" SWISS_GTFS_RT_API_KEY || exit $?
 
 TMP_RESPONSE="$(mktemp "${TMPDIR:-/tmp}/trainy-swiss-smoke.XXXXXX")"
-trap 'rm -f "$TMP_RESPONSE"' EXIT
+TMP_CURL_CONFIG="$(trainy_smoke_make_curl_config)"
+trap 'rm -f "$TMP_RESPONSE" "$TMP_CURL_CONFIG"' EXIT
+
+trainy_smoke_write_curl_config_option "$TMP_CURL_CONFIG" header "Authorization: Bearer $SWISS_GTFS_RT_API_KEY"
+trainy_smoke_write_curl_config_option "$TMP_CURL_CONFIG" header "User-Agent: Trainy provider smoke"
 
 trainy_smoke_http_get "$TMP_RESPONSE" \
-  -H "Authorization: Bearer $SWISS_GTFS_RT_API_KEY" \
-  -H "User-Agent: Trainy provider smoke" \
+  --config "$TMP_CURL_CONFIG" \
   "$QUERY_URL" || exit 1
 
 RESULT_COUNT="$(jq '(.Entity // .entity // .Entities // .entities // []) | length' "$TMP_RESPONSE")"

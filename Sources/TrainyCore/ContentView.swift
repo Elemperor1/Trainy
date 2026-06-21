@@ -421,11 +421,11 @@ private struct TripsScreen: View {
                         isShowingAddTrip = true
                     }
                     .listCardRow()
-                } else {
-                    ActiveTripSummary(trip: store.selectedTrip, store: store) {
-                        selectedMapRoute = RailMapRoute(id: store.selectedTrip.id)
+                } else if let selectedTrip = store.selectedTrip {
+                    ActiveTripSummary(trip: selectedTrip, store: store) {
+                        selectedMapRoute = RailMapRoute(id: selectedTrip.id)
                     }
-                        .listCardRow()
+                    .listCardRow()
                 }
             }
 
@@ -495,7 +495,15 @@ private struct TripsScreen: View {
             TrainDetailView(store: store, tripID: route.id)
         }
         .navigationDestination(item: $selectedMapRoute) { route in
-            RailJourneyMapScreen(trip: store.trips.first { $0.id == route.id } ?? store.selectedTrip)
+            if let trip = store.trips.first(where: { $0.id == route.id }) ?? store.selectedTrip {
+                RailJourneyMapScreen(trip: trip)
+            } else {
+                EmptyStateView(
+                    title: "No map trip",
+                    message: "Search and track a trip before opening the rail map.",
+                    symbolName: "map"
+                )
+            }
         }
         .listStyle(.plain)
         .scrollContentBackground(.hidden)
@@ -1650,6 +1658,9 @@ private struct SettingsScreen: View {
                         Divider()
                             .background(RailDesign.Palette.hairline)
                     }
+                    ProviderProxyStatusSummary(store: store)
+                    Divider()
+                        .background(RailDesign.Palette.hairline)
                     SettingsNavigationRow(
                         symbol: "globe.asia.australia.fill",
                         title: "Supported regions",
@@ -2215,7 +2226,7 @@ private struct TrainDetailView: View {
     let tripID: TrainTrip.ID
     @AppStorage("trainy.unitSystem") private var unitSystemRaw = UserPreferences.UnitSystem.metric.rawValue
 
-    private var trip: TrainTrip {
+    private var trip: TrainTrip? {
         store.trips.first { $0.id == tripID } ?? store.selectedTrip
     }
 
@@ -2226,79 +2237,87 @@ private struct TrainDetailView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: RailDesign.Spacing.l) {
-                RouteHeaderPanel(trip: trip)
-                StatusSummaryPanel(trip: trip)
-                SourceProvenancePanel(trip: trip)
-                VStack(alignment: .leading, spacing: RailDesign.Spacing.s) {
-                    SectionHeader(title: "Rail map", subtitle: "Route line, map position, upcoming stops, transfer cues, and disruptions")
-                    RailJourneyMapPanel(trip: trip, style: .detail)
-                }
-                JourneyProgressPanel(trip: trip)
+                if let trip {
+                    RouteHeaderPanel(trip: trip)
+                    StatusSummaryPanel(trip: trip)
+                    SourceProvenancePanel(trip: trip)
+                    VStack(alignment: .leading, spacing: RailDesign.Spacing.s) {
+                        SectionHeader(title: "Rail map", subtitle: "Route line, map position, upcoming stops, transfer cues, and disruptions")
+                        RailJourneyMapPanel(trip: trip, style: .detail)
+                    }
+                    JourneyProgressPanel(trip: trip)
 
-                VStack(alignment: .leading, spacing: RailDesign.Spacing.s) {
-                    SectionHeader(title: "Stop timeline", subtitle: "Scheduled and estimated times, platforms, skipped stops, cancellations, and delay notes")
-                    GlassPanel {
-                        VStack(spacing: 0) {
-                            ForEach(Array(trip.stops.enumerated()), id: \.element.id) { index, stop in
-                                StopTimelineRow(stop: stop, isLast: index == trip.stops.count - 1)
+                    VStack(alignment: .leading, spacing: RailDesign.Spacing.s) {
+                        SectionHeader(title: "Stop timeline", subtitle: "Scheduled and estimated times, platforms, skipped stops, cancellations, and delay notes")
+                        GlassPanel {
+                            VStack(spacing: 0) {
+                                ForEach(Array(trip.stops.enumerated()), id: \.element.id) { index, stop in
+                                    StopTimelineRow(stop: stop, isLast: index == trip.stops.count - 1)
+                                }
                             }
                         }
                     }
-                }
 
-                TransferWarningCard(
-                    title: trip.statusTone == .good ? "Transfer watch" : "Transfer caution",
-                    detail: trip.transferWarningCopy,
-                    tone: trip.statusTone == .good ? RailDesign.Palette.accent : RailDesign.Palette.amber
-                )
+                    TransferWarningCard(
+                        title: trip.statusTone == .good ? "Transfer watch" : "Transfer caution",
+                        detail: trip.transferWarningCopy,
+                        tone: trip.statusTone == .good ? RailDesign.Palette.accent : RailDesign.Palette.amber
+                    )
 
-                VStack(alignment: .leading, spacing: RailDesign.Spacing.s) {
-                    SectionHeader(title: "Carriage and platform", subtitle: "Boarding position, train length, seat cue, and platform/track")
-                    GlassPanel {
-                        VStack(alignment: .leading, spacing: RailDesign.Spacing.m) {
-                            InfoLine(symbol: "rectangle.split.3x1.fill", title: "Platform", value: trip.displayPlatform)
-                            InfoLine(symbol: "train.side.front.car", title: "Carriage", value: "Car \(trip.bestCar) of \(trip.cars)")
-                            InfoLine(symbol: "seat", title: "Seat note", value: trip.seat)
-                            InfoLine(symbol: "speedometer", title: "Speed", value: UnitConverter.displaySpeed(trip.speed, useMetric: useMetric))
-                        }
-                    }
-                }
-
-                VStack(alignment: .leading, spacing: RailDesign.Spacing.s) {
-                    SectionHeader(title: "Notes", subtitle: "Original route guidance from the connected data source")
-                    GlassPanel {
-                        Text(trip.callout)
-                            .font(.subheadline)
-                            .foregroundStyle(RailDesign.Palette.secondaryText)
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
-                }
-
-                VStack(alignment: .leading, spacing: RailDesign.Spacing.s) {
-                    SectionHeader(title: "Alerts", subtitle: "Service notices and trip-specific reminders")
-                    if trip.alerts.isEmpty {
-                        EmptyStateView(title: "No active alerts", message: "Service updates will appear here when data is available.", symbolName: "bell")
-                    } else {
-                        VStack(spacing: RailDesign.Spacing.s) {
-                            ForEach(trip.alerts) { alert in
-                                DisruptionBanner(alert: alert)
+                    VStack(alignment: .leading, spacing: RailDesign.Spacing.s) {
+                        SectionHeader(title: "Carriage and platform", subtitle: "Boarding position, train length, seat cue, and platform/track")
+                        GlassPanel {
+                            VStack(alignment: .leading, spacing: RailDesign.Spacing.m) {
+                                InfoLine(symbol: "rectangle.split.3x1.fill", title: "Platform", value: trip.displayPlatform)
+                                InfoLine(symbol: "train.side.front.car", title: "Carriage", value: "Car \(trip.bestCar) of \(trip.cars)")
+                                InfoLine(symbol: "seat", title: "Seat note", value: trip.seat)
+                                InfoLine(symbol: "speedometer", title: "Speed", value: UnitConverter.displaySpeed(trip.speed, useMetric: useMetric))
                             }
                         }
                     }
-                }
 
-                ShareLink(item: trip.shareText) {
-                    Label("Share journey", systemImage: "square.and.arrow.up")
-                        .font(.headline)
-                        .frame(maxWidth: .infinity)
+                    VStack(alignment: .leading, spacing: RailDesign.Spacing.s) {
+                        SectionHeader(title: "Notes", subtitle: "Original route guidance from the connected data source")
+                        GlassPanel {
+                            Text(trip.callout)
+                                .font(.subheadline)
+                                .foregroundStyle(RailDesign.Palette.secondaryText)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                    }
+
+                    VStack(alignment: .leading, spacing: RailDesign.Spacing.s) {
+                        SectionHeader(title: "Alerts", subtitle: "Service notices and trip-specific reminders")
+                        if trip.alerts.isEmpty {
+                            EmptyStateView(title: "No active alerts", message: "Service updates will appear here when data is available.", symbolName: "bell")
+                        } else {
+                            VStack(spacing: RailDesign.Spacing.s) {
+                                ForEach(trip.alerts) { alert in
+                                    DisruptionBanner(alert: alert)
+                                }
+                            }
+                        }
+                    }
+
+                    ShareLink(item: trip.shareText) {
+                        Label("Share journey", systemImage: "square.and.arrow.up")
+                            .font(.headline)
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.glassProminent)
+                } else {
+                    EmptyStateView(
+                        title: "Trip unavailable",
+                        message: "This trip is no longer saved. Search and track a service to open a detail view.",
+                        symbolName: "train.side.front.car"
+                    )
                 }
-                .buttonStyle(.glassProminent)
             }
             .padding(RailDesign.Spacing.m)
             .padding(.bottom, 120)
         }
         .background(RailGradientBackground().ignoresSafeArea())
-        .navigationTitle(trip.train)
+        .navigationTitle(trip?.train ?? "Trip")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItemGroup(placement: .topBarTrailing) {
@@ -2309,14 +2328,18 @@ private struct TrainDetailView: View {
                 }
                 .buttonStyle(.glass)
 
-                ShareLink(item: trip.shareText) {
-                    Image(systemName: "square.and.arrow.up")
+                if let trip {
+                    ShareLink(item: trip.shareText) {
+                        Image(systemName: "square.and.arrow.up")
+                    }
+                    .buttonStyle(.glass)
                 }
-                .buttonStyle(.glass)
             }
         }
         .onAppear {
-            store.select(trip)
+            if let trip {
+                store.select(trip)
+            }
         }
         .railScreenChrome()
     }
@@ -2780,6 +2803,177 @@ private struct ProviderRegionPicker: View {
     }
 }
 
+private struct ProviderProxyStatusSummary: View {
+    @ObservedObject var store: TrainStore
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: RailDesign.Spacing.s) {
+            HStack(alignment: .top, spacing: RailDesign.Spacing.s) {
+                Image(systemName: statusSymbol)
+                    .font(.title3)
+                    .symbolRenderingMode(.hierarchical)
+                    .foregroundStyle(statusTint)
+                    .frame(width: 30)
+
+                VStack(alignment: .leading, spacing: RailDesign.Spacing.xs) {
+                    HStack(alignment: .firstTextBaseline, spacing: RailDesign.Spacing.xs) {
+                        Text("Provider proxy")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(RailDesign.Palette.secondaryText)
+                        ProviderStatusPill(text: statusText, tint: statusTint)
+                    }
+
+                    Text("Cloudflare Workers")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(RailDesign.Palette.ink)
+
+                    Text(detailText)
+                        .font(.caption)
+                        .foregroundStyle(RailDesign.Palette.secondaryText)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
+                Spacer(minLength: RailDesign.Spacing.s)
+
+                Button {
+                    Task {
+                        await store.refreshProviderProxyHealth()
+                    }
+                } label: {
+                    Label("Check", systemImage: "arrow.clockwise")
+                        .font(.caption.weight(.semibold))
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.mini)
+                .disabled(!store.providerProxyConfiguration.isConfigured || store.providerProxyLoadState == .loading)
+            }
+
+            if !store.providerProxyHealthProviders.isEmpty {
+                VStack(spacing: RailDesign.Spacing.xs) {
+                    ForEach(store.providerProxyHealthProviders.prefix(6)) { health in
+                        ProviderProxyHealthProviderRow(health: health)
+                    }
+                }
+            }
+        }
+        .padding(.vertical, RailDesign.Spacing.s)
+        .task {
+            guard store.providerProxyConfiguration.isConfigured, store.providerProxyHealth == nil else { return }
+            await store.refreshProviderProxyHealth()
+        }
+    }
+
+    private var statusText: String {
+        switch store.providerProxyLoadState {
+        case .notConfigured:
+            return "No proxy"
+        case .idle:
+            return "Configured"
+        case .loading:
+            return "Checking"
+        case .loaded:
+            return hasAttention ? "Attention" : "Healthy"
+        case .unavailable:
+            return "Unavailable"
+        }
+    }
+
+    private var detailText: String {
+        switch store.providerProxyLoadState {
+        case .notConfigured:
+            return "No proxy base URL is configured. Planned proxy providers remain unavailable in this build."
+        case .idle:
+            return "Base host: \(store.providerProxyConfiguration.displayHost). Health has not been checked yet."
+        case .loading:
+            return "Checking app-safe provider health from \(store.providerProxyConfiguration.displayHost)."
+        case .loaded(let generatedAt):
+            let timestamp = generatedAt.map { Self.dateFormatter.string(from: $0) } ?? "unknown time"
+            return "Health loaded at \(timestamp). Reports provider status only, not rider trips."
+        case .unavailable(let message):
+            return "Could not reach provider proxy health: \(message)"
+        }
+    }
+
+    private var statusTint: Color {
+        switch store.providerProxyLoadState {
+        case .notConfigured:
+            return RailDesign.Palette.secondaryText
+        case .idle, .loading:
+            return RailDesign.Palette.blue
+        case .loaded:
+            return hasAttention ? RailDesign.Palette.amber : RailDesign.Palette.mint
+        case .unavailable:
+            return RailDesign.Palette.copper
+        }
+    }
+
+    private var statusSymbol: String {
+        switch store.providerProxyLoadState {
+        case .notConfigured:
+            return "lock.slash"
+        case .idle:
+            return "cloud"
+        case .loading:
+            return "arrow.clockwise"
+        case .loaded:
+            return hasAttention ? "exclamationmark.shield.fill" : "checkmark.shield.fill"
+        case .unavailable:
+            return "wifi.slash"
+        }
+    }
+
+    private var hasAttention: Bool {
+        store.providerProxyHealthProviders.contains { $0.status != .ok }
+    }
+
+    private static let dateFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .medium
+        formatter.timeStyle = .short
+        return formatter
+    }()
+}
+
+private struct ProviderProxyHealthProviderRow: View {
+    let health: ProviderProxyProviderHealth
+
+    var body: some View {
+        HStack(alignment: .top, spacing: RailDesign.Spacing.s) {
+            Image(systemName: health.status.symbolName)
+                .foregroundStyle(health.status.tint)
+                .frame(width: 24)
+
+            VStack(alignment: .leading, spacing: 3) {
+                HStack(alignment: .firstTextBaseline, spacing: RailDesign.Spacing.xs) {
+                    Text(health.id)
+                        .font(.caption.weight(.bold))
+                        .foregroundStyle(RailDesign.Palette.ink)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
+                    ProviderStatusPill(text: health.status.displayName, tint: health.status.tint)
+                }
+
+                Text(health.message)
+                    .font(.caption2)
+                    .foregroundStyle(RailDesign.Palette.secondaryText)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                if let cache = health.cache {
+                    Text("Static feed: \(cache.staticFeed.displayName)")
+                        .font(.caption2.weight(.semibold))
+                        .foregroundStyle(RailDesign.Palette.secondaryText)
+                }
+            }
+
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, RailDesign.Spacing.xs)
+        .padding(.vertical, 6)
+        .background(RailDesign.Palette.hairline.opacity(0.6), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+        .accessibilityElement(children: .combine)
+    }
+}
+
 private struct ProviderDirectoryList: View {
     @ObservedObject var store: TrainStore
 
@@ -2792,6 +2986,7 @@ private struct ProviderDirectoryList: View {
                 }
                 ProviderDirectoryRow(
                     provider: provider,
+                    proxyHealth: store.providerProxyHealth(for: provider.id),
                     isActive: provider.id == store.activeProviderID,
                     isSelected: provider.id == store.selectedProviderID,
                     canSearch: store.providerCanSearch(provider.id),
@@ -2804,8 +2999,25 @@ private struct ProviderDirectoryList: View {
     }
 }
 
+private struct ProviderProxyProviderHealthBadge: View {
+    let health: ProviderProxyProviderHealth
+
+    var body: some View {
+        Label("Proxy \(health.status.displayName): \(health.message)", systemImage: health.status.symbolName)
+            .font(.caption2.weight(.semibold))
+            .foregroundStyle(health.status.tint)
+            .fixedSize(horizontal: false, vertical: true)
+            .padding(.horizontal, RailDesign.Spacing.xs)
+            .padding(.vertical, 6)
+            .background(health.status.tint.opacity(0.12), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+            .accessibilityLabel("Provider proxy health")
+            .accessibilityValue("\(health.status.displayName), \(health.message)")
+    }
+}
+
 private struct ProviderDirectoryRow: View {
     let provider: ProviderMetadata
+    let proxyHealth: ProviderProxyProviderHealth?
     let isActive: Bool
     let isSelected: Bool
     let canSearch: Bool
@@ -2861,6 +3073,10 @@ private struct ProviderDirectoryRow: View {
             #if DEBUG
             ProviderDeveloperCredentialStatus(provider: provider)
             #endif
+
+            if let proxyHealth {
+                ProviderProxyProviderHealthBadge(health: proxyHealth)
+            }
 
             if !canSearch {
                 ProviderSearchGate(provider: provider)
@@ -3183,6 +3399,40 @@ private extension ProviderAvailability.Status {
             return RailDesign.Palette.copper
         case .unavailable:
             return RailDesign.Palette.secondaryText
+        }
+    }
+}
+
+private extension ProviderProxyHealthStatus {
+    var tint: Color {
+        switch self {
+        case .ok:
+            return RailDesign.Palette.mint
+        case .missingCredential, .rateLimited, .stale:
+            return RailDesign.Palette.amber
+        case .offline:
+            return RailDesign.Palette.copper
+        case .unsupported, .unknown:
+            return RailDesign.Palette.secondaryText
+        }
+    }
+
+    var symbolName: String {
+        switch self {
+        case .ok:
+            return "checkmark.shield.fill"
+        case .missingCredential:
+            return "lock.shield"
+        case .rateLimited:
+            return "speedometer"
+        case .offline:
+            return "wifi.slash"
+        case .stale:
+            return "clock.badge.exclamationmark"
+        case .unsupported:
+            return "nosign"
+        case .unknown:
+            return "questionmark.circle"
         }
     }
 }

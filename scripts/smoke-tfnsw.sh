@@ -12,10 +12,13 @@ load_trainy_provider_env "$TFNSW_ENV_FILE" TFNSW_API_KEY || exit 1
 require_trainy_provider_env "Transport for NSW" TFNSW_API_KEY || exit $?
 
 TMP_RESPONSE="$(mktemp "${TMPDIR:-/tmp}/trainy-tfnsw-smoke.XXXXXX")"
-trap 'rm -f "$TMP_RESPONSE"' EXIT
+TMP_CURL_CONFIG="$(trainy_smoke_make_curl_config)"
+trap 'rm -f "$TMP_RESPONSE" "$TMP_CURL_CONFIG"' EXIT
+
+trainy_smoke_write_curl_config_option "$TMP_CURL_CONFIG" header "Authorization: apikey $TFNSW_API_KEY"
 
 trainy_smoke_http_get "$TMP_RESPONSE" \
-  -H "Authorization: apikey $TFNSW_API_KEY" \
+  --config "$TMP_CURL_CONFIG" \
   "$QUERY_URL" || exit 1
 
 RESULT_COUNT="$(rg -c -F 'entity {' "$TMP_RESPONSE" || true)"

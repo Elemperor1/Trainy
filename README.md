@@ -37,6 +37,12 @@ scripts/smoke-odpt.sh
 
 The smoke compiles Trainy's provider code and verifies that `Tokyo to Shin-Osaka` and `JR East` searches return real ODPT-backed or official timetable trips instead of starter data.
 
+## Provider Proxy
+
+Cloudflare Workers is the selected production proxy path for credentialed or heavy providers. The app reads only the proxy base URL from `TRAINY_PROVIDER_PROXY_BASE_URL` or `TrainyProviderProxyBaseURL` in the app `Info.plist`; production provider keys stay in Worker secrets or equivalent backend secret storage.
+
+Settings > Providers shows the proxy state and, when configured, can fetch compact health from `GET /v1/health/providers`. That response is intentionally app-safe provider status and cache metadata, not rider trip details or raw upstream/provider debug output.
+
 ## Swift Package and VS Code
 
 The native app code is package-first now:
@@ -51,13 +57,10 @@ Useful commands:
 
 ```bash
 swift package describe
-SDKROOT="$(xcrun --sdk iphonesimulator --show-sdk-path)"
-swift build --triple arm64-apple-ios26.0-simulator --sdk "$SDKROOT"
-swift build --build-tests --triple arm64-apple-ios26.0-simulator --sdk "$SDKROOT"
 scripts/build-ios.sh
 ```
 
-VS Code tasks are available under `.vscode/tasks.json` for package describe, SwiftPM build/test, iOS-simulator package build, iOS-simulator test-bundle build, and the remaining Xcode app-wrapper build/test. Because Trainy is an iOS-only app wrapper that uses UIKit and MapKit, the iOS simulator package build and Xcode wrapper build are the reliable app compile gates. Plain host `swift build` / `swift test` are included for standard SwiftPM workflows, but they cannot execute the iOS UI package on macOS when UIKit is required.
+VS Code tasks are available under `.vscode/tasks.json` for package describe and the Xcode app-wrapper build/test loop. Because Trainy is an iOS-only app that uses UIKit and iOS MapKit, `scripts/build-ios.sh` and the Xcode wrapper tasks are the reliable compile gates. Plain host `swift build` / `swift test` target macOS by default and are expected to fail with `No such module 'UIKit'`; they are not app validation commands for this repo.
 
 ## Run it
 
@@ -84,7 +87,7 @@ xcodebuild test \
   CODE_SIGNING_ALLOWED=NO
 ```
 
-`TrainyTests` does not require ODPT credentials or live network access. It covers source provenance mapping, fallback behavior, route matching, station normalization, time parsing across midnight, persistence migration by `dataScope`, and provider error to user-message mapping.
+`TrainyTests` does not require ODPT credentials or live network access. It covers source provenance mapping, fallback behavior, route matching, station normalization, time parsing across midnight, persistence migration by `dataScope`, proxy health/config wiring, and provider error to user-message mapping.
 
 The standalone smoke harnesses remain useful for focused script checks:
 
@@ -95,6 +98,8 @@ scripts/smoke-shinkansen-provider.sh
 ```
 
 `scripts/smoke-odpt.sh` is the credentialed live-data smoke and should only be run after configuring `ODPT_CONSUMER_KEY`.
+
+Additional credentialed provider smokes are documented in `TrainyIOS/README.md`. They use provider-specific ignored env files with strict key whitelists; do not create or use a combined provider env file unless its parser keeps the same reject-by-default behavior.
 
 ## Xcode Without Mac App Store
 

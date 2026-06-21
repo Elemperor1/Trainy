@@ -12,71 +12,18 @@
       "problemMatcher": []
     },
     {
-      "label": "SwiftPM: Build Host",
-      "detail": "Host macOS SwiftPM build. Trainy's iOS UI imports UIKit, so use SwiftPM: Build for the normal iOS package build.",
+      "label": "Xcode: Build iOS App Wrapper",
+      "detail": "Build the Trainy iOS app and TrainyCore package through Xcode with the iPhone Simulator SDK.",
       "type": "shell",
-      "command": "swift",
-      "args": ["build"],
+      "command": "scripts/build-ios.sh",
       "options": {
         "cwd": "${workspaceFolder}"
-      },
-      "problemMatcher": "$swiftc"
-    },
-    {
-      "label": "SwiftPM: Build",
-      "detail": "Build TrainyCore with the iPhone Simulator SDK.",
-      "type": "shell",
-      "command": "/bin/zsh",
-      "args": [
-        "-lc",
-        "SDKROOT=\"$(xcrun --sdk iphonesimulator --show-sdk-path)\"; swift build --sdk \"$SDKROOT\" --triple arm64-apple-ios26.0-simulator"
-      ],
-      "options": {
-        "cwd": "${workspaceFolder}",
-        "env": {
-          "HOME": "/private/tmp/trainy-xcode-home",
-          "CFFIXED_USER_HOME": "/private/tmp/trainy-xcode-home"
-        }
       },
       "problemMatcher": "$swiftc",
       "group": {
         "kind": "build",
         "isDefault": true
       }
-    },
-    {
-      "label": "SwiftPM: Test Host",
-      "detail": "Host macOS SwiftPM test command. iOS test execution is covered by Xcode: Test iOS App Wrapper.",
-      "type": "shell",
-      "command": "swift",
-      "args": ["test"],
-      "options": {
-        "cwd": "${workspaceFolder}"
-      },
-      "problemMatcher": "$swiftc"
-    },
-    {
-      "label": "SwiftPM: Build Tests",
-      "detail": "Build the SwiftPM test bundle with the iPhone Simulator SDK.",
-      "type": "shell",
-      "command": "/bin/zsh",
-      "args": [
-        "-lc",
-        "SDKROOT=\"$(xcrun --sdk iphonesimulator --show-sdk-path)\"; swift build --build-tests --triple arm64-apple-ios26.0-simulator --sdk \"$SDKROOT\""
-      ],
-      "options": {
-        "cwd": "${workspaceFolder}"
-      },
-      "problemMatcher": "$swiftc"
-    },
-    {
-      "label": "Xcode: Build iOS App Wrapper",
-      "type": "shell",
-      "command": "scripts/build-ios.sh",
-      "options": {
-        "cwd": "${workspaceFolder}"
-      },
-      "problemMatcher": "$swiftc"
     },
     {
       "label": "Xcode: Test iOS App Wrapper",

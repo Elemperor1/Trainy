@@ -13,11 +13,14 @@ load_trainy_provider_env "$NS_ENV_FILE" NS_SUBSCRIPTION_KEY || exit 1
 require_trainy_provider_env "Netherlands NS" NS_SUBSCRIPTION_KEY || exit $?
 
 TMP_RESPONSE="$(mktemp "${TMPDIR:-/tmp}/trainy-ns-smoke.XXXXXX")"
-trap 'rm -f "$TMP_RESPONSE"' EXIT
+TMP_CURL_CONFIG="$(trainy_smoke_make_curl_config)"
+trap 'rm -f "$TMP_RESPONSE" "$TMP_CURL_CONFIG"' EXIT
+
+trainy_smoke_write_curl_config_option "$TMP_CURL_CONFIG" header "Ocp-Apim-Subscription-Key: $NS_SUBSCRIPTION_KEY"
+trainy_smoke_write_curl_config_option "$TMP_CURL_CONFIG" header "Accept: application/json"
 
 trainy_smoke_http_get "$TMP_RESPONSE" \
-  -H "Ocp-Apim-Subscription-Key: $NS_SUBSCRIPTION_KEY" \
-  -H "Accept: application/json" \
+  --config "$TMP_CURL_CONFIG" \
   "$QUERY_URL" || exit 1
 
 RESULT_COUNT="$(jq '.payload.departures | length' "$TMP_RESPONSE")"

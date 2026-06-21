@@ -8,6 +8,9 @@ EVIDENCE_FILE="${EVIDENCE_FILE:-$ROOT_DIR/Tests/TrainyCoreTests/Fixtures/future_
 ENDPOINT="${SWISS_GTFS_RT_URL:-https://api.opentransportdata.swiss/la/gtfs-rt?format=JSON}"
 USER_AGENT="${SWISS_USER_AGENT:-Trainy fixture capture}"
 
+# shellcheck source=scripts/lib/provider-smoke-env.sh
+source "$ROOT_DIR/scripts/lib/provider-smoke-env.sh"
+
 trainy_trim() {
   local value="$1"
   value="${value#"${value%%[![:space:]]*}"}"
@@ -67,13 +70,17 @@ if [[ -z "$API_KEY" ]]; then
 fi
 
 TMP_RESPONSE="$(mktemp "${TMPDIR:-/tmp}/trainy-swiss-gtfsrt.XXXXXX")"
-trap 'rm -f "$TMP_RESPONSE"' EXIT
+TMP_CURL_CONFIG="$(trainy_smoke_make_curl_config)"
+trap 'rm -f "$TMP_RESPONSE" "$TMP_CURL_CONFIG"' EXIT
+
+trainy_smoke_write_curl_config_option "$TMP_CURL_CONFIG" header "Authorization: Bearer $API_KEY"
+trainy_smoke_write_curl_config_option "$TMP_CURL_CONFIG" header "User-Agent: $USER_AGENT"
+
 HTTP_CODE="$(
   curl -sS -L --compressed --max-time 30 \
     -o "$TMP_RESPONSE" \
     -w '%{http_code}' \
-    -H "Authorization: Bearer $API_KEY" \
-    -H "User-Agent: $USER_AGENT" \
+    --config "$TMP_CURL_CONFIG" \
     "$ENDPOINT" || true
 )"
 

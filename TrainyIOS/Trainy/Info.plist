@@ -20,6 +20,8 @@
 	<true/>
 	<key>ODPTConsumerKey</key>
 	<string>$(ODPT_CONSUMER_KEY)</string>
+	<key>TrainyProviderProxyBaseURL</key>
+	<string>$(TRAINY_PROVIDER_PROXY_BASE_URL)</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

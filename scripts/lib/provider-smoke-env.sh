@@ -112,6 +112,33 @@ trainy_smoke_http_get() {
   fi
 }
 
+trainy_smoke_curl_config_quote() {
+  local value="$1"
+  if [[ "$value" == *$'\n'* || "$value" == *$'\r'* ]]; then
+    printf 'Unsafe newline found in curl config value.\n' >&2
+    return 1
+  fi
+  value="${value//\\/\\\\}"
+  value="${value//\"/\\\"}"
+  printf '"%s"' "$value"
+}
+
+trainy_smoke_write_curl_config_option() {
+  local config_file="$1"
+  local option="$2"
+  local value="$3"
+  printf '%s = ' "$option" >> "$config_file"
+  trainy_smoke_curl_config_quote "$value" >> "$config_file"
+  printf '\n' >> "$config_file"
+}
+
+trainy_smoke_make_curl_config() {
+  local config_file
+  config_file="$(mktemp "${TMPDIR:-/tmp}/trainy-curl-config.XXXXXX")"
+  chmod 600 "$config_file"
+  printf '%s' "$config_file"
+}
+
 print_trainy_smoke_pass() {
   local provider="$1"
   local query="$2"

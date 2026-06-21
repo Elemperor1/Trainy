@@ -111,12 +111,29 @@ struct ShinkansenTrainProvider: ScheduleFeedProvider, RealtimeFeedProvider {
         }
 
         if odptClient != nil && !routeMatches.isEmpty {
-            let timetableTrips = try await fetchOfficialTimetableTrips(routes: routeMatches, starterMatches: sortedMatches, query: cleanQuery)
+            let timetableTrips: [TrainTrip]
+            do {
+                timetableTrips = try await fetchOfficialTimetableTrips(routes: routeMatches, starterMatches: sortedMatches, query: cleanQuery)
+            } catch {
+                if let odptError {
+                    throw TrainDataProviderError.sourceChainFailed(
+                        primary: TrainDataProviderError.userFacingDescription(for: odptError),
+                        fallback: TrainDataProviderError.userFacingDescription(for: error)
+                    )
+                }
+                throw error
+            }
             if !timetableTrips.isEmpty {
                 return Array(timetableTrips.prefix(16))
             }
             if !routeMatches.isEmpty {
-                throw odptError ?? TrainDataProviderError.noLiveTrips
+                if let odptError {
+                    throw TrainDataProviderError.sourceChainFailed(
+                        primary: TrainDataProviderError.userFacingDescription(for: odptError),
+                        fallback: TrainDataProviderError.noLiveTrips.errorDescription ?? "No fallback trips matched."
+                    )
+                }
+                throw TrainDataProviderError.noLiveTrips
             }
         }
 

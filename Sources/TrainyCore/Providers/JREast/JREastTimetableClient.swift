@@ -49,17 +49,21 @@ struct JREastTimetableClient: Sendable {
     }
 
     private func fetchHTML(from url: URL) async throws -> String {
+        let sourceName = "JR East official timetable"
         var request = URLRequest(url: url)
         request.timeoutInterval = 18
         request.setValue("text/html,application/xhtml+xml", forHTTPHeaderField: "Accept")
         request.setValue("Trainy iOS official timetable smoke", forHTTPHeaderField: "User-Agent")
 
         let (data, response) = try await session.data(for: request)
-        guard let httpResponse = response as? HTTPURLResponse, (200..<300).contains(httpResponse.statusCode) else {
-            throw TrainDataProviderError.badResponse
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw TrainDataProviderError.badSourceResponse(source: sourceName, statusCode: nil)
+        }
+        guard (200..<300).contains(httpResponse.statusCode) else {
+            throw TrainDataProviderError.badSourceResponse(source: sourceName, statusCode: httpResponse.statusCode)
         }
         guard let html = String(data: data, encoding: .utf8) ?? String(data: data, encoding: .shiftJIS) else {
-            throw TrainDataProviderError.badResponse
+            throw TrainDataProviderError.unreadableSourceResponse(source: sourceName)
         }
         return html
     }

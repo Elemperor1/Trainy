@@ -51,6 +51,14 @@ final class TrainStore: ObservableObject {
         let symbolName: String
     }
 
+    enum ProviderProxyLoadState: Equatable {
+        case notConfigured
+        case idle
+        case loading
+        case loaded(Date?)
+        case unavailable(String)
+    }
+
     @Published var trips: [TrainTrip]
     @Published var selectedTripID: TrainTrip.ID
     @Published var query = ""
@@ -64,17 +72,29 @@ final class TrainStore: ObservableObject {
     @Published private(set) var selectedProviderID: String
     @Published private(set) var selectedRegionID: String
     @Published private(set) var shouldShowFirstRun: Bool
+    @Published private(set) var providerProxyHealth: ProviderProxyHealthResponse?
+    @Published private(set) var providerProxyLoadState: ProviderProxyLoadState
 
     private let defaults: UserDefaults
     private let providerRegistry: ProviderRegistry
-    private let provider: any ScheduleFeedProvider
-    private let catalog: [TrainTrip]
+    let providerProxyConfiguration: ProviderProxyConfiguration
+    private let proxyHealthFetcher: any ProviderProxyHealthFetching
+    private var provider: any ScheduleFeedProvider
+    private var catalog: [TrainTrip]
     private var hasBootstrapped = false
     private var hasSavedPayload = false
 
-    init(defaults: UserDefaults = .standard, registry: ProviderRegistry = .default, providerID: String? = nil) {
+    init(
+        defaults: UserDefaults = .standard,
+        registry: ProviderRegistry = .default,
+        providerID: String? = nil,
+        proxyConfiguration: ProviderProxyConfiguration = .current(),
+        proxyHealthFetcher: any ProviderProxyHealthFetching = ProviderProxyHealthClient()
+    ) {
         self.defaults = defaults
         self.providerRegistry = registry
+        self.providerProxyConfiguration = proxyConfiguration
+        self.proxyHealthFetcher = proxyHealthFetcher
         let requestedProviderID = providerID ?? defaults.string(forKey: DefaultsKey.selectedProviderID) ?? registry.defaultProviderID
         let resolvedProvider = registry.scheduleProvider(id: requestedProviderID)
             ?? registry.defaultScheduleProvider
@@ -85,34 +105,12 @@ final class TrainStore: ObservableObject {
         let availableRegionIDs = Set(registry.regions.map(\.id))
         self.selectedRegionID = storedRegionID.flatMap { availableRegionIDs.contains($0) ? $0 : nil } ?? ProviderRegion.all.id
         self.shouldShowFirstRun = !defaults.bool(forKey: DefaultsKey.firstRunCompleted)
-        let fullCatalog = resolvedProvider.catalog
-        self.catalog = fullCatalog
-        let catalogIDs = Set(fullCatalog.map(\.id))
-        let isCurrentDataScope = defaults.string(forKey: DefaultsKey.dataScope) == resolvedProvider.dataScope
-        let storedSelectedTripID = defaults.string(forKey: DefaultsKey.selectedTripID)
-
-        let initialTrips: [TrainTrip]
-        if
-            isCurrentDataScope,
-            let storedTrips = Self.decodeTrips(from: defaults.data(forKey: DefaultsKey.trackedTripsPayload))?.filter({ catalogIDs.contains($0.id) || $0.providerID == resolvedProvider.providerID }),
-            !storedTrips.isEmpty
-        {
-            initialTrips = storedTrips
-            self.hasSavedPayload = true
-        } else {
-            let storedIDs = isCurrentDataScope ? defaults.stringArray(forKey: DefaultsKey.trackedTripIDs) : nil
-            let defaultIDs = resolvedProvider.defaultTrips.map(\.id)
-            let trackedIDs = storedIDs?.isEmpty == false ? storedIDs ?? defaultIDs : defaultIDs
-            let resolvedTrips = trackedIDs.compactMap { id in fullCatalog.first { $0.id == id } }
-            initialTrips = resolvedTrips.isEmpty ? resolvedProvider.defaultTrips : resolvedTrips
-        }
-        self.trips = initialTrips
-
-        if let storedSelectedTripID, initialTrips.contains(where: { $0.id == storedSelectedTripID }) {
-            self.selectedTripID = storedSelectedTripID
-        } else {
-            self.selectedTripID = initialTrips[0].id
-        }
+        let initialState = Self.initialTripState(for: resolvedProvider, defaults: defaults)
+        self.catalog = resolvedProvider.catalog
+        self.trips = initialState.trips
+        self.selectedTripID = initialState.selectedTripID
+        self.hasSavedPayload = initialState.hasSavedPayload
+        self.providerProxyLoadState = proxyConfiguration.isConfigured ? .idle : .notConfigured
 
         self.notifiedIDs = Set(defaults.stringArray(forKey: DefaultsKey.notifiedIDs) ?? [])
         self.pinnedIDs = Set(defaults.stringArray(forKey: DefaultsKey.pinnedIDs) ?? [])
@@ -128,8 +126,8 @@ final class TrainStore: ObservableObject {
         )
     }
 
-    var selectedTrip: TrainTrip {
-        trips.first { $0.id == selectedTripID } ?? trips[0]
+    var selectedTrip: TrainTrip? {
+        trips.first { $0.id == selectedTripID } ?? trips.first
     }
 
     var registeredProviders: [any TrainProvider] {
@@ -149,6 +147,10 @@ final class TrainStore: ObservableObject {
 
     var providerRegions: [ProviderRegion] {
         providerRegistry.regions
+    }
+
+    var providerProxyHealthProviders: [ProviderProxyProviderHealth] {
+        providerProxyHealth?.providers ?? []
     }
 
     var activeProviderID: String {
@@ -234,6 +236,11 @@ final class TrainStore: ObservableObject {
         providerRegistry.canSearch(providerID: providerID)
     }
 
+    func providerProxyHealth(for providerID: String) -> ProviderProxyProviderHealth? {
+        let aliases = ProviderProxyProviderIDAliases.aliases(for: providerID)
+        return providerProxyHealthProviders.first { aliases.contains($0.id) }
+    }
+
     var discoveryTrips: [TrainTrip] {
         catalog.filter { candidate in
             !trips.contains { $0.id == candidate.id }
@@ -268,7 +275,10 @@ final class TrainStore: ObservableObject {
     }
 
     var shareSummary: String {
-        "\(selectedTrip.train): \(selectedTrip.origin.name) to \(selectedTrip.destination.name), \(selectedTrip.status), platform \(selectedTrip.platform), ETA \(selectedTrip.eta)."
+        guard let selectedTrip else {
+            return "No selected Trainy trip."
+        }
+        return "\(selectedTrip.train): \(selectedTrip.origin.name) to \(selectedTrip.destination.name), \(selectedTrip.status), platform \(selectedTrip.platform), ETA \(selectedTrip.eta)."
     }
 
     var liveStatusText: String {
@@ -359,7 +369,9 @@ final class TrainStore: ObservableObject {
             !initialLiveTrips.contains { $0.id == sample.id }
         }
         trips = initialLiveTrips + fallbackSamples.prefix(2)
-        selectedTripID = trips[0].id
+        if let firstTrip = trips.first {
+            selectedTripID = firstTrip.id
+        }
         persistTrackedTrips()
     }
 
@@ -410,8 +422,29 @@ final class TrainStore: ObservableObject {
         }
     }
 
+    func refreshProviderProxyHealth() async {
+        guard let baseURL = providerProxyConfiguration.baseURL else {
+            providerProxyHealth = nil
+            providerProxyLoadState = .notConfigured
+            return
+        }
+
+        providerProxyLoadState = .loading
+        do {
+            let health = try await proxyHealthFetcher.fetchProviderHealth(from: baseURL)
+            providerProxyHealth = health
+            providerProxyLoadState = .loaded(health.generatedAt)
+        } catch {
+            providerProxyHealth = nil
+            providerProxyLoadState = .unavailable(error.localizedDescription)
+        }
+    }
+
     func refreshSelectedTrip() {
-        let trip = selectedTrip
+        guard let trip = selectedTrip else {
+            liveLoadState = .empty("no saved trip is selected")
+            return
+        }
         guard trip.providerID == provider.providerID else {
             refreshSampleTrip()
             return
@@ -446,9 +479,25 @@ final class TrainStore: ObservableObject {
     }
 
     func selectProvider(_ providerID: String) {
-        guard providerRegistry.canSearch(providerID: providerID) else { return }
-        selectedProviderID = providerID
-        defaults.set(providerID, forKey: DefaultsKey.selectedProviderID)
+        guard
+            providerRegistry.canSearch(providerID: providerID),
+            let selectedProvider = providerRegistry.scheduleProvider(id: providerID)
+        else { return }
+
+        provider = selectedProvider
+        catalog = selectedProvider.catalog
+        let initialState = Self.initialTripState(for: selectedProvider, defaults: defaults)
+        trips = initialState.trips
+        selectedTripID = initialState.selectedTripID
+        selectedProviderID = selectedProvider.providerID
+        liveRoutes = []
+        liveResults = []
+        liveLoadState = .idle
+        lastLiveRefresh = nil
+        hasBootstrapped = false
+        hasSavedPayload = initialState.hasSavedPayload
+        defaults.set(selectedProvider.providerID, forKey: DefaultsKey.selectedProviderID)
+        persistTrackedTrips()
     }
 
     func selectRegion(_ regionID: String) {
@@ -569,6 +618,49 @@ final class TrainStore: ObservableObject {
     private static func decodeTrips(from data: Data?) -> [TrainTrip]? {
         guard let data else { return nil }
         return try? JSONDecoder().decode([TrainTrip].self, from: data)
+    }
+
+    private struct InitialTripState {
+        let trips: [TrainTrip]
+        let selectedTripID: TrainTrip.ID
+        let hasSavedPayload: Bool
+    }
+
+    private static func initialTripState(for provider: any ScheduleFeedProvider, defaults: UserDefaults) -> InitialTripState {
+        let fullCatalog = provider.catalog
+        let catalogIDs = Set(fullCatalog.map(\.id))
+        let isCurrentDataScope = defaults.string(forKey: DefaultsKey.dataScope) == provider.dataScope
+        let storedSelectedTripID = defaults.string(forKey: DefaultsKey.selectedTripID)
+
+        let initialTrips: [TrainTrip]
+        let hasSavedPayload: Bool
+        if
+            isCurrentDataScope,
+            let storedTrips = decodeTrips(from: defaults.data(forKey: DefaultsKey.trackedTripsPayload))?.filter({ catalogIDs.contains($0.id) || $0.providerID == provider.providerID }),
+            !storedTrips.isEmpty
+        {
+            initialTrips = storedTrips
+            hasSavedPayload = true
+        } else {
+            let storedIDs = isCurrentDataScope ? defaults.stringArray(forKey: DefaultsKey.trackedTripIDs) : nil
+            let defaultIDs = provider.defaultTrips.map(\.id)
+            let trackedIDs = storedIDs?.isEmpty == false ? storedIDs ?? defaultIDs : defaultIDs
+            let resolvedTrips = trackedIDs.compactMap { id in fullCatalog.first { $0.id == id } }
+            initialTrips = resolvedTrips.isEmpty ? provider.defaultTrips : resolvedTrips
+            hasSavedPayload = false
+        }
+
+        let selectedTripID = if let storedSelectedTripID, initialTrips.contains(where: { $0.id == storedSelectedTripID }) {
+            storedSelectedTripID
+        } else {
+            initialTrips.first?.id ?? ""
+        }
+
+        return InitialTripState(
+            trips: initialTrips,
+            selectedTripID: selectedTripID,
+            hasSavedPayload: hasSavedPayload
+        )
     }
 
     private static func relativeTime(from date: Date) -> String {

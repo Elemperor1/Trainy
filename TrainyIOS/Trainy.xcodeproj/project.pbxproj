@@ -7,11 +7,14 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		6757B06AFB02753B3EFD15E0 /* FirebaseCrashlytics in Frameworks */ = {isa = PBXBuildFile; productRef = C0D1969045D03F6F14ECF73E /* FirebaseCrashlytics */; };
+		8ECF1A5D5138F8D7541C88B1 /* FirebaseCore in Frameworks */ = {isa = PBXBuildFile; productRef = 8C5137B70622EDEA7493795D /* FirebaseCore */; };
 		9D0A10012C10000100A00001 /* TrainyApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D0A10002C10000100A00001 /* TrainyApp.swift */; };
 		9D0A10092C10000100A00001 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 9D0A10082C10000100A00001 /* Assets.xcassets */; };
-		9D0A10462C10000100A00001 /* TrainyCoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D0A10432C10000100A00001 /* TrainyCoreTests.swift */; };
+		9D0A10462C10000100A00001 /* ../Tests/TrainyCoreTests/TrainyCoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D0A10432C10000100A00001 /* ../Tests/TrainyCoreTests/TrainyCoreTests.swift */; };
 		9D0A20002C10000100A00001 /* TrainyCore in Frameworks */ = {isa = PBXBuildFile; productRef = 9D0A20032C10000100A00001 /* TrainyCore */; };
 		9D0A20012C10000100A00001 /* TrainyCore in Frameworks */ = {isa = PBXBuildFile; productRef = 9D0A20032C10000100A00001 /* TrainyCore */; };
+		B6EEB5DDDD71F3C63D510D4C /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = 74E4105AC9E5411577F4B5F3 /* GoogleService-Info.plist */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -25,11 +28,12 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		74E4105AC9E5411577F4B5F3 /* GoogleService-Info.plist */ = {isa = PBXFileReference; explicitFileType = text.plist; lastKnownFileType = text.plist; name = "GoogleService-Info.plist"; path = "GoogleService-Info.plist"; sourceTree = "<group>"; };
 		9D0A10002C10000100A00001 /* TrainyApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrainyApp.swift; sourceTree = "<group>"; };
 		9D0A10082C10000100A00001 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		9D0A100A2C10000100A00001 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		9D0A100B2C10000100A00001 /* Trainy.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Trainy.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		9D0A10432C10000100A00001 /* TrainyCoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ../Tests/TrainyCoreTests/TrainyCoreTests.swift; sourceTree = SOURCE_ROOT; };
+		9D0A10432C10000100A00001 /* ../Tests/TrainyCoreTests/TrainyCoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ../Tests/TrainyCoreTests/TrainyCoreTests.swift; sourceTree = SOURCE_ROOT; };
 		9D0A10442C10000100A00001 /* TrainyTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = TrainyTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		9D0A10452C10000100A00001 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -40,6 +44,8 @@
 			buildActionMask = 2147483647;
 			files = (
 				9D0A20002C10000100A00001 /* TrainyCore in Frameworks */,
+				8ECF1A5D5138F8D7541C88B1 /* FirebaseCore in Frameworks */,
+				6757B06AFB02753B3EFD15E0 /* FirebaseCrashlytics in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -69,17 +75,9 @@
 				9D0A10002C10000100A00001 /* TrainyApp.swift */,
 				9D0A10082C10000100A00001 /* Assets.xcassets */,
 				9D0A100A2C10000100A00001 /* Info.plist */,
+				74E4105AC9E5411577F4B5F3 /* GoogleService-Info.plist */,
 			);
 			path = Trainy;
-			sourceTree = "<group>";
-		};
-		9D0A10432C10000100A00002 /* TrainyTests */ = {
-			isa = PBXGroup;
-			children = (
-				9D0A10432C10000100A00001 /* TrainyCoreTests.swift */,
-				9D0A10452C10000100A00001 /* Info.plist */,
-			);
-			path = TrainyTests;
 			sourceTree = "<group>";
 		};
 		9D0A100F2C10000100A00001 /* Products */ = {
@@ -89,6 +87,15 @@
 				9D0A10442C10000100A00001 /* TrainyTests.xctest */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		9D0A10432C10000100A00002 /* TrainyTests */ = {
+			isa = PBXGroup;
+			children = (
+				9D0A10432C10000100A00001 /* ../Tests/TrainyCoreTests/TrainyCoreTests.swift */,
+				9D0A10452C10000100A00001 /* Info.plist */,
+			);
+			path = TrainyTests;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -101,6 +108,7 @@
 				9D0A10112C10000100A00001 /* Sources */,
 				9D0A100C2C10000100A00001 /* Frameworks */,
 				9D0A10122C10000100A00001 /* Resources */,
+				27D5AD1772C160EB0543A7EF /* ShellScript */,
 			);
 			buildRules = (
 			);
@@ -109,6 +117,8 @@
 			name = Trainy;
 			packageProductDependencies = (
 				9D0A20032C10000100A00001 /* TrainyCore */,
+				8C5137B70622EDEA7493795D /* FirebaseCore */,
+				C0D1969045D03F6F14ECF73E /* FirebaseCrashlytics */,
 			);
 			productName = Trainy;
 			productReference = 9D0A100B2C10000100A00001 /* Trainy.app */;
@@ -164,7 +174,8 @@
 			);
 			mainGroup = 9D0A100D2C10000100A00001;
 			packageReferences = (
-				9D0A20022C10000100A00001 /* XCLocalSwiftPackageReference "../" */,
+				4733B46498B3E13D6D383464 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
+				9D0A20022C10000100A00001 /* XCLocalSwiftPackageReference ".." */,
 			);
 			productRefGroup = 9D0A100F2C10000100A00001 /* Products */;
 			projectDirPath = "";
@@ -182,6 +193,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				9D0A10092C10000100A00001 /* Assets.xcassets in Resources */,
+				B6EEB5DDDD71F3C63D510D4C /* GoogleService-Info.plist in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -193,6 +205,28 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXResourcesBuildPhase section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		27D5AD1772C160EB0543A7EF /* ShellScript */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+				"${DWARF_DSYM_FOLDER_PATH}/${DWARF_DSYM_FILE_NAME}",
+				"${DWARF_DSYM_FOLDER_PATH}/${DWARF_DSYM_FILE_NAME}/Contents/Resources/DWARF/${PRODUCT_NAME}",
+				"${DWARF_DSYM_FOLDER_PATH}/${DWARF_DSYM_FILE_NAME}/Contents/Info.plist",
+				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/GoogleService-Info.plist",
+				"$(TARGET_BUILD_DIR)/$(EXECUTABLE_PATH)",
+				"${DWARF_DSYM_FOLDER_PATH}/${DWARF_DSYM_FILE_NAME}/Contents/Resources/DWARF/${PRODUCT_NAME}.debug.dylib",
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "\"${BUILD_DIR%/Build/*}/SourcePackages/checkouts/firebase-ios-sdk/Crashlytics/run\"\n";
+		};
+/* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		9D0A10112C10000100A00001 /* Sources */ = {
@@ -207,7 +241,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				9D0A10462C10000100A00001 /* TrainyCoreTests.swift in Sources */,
+				9D0A10462C10000100A00001 /* ../Tests/TrainyCoreTests/TrainyCoreTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -255,7 +289,7 @@
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
-				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
@@ -357,6 +391,9 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
+				OTHER_LDFLAGS = (
+					"-ObjC",
+				);
 				PRODUCT_BUNDLE_IDENTIFIER = com.jacobcyber.Trainy;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
@@ -388,6 +425,9 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
+				OTHER_LDFLAGS = (
+					"-ObjC",
+				);
 				PRODUCT_BUNDLE_IDENTIFIER = com.jacobcyber.Trainy;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
@@ -491,19 +531,39 @@
 /* End XCConfigurationList section */
 
 /* Begin XCLocalSwiftPackageReference section */
-		9D0A20022C10000100A00001 /* XCLocalSwiftPackageReference "../" */ = {
+		9D0A20022C10000100A00001 /* XCLocalSwiftPackageReference ".." */ = {
 			isa = XCLocalSwiftPackageReference;
 			relativePath = ..;
 		};
 /* End XCLocalSwiftPackageReference section */
 
+/* Begin XCRemoteSwiftPackageReference section */
+		4733B46498B3E13D6D383464 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/firebase/firebase-ios-sdk";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 12.15.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
 /* Begin XCSwiftPackageProductDependency section */
+		8C5137B70622EDEA7493795D /* FirebaseCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 4733B46498B3E13D6D383464 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseCore;
+		};
 		9D0A20032C10000100A00001 /* TrainyCore */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = 9D0A20022C10000100A00001 /* XCLocalSwiftPackageReference "../" */;
 			productName = TrainyCore;
 		};
-/* End XCSwiftPackageProductDependency section */
+		C0D1969045D03F6F14ECF73E /* FirebaseCrashlytics */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 4733B46498B3E13D6D383464 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseCrashlytics;
 		};
+/* End XCSwiftPackageProductDependency section */
+	};
 	rootObject = 9D0A10132C10000100A00001 /* Project object */;
 }

@@ -1,0 +1,12 @@
+schemaVersion: 1
+sessionDefaults:
+  projectPath: /Users/jacobcyber/Documents/Trainy/TrainyIOS/Trainy.xcodeproj
+  scheme: Trainy
+  configuration: Debug
+  simulatorName: iPhone 17
+  simulatorPlatform: iOS Simulator
+  useLatestOS: true
+  derivedDataPath: /private/tmp/trainy-derived
+  preferXcodebuild: true
+  bundleId: com.jacobcyber.Trainy
+  simulatorId: D2601124-848E-4E8B-B2C6-C62CA76E8E60

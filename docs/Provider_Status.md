@@ -85,6 +85,20 @@ Capabilities:
 * Station lookup
 * Station disruption information
 
+Source links:
+
+* NS API portal: <https://apiportal.ns.nl/>
+* NS starter guide: <https://apiportal.ns.nl/startersguide>
+* NS App API product: <https://apiportal.ns.nl/product#product=NsApp>
+* NS API list: <https://apiportal.ns.nl/apis>
+* NS website disclaimer: <https://www.ns.nl/disclaimer.html>
+
+Research notes:
+
+* Public portal copy says the NS App API exposes open timetable, works, and station-information data for developers.
+* Starter guide confirms a product subscription key is required on every request.
+* Product-specific terms, API detail pages, and numeric product/rate limits require logged-in portal access; re-check the active `Ns-App` subscription before production release.
+
 Recommended MVP:
 
 * Station search
@@ -250,8 +264,8 @@ Products:
 
 Rail Data Marketplace product URLs:
 
-* Darwin Push: https://raildata.org.uk/dashboard/dataProduct/P-3f10bf96-d8e8-4041-aa5e-d75d82c45c4e/overview
-* NWR Realtime Performance Data API: https://raildata.org.uk/dashboard/dataProduct/P-80b653cd-bb2a-4897-a69a-4980e6e554da/overview
+* Darwin Push: <https://raildata.org.uk/dashboard/dataProduct/P-3f10bf96-d8e8-4041-aa5e-d75d82c45c4e/overview>
+* NWR Realtime Performance Data API: <https://raildata.org.uk/dashboard/dataProduct/P-80b653cd-bb2a-4897-a69a-4980e6e554da/overview>
 
 Access:
 

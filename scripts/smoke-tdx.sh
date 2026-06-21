@@ -16,17 +16,21 @@ require_trainy_provider_env "Taiwan TDX" TDX_CLIENT_ID TDX_CLIENT_SECRET || exit
 TMP_TOKEN="$(mktemp "${TMPDIR:-/tmp}/trainy-tdx-token.XXXXXX")"
 TMP_THSR="$(mktemp "${TMPDIR:-/tmp}/trainy-tdx-thsr.XXXXXX")"
 TMP_TRA="$(mktemp "${TMPDIR:-/tmp}/trainy-tdx-tra.XXXXXX")"
-trap 'rm -f "$TMP_TOKEN" "$TMP_THSR" "$TMP_TRA"' EXIT
+TMP_TOKEN_CONFIG="$(trainy_smoke_make_curl_config)"
+TMP_API_CONFIG="$(trainy_smoke_make_curl_config)"
+trap 'rm -f "$TMP_TOKEN" "$TMP_THSR" "$TMP_TRA" "$TMP_TOKEN_CONFIG" "$TMP_API_CONFIG"' EXIT
+
+trainy_smoke_write_curl_config_option "$TMP_TOKEN_CONFIG" request "POST"
+trainy_smoke_write_curl_config_option "$TMP_TOKEN_CONFIG" header "Content-Type: application/x-www-form-urlencoded"
+trainy_smoke_write_curl_config_option "$TMP_TOKEN_CONFIG" data-urlencode "grant_type=client_credentials"
+trainy_smoke_write_curl_config_option "$TMP_TOKEN_CONFIG" data-urlencode "client_id=$TDX_CLIENT_ID"
+trainy_smoke_write_curl_config_option "$TMP_TOKEN_CONFIG" data-urlencode "client_secret=$TDX_CLIENT_SECRET"
 
 HTTP_CODE="$(
   curl -sS -L --compressed --max-time 30 \
-    -X POST \
     -o "$TMP_TOKEN" \
     -w '%{http_code}' \
-    -H 'Content-Type: application/x-www-form-urlencoded' \
-    --data-urlencode 'grant_type=client_credentials' \
-    --data-urlencode "client_id=$TDX_CLIENT_ID" \
-    --data-urlencode "client_secret=$TDX_CLIENT_SECRET" \
+    --config "$TMP_TOKEN_CONFIG" \
     "$TOKEN_URL" || true
 )"
 if [[ "$HTTP_CODE" != 2* ]]; then
@@ -40,13 +44,14 @@ if [[ -z "$ACCESS_TOKEN" ]]; then
   exit 1
 fi
 
+trainy_smoke_write_curl_config_option "$TMP_API_CONFIG" header "Authorization: Bearer $ACCESS_TOKEN"
+trainy_smoke_write_curl_config_option "$TMP_API_CONFIG" header "Accept: application/json"
+
 trainy_smoke_http_get "$TMP_THSR" \
-  -H "Authorization: Bearer $ACCESS_TOKEN" \
-  -H "Accept: application/json" \
+  --config "$TMP_API_CONFIG" \
   "$THSR_URL" || exit 1
 trainy_smoke_http_get "$TMP_TRA" \
-  -H "Authorization: Bearer $ACCESS_TOKEN" \
-  -H "Accept: application/json" \
+  --config "$TMP_API_CONFIG" \
   "$TRA_URL" || exit 1
 
 THSR_COUNT="$(jq 'length' "$TMP_THSR")"

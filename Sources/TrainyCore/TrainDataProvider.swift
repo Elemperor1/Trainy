@@ -10,6 +10,9 @@ struct LiveTrainRoute: Identifiable, Hashable, Codable, Sendable {
 enum TrainDataProviderError: LocalizedError, Sendable {
     case badURL
     case badResponse
+    case badSourceResponse(source: String, statusCode: Int?)
+    case unreadableSourceResponse(source: String)
+    case sourceChainFailed(primary: String, fallback: String)
     case noLiveTrips
 
     var errorDescription: String? {
@@ -18,9 +21,25 @@ enum TrainDataProviderError: LocalizedError, Sendable {
             return "Trainy could not build the Shinkansen data request."
         case .badResponse:
             return "The Shinkansen source returned an unexpected response."
+        case .badSourceResponse(let source, let statusCode):
+            if let statusCode {
+                return "The \(source) returned HTTP \(statusCode)."
+            }
+            return "The \(source) returned an unexpected response."
+        case .unreadableSourceResponse(let source):
+            return "Trainy could not read the \(source) response."
+        case .sourceChainFailed(let primary, let fallback):
+            return "Scheduled Shinkansen lookup failed. Primary source: \(primary) Fallback source: \(fallback)"
         case .noLiveTrips:
             return "No scheduled Shinkansen departures matched that search."
         }
+    }
+
+    static func userFacingDescription(for error: Error) -> String {
+        if let localizedError = error as? LocalizedError, let description = localizedError.errorDescription {
+            return description
+        }
+        return error.localizedDescription
     }
 }
 
