@@ -1,5 +1,14 @@
+/* ============================================================================
+   Trainy Design System — Web token layer
+   Single source of truth for color, spacing, radius, typography, elevation,
+   and motion. All component styles below reference these tokens; no hardcoded
+   color/spacing/radius values belong in components (see
+   scripts/check-design-system-bypass.sh and the review-design-system skill).
+   ============================================================================ */
 :root {
   color-scheme: light;
+
+  /* --- Color: surfaces & text --- */
   --ink: #101419;
   --muted: #66717d;
   --subtle: #eef1f3;
@@ -7,14 +16,113 @@
   --panel: #ffffff;
   --line: #d9dee4;
   --line-strong: #b6c0ca;
+
+  /* --- Color: brand & accents --- */
   --green: #1f8f67;
   --red: #d84a3a;
   --amber: #c57a16;
   --blue: #2868c7;
   --teal: #0f8f95;
   --charcoal: #232a31;
-  --shadow: 0 14px 35px rgba(16, 20, 25, 0.08);
+
+  /* --- Color: semantic roles (route status meaning through these) --- */
+  --success: var(--green);
+  --warning: var(--amber);
+  --danger: var(--red);
+  --info: var(--blue);
+  --on-accent: #ffffff;
+  --success-bg: rgba(31, 143, 103, 0.12);
+  --warning-bg: rgba(197, 122, 22, 0.14);
+  --danger-bg: rgba(216, 74, 58, 0.12);
+  --info-ring: rgba(40, 104, 199, 0.14);
+
+  /* --- Overlays (glass-ish surface tints) --- */
+  --overlay: rgba(255, 255, 255, 0.92);
+  --overlay-soft: rgba(255, 255, 255, 0.9);
+  --overlay-lift: rgba(255, 255, 255, 0.95);
+  --overlay-faint: rgba(255, 255, 255, 0.1);
+  --overlay-hairline: rgba(255, 255, 255, 0.26);
+
+  /* --- Elevation --- */
+  --shadow-rgb: 16, 20, 25;
+  --shadow-sm: 0 1px 4px rgba(var(--shadow-rgb), 0.1);
+  --shadow: 0 14px 35px rgba(var(--shadow-rgb), 0.08);
+  --shadow-lg: 0 6px 14px rgba(var(--shadow-rgb), 0.18);
+
+  /* --- Radius --- */
+  --radius-sm: 6px;
   --radius: 8px;
+  --radius-lg: 12px;
+  --radius-pill: 999px;
+
+  /* --- Spacing scale --- */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+
+  /* --- Typography --- */
+  --font-sans: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+  --fs-eyebrow: 0.72rem;
+  --fs-body: 0.86rem;
+  --fs-title: 1rem;
+
+  /* --- Motion --- */
+  --ease: ease;
+  --dur-fast: 140ms;
+  --dur: 180ms;
+  --dur-slow: 280ms;
+}
+
+/* Automatic dark mode (unless [data-theme="light"] overrides it). */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --ink: #eef1f3;
+    --muted: #9aa6b2;
+    --subtle: #14181d;
+    --paper: #1a1f25;
+    --panel: #1b2128;
+    --line: #2c333b;
+    --line-strong: #3a424c;
+    --charcoal: #0f1419;
+    --shadow-rgb: 0, 0, 0;
+    --overlay: rgba(255, 255, 255, 0.04);
+    --overlay-soft: rgba(255, 255, 255, 0.03);
+    --overlay-lift: rgba(255, 255, 255, 0.05);
+    --overlay-faint: rgba(255, 255, 255, 0.08);
+    --overlay-hairline: rgba(255, 255, 255, 0.18);
+    --success-bg: rgba(31, 143, 103, 0.22);
+    --warning-bg: rgba(197, 122, 22, 0.24);
+    --danger-bg: rgba(216, 74, 58, 0.22);
+    --info-ring: rgba(40, 104, 199, 0.3);
+  }
+}
+
+/* Explicit dark theme opt-in. */
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --ink: #eef1f3;
+  --muted: #9aa6b2;
+  --subtle: #14181d;
+  --paper: #1a1f25;
+  --panel: #1b2128;
+  --line: #2c333b;
+  --line-strong: #3a424c;
+  --charcoal: #0f1419;
+  --shadow-rgb: 0, 0, 0;
+  --overlay: rgba(255, 255, 255, 0.04);
+  --overlay-soft: rgba(255, 255, 255, 0.03);
+  --overlay-lift: rgba(255, 255, 255, 0.05);
+  --overlay-faint: rgba(255, 255, 255, 0.08);
+  --overlay-hairline: rgba(255, 255, 255, 0.18);
+  --success-bg: rgba(31, 143, 103, 0.22);
+  --warning-bg: rgba(197, 122, 22, 0.24);
+  --danger-bg: rgba(216, 74, 58, 0.22);
+  --info-ring: rgba(40, 104, 199, 0.3);
 }
 
 * {
@@ -30,12 +138,10 @@ body {
   margin: 0;
   min-height: 100vh;
   color: var(--ink);
-  font-family:
-    Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
-    sans-serif;
+  font-family: var(--font-sans);
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.9), rgba(238, 241, 243, 0.88)),
-    repeating-linear-gradient(90deg, rgba(35, 42, 49, 0.04) 0 1px, transparent 1px 56px);
+    linear-gradient(180deg, var(--overlay-soft), color-mix(in srgb, var(--subtle) 88%, transparent)),
+    repeating-linear-gradient(90deg, rgba(var(--shadow-rgb), 0.04) 0 1px, transparent 1px 56px);
 }
 
 button,
@@ -70,10 +176,10 @@ button {
   display: grid;
   grid-template-columns: minmax(220px, 320px) minmax(260px, 1fr) auto;
   align-items: center;
-  gap: 20px;
-  padding: 12px clamp(14px, 2vw, 28px);
+  gap: var(--space-5);
+  padding: var(--space-3) clamp(14px, 2vw, 28px);
   border-bottom: 1px solid var(--line);
-  background: rgba(251, 252, 253, 0.92);
+  background: color-mix(in srgb, var(--paper) 92%, transparent);
   backdrop-filter: blur(18px);
   position: sticky;
   top: 0;
@@ -84,7 +190,7 @@ button {
   color: inherit;
   display: inline-flex;
   align-items: center;
-  gap: 12px;
+  gap: var(--space-3);
   text-decoration: none;
   min-width: 0;
 }
@@ -95,13 +201,13 @@ button {
   border-radius: var(--radius);
   display: grid;
   place-items: center;
-  color: white;
+  color: var(--on-accent);
   background:
-    linear-gradient(135deg, rgba(16, 20, 25, 0.28), transparent),
+    linear-gradient(135deg, rgba(var(--shadow-rgb), 0.28), transparent),
     var(--red);
   font-weight: 850;
   letter-spacing: 0;
-  box-shadow: inset 0 -10px 18px rgba(16, 20, 25, 0.18);
+  box-shadow: inset 0 -10px 18px rgba(var(--shadow-rgb), 0.18);
 }
 
 .brand strong,
@@ -157,16 +263,16 @@ button {
   height: 46px;
   border: 1px solid var(--line);
   border-radius: var(--radius);
-  padding: 0 16px 0 42px;
+  padding: 0 var(--space-4) 0 42px;
   color: var(--ink);
-  background: white;
+  background: var(--panel);
   outline: none;
-  transition: border 160ms ease, box-shadow 160ms ease;
+  transition: border var(--dur) var(--ease), box-shadow var(--dur) var(--ease);
 }
 
 .search-field input:focus {
-  border-color: var(--blue);
-  box-shadow: 0 0 0 4px rgba(40, 104, 199, 0.14);
+  border-color: var(--info);
+  box-shadow: 0 0 0 4px var(--info-ring);
 }
 
 .topbar-actions,
@@ -182,10 +288,10 @@ button {
   min-height: 40px;
   border-radius: var(--radius);
   border: 1px solid var(--line);
-  background: white;
+  background: var(--panel);
   color: var(--ink);
   font-weight: 750;
-  transition: transform 140ms ease, border 140ms ease, background 140ms ease;
+  transition: transform var(--dur-fast) var(--ease), border var(--dur-fast) var(--ease), background var(--dur-fast) var(--ease);
 }
 
 .icon-button {
@@ -205,7 +311,7 @@ button {
 }
 
 .text-button.primary {
-  color: white;
+  color: var(--on-accent);
   border-color: var(--charcoal);
   background: var(--charcoal);
 }
@@ -219,7 +325,7 @@ button {
 }
 
 .panel {
-  background: rgba(255, 255, 255, 0.92);
+  background: var(--overlay);
   border-right: 1px solid var(--line);
   min-width: 0;
 }
@@ -234,10 +340,10 @@ button {
 }
 
 .live-panel {
-  padding: 24px clamp(20px, 3vw, 38px);
+  padding: var(--space-6) clamp(20px, 3vw, 38px);
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.95), rgba(247, 249, 250, 0.95)),
-    repeating-linear-gradient(0deg, transparent 0 42px, rgba(16, 20, 25, 0.032) 42px 43px);
+    linear-gradient(180deg, var(--overlay-lift), color-mix(in srgb, var(--paper) 95%, transparent)),
+    repeating-linear-gradient(0deg, transparent 0 42px, rgba(var(--shadow-rgb), 0.032) 42px 43px);
 }
 
 .panel-heading,
@@ -246,7 +352,7 @@ button {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  gap: 16px;
+  gap: var(--space-4);
 }
 
 .panel-heading h1,
@@ -265,7 +371,7 @@ button {
 .section-title h2,
 .next-action h2,
 .station-brief h2 {
-  font-size: 1rem;
+  font-size: var(--fs-title);
 }
 
 .status-strip h2 {
@@ -277,7 +383,7 @@ button {
 .eyebrow {
   margin: 0 0 6px;
   color: var(--muted);
-  font-size: 0.72rem;
+  font-size: var(--fs-eyebrow);
   font-weight: 850;
   letter-spacing: 0.12em;
   text-transform: uppercase;
@@ -287,7 +393,7 @@ button {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 3px;
-  margin: 22px 0 16px;
+  margin: 22px 0 var(--space-4);
   padding: 3px;
   border: 1px solid var(--line);
   border-radius: var(--radius);
@@ -296,7 +402,7 @@ button {
 
 .segment {
   border: 0;
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   min-height: 34px;
   background: transparent;
   color: var(--muted);
@@ -306,8 +412,8 @@ button {
 
 .segment.active {
   color: var(--ink);
-  background: white;
-  box-shadow: 0 1px 4px rgba(16, 20, 25, 0.1);
+  background: var(--panel);
+  box-shadow: var(--shadow-sm);
 }
 
 .trip-list {
@@ -319,12 +425,12 @@ button {
   width: 100%;
   min-height: 116px;
   display: grid;
-  gap: 12px;
+  gap: var(--space-3);
   text-align: left;
   border: 1px solid var(--line);
   border-radius: var(--radius);
   padding: 14px;
-  background: white;
+  background: var(--panel);
   color: var(--ink);
   box-shadow: none;
 }
@@ -346,7 +452,7 @@ button {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: var(--space-3);
 }
 
 .trip-main strong {
@@ -369,9 +475,9 @@ button {
 
 .trip-route {
   display: block;
-  margin-top: 4px;
+  margin-top: var(--space-1);
   color: var(--muted);
-  font-size: 0.86rem;
+  font-size: var(--fs-body);
 }
 
 .trip-meta {
@@ -383,60 +489,50 @@ button {
   display: inline-flex;
   align-items: center;
   min-height: 26px;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   padding: 0 9px;
-  font-size: 0.72rem;
+  font-size: var(--fs-eyebrow);
   font-weight: 850;
   white-space: nowrap;
 }
 
 .status-pill {
-  color: white;
-  background: var(--green);
+  color: var(--on-accent);
+  background: var(--success);
 }
 
-.status-pill.late,
 .mini-pill.late {
-  background: rgba(216, 74, 58, 0.12);
-  color: var(--red);
+  background: var(--danger-bg);
+  color: var(--danger);
 }
 
-.status-pill.watch,
 .mini-pill.watch {
-  background: rgba(197, 122, 22, 0.14);
-  color: var(--amber);
+  background: var(--warning-bg);
+  color: var(--warning);
 }
 
-.status-pill.good,
 .mini-pill.good {
-  background: rgba(31, 143, 103, 0.12);
-  color: var(--green);
-}
-
-.status-pill {
-  background: var(--green);
-}
-
-.status-pill.late,
-.status-pill.watch {
-  color: white;
+  background: var(--success-bg);
+  color: var(--success);
 }
 
 .status-pill.late {
-  background: var(--red);
+  color: var(--on-accent);
+  background: var(--danger);
 }
 
 .status-pill.watch {
-  background: var(--amber);
+  color: var(--on-accent);
+  background: var(--warning);
 }
 
 .live-dot {
   width: 10px;
   height: 10px;
   border-radius: 50%;
-  background: var(--green);
-  box-shadow: 0 0 0 8px rgba(31, 143, 103, 0.12);
-  margin-top: 8px;
+  background: var(--success);
+  box-shadow: 0 0 0 8px var(--success-bg);
+  margin-top: var(--space-2);
 }
 
 .route-board {
@@ -444,7 +540,7 @@ button {
   grid-template-columns: minmax(92px, 140px) minmax(180px, 1fr) minmax(92px, 140px);
   align-items: center;
   gap: 22px;
-  margin: clamp(26px, 4vw, 52px) 0 24px;
+  margin: clamp(26px, 4vw, 52px) 0 var(--space-6);
 }
 
 .station-code {
@@ -453,7 +549,7 @@ button {
   width: 64px;
   height: 48px;
   border-radius: var(--radius);
-  color: white;
+  color: var(--on-accent);
   background: var(--charcoal);
   font-size: 1.04rem;
   font-weight: 900;
@@ -480,9 +576,9 @@ button {
 .rail-line {
   position: relative;
   height: 12px;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background:
-    linear-gradient(90deg, rgba(16, 20, 25, 0.08) 0 48%, transparent 48% 52%, rgba(16, 20, 25, 0.08) 52%),
+    linear-gradient(90deg, rgba(var(--shadow-rgb), 0.08) 0 48%, transparent 48% 52%, rgba(var(--shadow-rgb), 0.08) 52%),
     var(--line);
   overflow: visible;
 }
@@ -491,7 +587,7 @@ button {
   position: absolute;
   inset: 0 auto 0 0;
   width: 0%;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: linear-gradient(90deg, var(--red), var(--teal), var(--blue));
 }
 
@@ -501,12 +597,12 @@ button {
   left: 0%;
   width: 32px;
   height: 22px;
-  border: 3px solid white;
-  border-radius: 999px 999px 7px 7px;
+  border: 3px solid var(--on-accent);
+  border-radius: var(--radius-pill) var(--radius-pill) 7px 7px;
   background: var(--charcoal);
-  box-shadow: 0 6px 14px rgba(16, 20, 25, 0.18);
+  box-shadow: var(--shadow-lg);
   transform: translate(-50%, -50%);
-  transition: left 280ms ease;
+  transition: left var(--dur-slow) var(--ease);
 }
 
 .train-marker::before,
@@ -532,7 +628,7 @@ button {
   display: flex;
   justify-content: space-between;
   gap: 10px;
-  margin-top: 12px;
+  margin-top: var(--space-3);
   font-size: 0.82rem;
 }
 
@@ -550,9 +646,9 @@ button {
   min-height: 94px;
   display: grid;
   align-content: center;
-  gap: 8px;
-  padding: 16px;
-  background: white;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  background: var(--panel);
 }
 
 .metric strong {
@@ -602,19 +698,19 @@ button {
   width: 16px;
   height: 16px;
   border-radius: 50%;
-  border: 2px solid white;
+  border: 2px solid var(--panel);
   background: var(--line-strong);
   transform: translateY(-50%);
   box-shadow: 0 0 0 1px var(--line);
 }
 
 .timeline-row.done::after {
-  background: var(--green);
+  background: var(--success);
 }
 
 .timeline-row.current::after {
-  background: var(--red);
-  box-shadow: 0 0 0 6px rgba(216, 74, 58, 0.12);
+  background: var(--danger);
+  box-shadow: 0 0 0 6px var(--danger-bg);
 }
 
 .timeline-row strong {
@@ -623,7 +719,7 @@ button {
 
 .timeline-row small {
   display: block;
-  margin-top: 4px;
+  margin-top: var(--space-1);
 }
 
 .platform-map {
@@ -631,12 +727,12 @@ button {
   grid-template-columns: repeat(16, minmax(22px, 1fr));
   gap: 5px;
   margin-top: 14px;
-  padding: 16px;
+  padding: var(--space-4);
   border: 1px solid var(--line);
   border-radius: var(--radius);
   background:
-    linear-gradient(180deg, white 0 58%, #e7ebee 58% 61%, white 61%),
-    white;
+    linear-gradient(180deg, var(--panel) 0 58%, var(--subtle) 58% 61%, var(--panel) 61%),
+    var(--panel);
 }
 
 .car {
@@ -652,7 +748,7 @@ button {
 }
 
 .car.best {
-  color: white;
+  color: var(--on-accent);
   border-color: var(--charcoal);
   background: var(--charcoal);
 }
@@ -661,16 +757,16 @@ button {
   min-height: 204px;
   padding: 18px;
   border-radius: var(--radius);
-  color: white;
+  color: var(--on-accent);
   background:
-    linear-gradient(135deg, rgba(255, 255, 255, 0.14), transparent 45%),
+    linear-gradient(135deg, var(--overlay-faint), transparent 45%),
     var(--charcoal);
   box-shadow: var(--shadow);
 }
 
 .next-action .eyebrow,
 .next-action p {
-  color: rgba(255, 255, 255, 0.74);
+  color: var(--overlay-hairline);
 }
 
 .next-action h2 {
@@ -688,28 +784,28 @@ button {
 }
 
 .next-action .text-button:not(.primary) {
-  color: white;
-  background: rgba(255, 255, 255, 0.1);
-  border-color: rgba(255, 255, 255, 0.26);
+  color: var(--on-accent);
+  background: var(--overlay-faint);
+  border-color: var(--overlay-hairline);
 }
 
 .next-action .text-button.primary {
   color: var(--ink);
-  background: white;
-  border-color: white;
+  background: var(--panel);
+  border-color: var(--panel);
 }
 
 .signal-card,
 .alerts-section,
 .network-board,
 .station-brief {
-  padding-top: 20px;
+  padding-top: var(--space-5);
   border-top: 1px solid var(--line);
 }
 
 .signal-meter {
   height: 10px;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   overflow: hidden;
   background: var(--line);
   margin: 14px 0 10px;
@@ -720,8 +816,8 @@ button {
   width: 0%;
   height: 100%;
   border-radius: inherit;
-  background: linear-gradient(90deg, var(--amber), var(--green), var(--teal));
-  transition: width 280ms ease;
+  background: linear-gradient(90deg, var(--warning), var(--success), var(--teal));
+  transition: width var(--dur-slow) var(--ease);
 }
 
 .alert-list,
@@ -735,7 +831,7 @@ button {
 .network-row {
   min-height: 58px;
   align-items: flex-start;
-  padding: 12px 0;
+  padding: var(--space-3) 0;
   border-bottom: 1px solid var(--line);
 }
 
@@ -765,14 +861,14 @@ button {
   min-height: 82px;
   display: grid;
   align-content: center;
-  gap: 4px;
-  padding: 12px;
-  background: white;
+  gap: var(--space-1);
+  padding: var(--space-3);
+  background: var(--panel);
 }
 
 .brief-grid dt {
   color: var(--muted);
-  font-size: 0.72rem;
+  font-size: var(--fs-eyebrow);
 }
 
 .brief-grid dd {
@@ -788,15 +884,15 @@ button {
   z-index: 30;
   min-width: min(92vw, 320px);
   max-width: min(92vw, 460px);
-  padding: 13px 16px;
+  padding: 13px var(--space-4);
   border-radius: var(--radius);
-  color: white;
+  color: var(--on-accent);
   background: var(--charcoal);
   box-shadow: var(--shadow);
   transform: translate(-50%, 18px);
   opacity: 0;
   pointer-events: none;
-  transition: opacity 180ms ease, transform 180ms ease;
+  transition: opacity var(--dur) var(--ease), transform var(--dur) var(--ease);
 }
 
 .toast.show {
@@ -809,7 +905,7 @@ button {
   border: 1px dashed var(--line-strong);
   border-radius: var(--radius);
   color: var(--muted);
-  background: white;
+  background: var(--panel);
 }
 
 .compact .trip-card {

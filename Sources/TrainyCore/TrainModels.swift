@@ -9,11 +9,11 @@ enum TrainStatusTone: String, Codable, CaseIterable, Sendable {
     var tint: Color {
         switch self {
         case .good:
-            return TrainyColor.green
+            return RailDesign.Palette.success
         case .watch:
-            return TrainyColor.amber
+            return RailDesign.Palette.warning
         case .late:
-            return TrainyColor.red
+            return RailDesign.Palette.danger
         }
     }
 
@@ -1052,18 +1052,6 @@ struct TrainTrip: Identifiable, Hashable, Codable, Sendable {
         try container.encode(sourceProvenance, forKey: .sourceProvenance)
         try container.encode(factProvenance, forKey: .factProvenance)
     }
-}
-
-enum TrainyColor {
-    static let ink = Color(red: 16.0 / 255.0, green: 20.0 / 255.0, blue: 25.0 / 255.0)
-    static let muted = Color(red: 96.0 / 255.0, green: 109.0 / 255.0, blue: 122.0 / 255.0)
-    static let paper = Color(red: 247.0 / 255.0, green: 249.0 / 255.0, blue: 250.0 / 255.0)
-    static let line = Color(red: 217.0 / 255.0, green: 222.0 / 255.0, blue: 228.0 / 255.0)
-    static let red = Color(red: 216.0 / 255.0, green: 74.0 / 255.0, blue: 58.0 / 255.0)
-    static let green = Color(red: 31.0 / 255.0, green: 143.0 / 255.0, blue: 103.0 / 255.0)
-    static let amber = Color(red: 197.0 / 255.0, green: 122.0 / 255.0, blue: 22.0 / 255.0)
-    static let blue = Color(red: 40.0 / 255.0, green: 104.0 / 255.0, blue: 199.0 / 255.0)
-    static let teal = Color(red: 15.0 / 255.0, green: 143.0 / 255.0, blue: 149.0 / 255.0)
 }
 
 extension TrainTrip {

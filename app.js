@@ -301,12 +301,6 @@ function getSelectedTrip() {
   return trips.find((trip) => trip.id === state.selectedId) || trips[0];
 }
 
-function toneClass(trip) {
-  if (trip.statusTone === "late") return "late";
-  if (trip.statusTone === "watch") return "watch";
-  return "good";
-}
-
 function matchesFilter(trip) {
   if (state.filter === "all") return true;
   if (state.filter === "departing") return trip.filter === "departing";
@@ -333,30 +327,17 @@ function renderTripList() {
   const visibleTrips = trips.filter((trip) => matchesFilter(trip) && matchesQuery(trip));
 
   if (!visibleTrips.length) {
-    els.tripList.innerHTML = '<div class="empty-state">No tracked trains match this view.</div>';
+    els.tripList.innerHTML = TrainyUI.emptyState("No tracked trains match this view.");
     return;
   }
 
   els.tripList.innerHTML = visibleTrips
-    .map((trip) => {
-      const active = trip.id === state.selectedId ? " active" : "";
-      const pinned = state.pinned.has(trip.id) ? "Pinned" : trip.platform;
-      return `
-        <button class="trip-card${active}" type="button" data-trip-id="${trip.id}">
-          <span class="trip-main">
-            <span>
-              <strong>${trip.train}</strong>
-              <span class="trip-route">${trip.from} to ${trip.to}</span>
-            </span>
-            <span class="mini-pill ${toneClass(trip)}">${trip.status}</span>
-          </span>
-          <span class="trip-meta">
-            <span>${trip.depart} - ${trip.arrive}</span>
-            <span>${pinned}</span>
-          </span>
-        </button>
-      `;
-    })
+    .map((trip) =>
+      TrainyUI.tripCard(trip, {
+        active: trip.id === state.selectedId,
+        pinned: state.pinned.has(trip.id),
+      })
+    )
     .join("");
 
   els.tripList.querySelectorAll("[data-trip-id]").forEach((button) => {
@@ -384,7 +365,7 @@ function renderSelectedTrip() {
   els.selectedService.textContent = `${trip.operator} - ${trip.service}`;
   els.selectedTitle.textContent = trip.train;
   els.selectedStatus.textContent = trip.status;
-  els.selectedStatus.className = `status-pill ${toneClass(trip)}`;
+  els.selectedStatus.className = `status-pill ${TrainyUI.toneClass(trip)}`;
   els.fromCode.textContent = trip.fromCode;
   els.fromName.textContent = trip.from;
   els.departTime.textContent = trip.depart;
@@ -412,64 +393,23 @@ function renderSelectedTrip() {
 
 function renderTimeline() {
   const trip = getSelectedTrip();
-  els.stationTimeline.innerHTML = trip.stops
-    .map(
-      (stop) => `
-        <li class="timeline-row ${stop.state}">
-          <span>
-            <strong>${stop.name}</strong>
-            <small>${stop.note}</small>
-          </span>
-          <span>
-            <strong>${stop.time}</strong>
-            <small>${stop.platform}</small>
-          </span>
-        </li>
-      `
-    )
-    .join("");
+  els.stationTimeline.innerHTML = trip.stops.map((stop) => TrainyUI.timelineRow(stop)).join("");
 }
 
 function renderPlatformMap() {
   const trip = getSelectedTrip();
   const cars = Array.from({ length: trip.cars }, (_, index) => index + 1);
-  els.platformMap.innerHTML = cars
-    .map((car) => `<span class="car${car === trip.bestCar ? " best" : ""}">${car}</span>`)
-    .join("");
+  els.platformMap.innerHTML = cars.map((n) => TrainyUI.car(n, { best: n === trip.bestCar })).join("");
 }
 
 function renderAlerts() {
   const trip = getSelectedTrip();
   els.alertCount.textContent = trip.alerts.length;
-  els.alertList.innerHTML = trip.alerts
-    .map(
-      (alert) => `
-        <article class="alert-item">
-          <span>
-            <strong>${alert.title}</strong>
-            <small>${alert.detail}</small>
-          </span>
-          <span class="mini-pill ${alert.tone}">${alert.tone}</span>
-        </article>
-      `
-    )
-    .join("");
+  els.alertList.innerHTML = trip.alerts.map((alert) => TrainyUI.alertItem(alert)).join("");
 }
 
 function renderNetworkBoard() {
-  els.networkList.innerHTML = trips
-    .map(
-      (trip) => `
-        <article class="network-row">
-          <span>
-            <strong>${trip.service}</strong>
-            <small>${trip.pulse}</small>
-          </span>
-          <span class="mini-pill ${toneClass(trip)}">${trip.status}</span>
-        </article>
-      `
-    )
-    .join("");
+  els.networkList.innerHTML = trips.map((trip) => TrainyUI.networkRow(trip)).join("");
 }
 
 function renderBrief() {

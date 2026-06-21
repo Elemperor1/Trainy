@@ -885,9 +885,9 @@ private struct RailMapDisruptionMarker: View {
             .font(.caption.weight(.bold))
             .foregroundStyle(.white)
             .padding(7)
-            .background(status.tint, in: RoundedRectangle(cornerRadius: 9, style: .continuous))
+            .background(status.tint, in: RoundedRectangle(cornerRadius: 9, style: .continuous)) // ds-allow: map canvas
             .overlay(
-                RoundedRectangle(cornerRadius: 9, style: .continuous)
+                RoundedRectangle(cornerRadius: 9, style: .continuous) // ds-allow: map canvas
                     .stroke(.white.opacity(0.8), lineWidth: 1.5)
             )
             .shadow(color: status.tint.opacity(0.32), radius: 8, y: 3)
