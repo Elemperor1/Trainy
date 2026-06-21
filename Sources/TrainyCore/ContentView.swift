@@ -246,7 +246,7 @@ private struct FirstRunHeader: View {
                 .symbolRenderingMode(.hierarchical)
                 .foregroundStyle(RailDesign.Palette.accent)
                 .frame(width: 58, height: 58)
-                .background(RailDesign.Palette.accent.opacity(0.12), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+                .background(RailDesign.Palette.accent.opacity(0.12), in: RoundedRectangle(cornerRadius: RailDesign.Radius.control, style: .continuous))
 
             VStack(alignment: .leading, spacing: RailDesign.Spacing.xs) {
                 Text("Start with the Japan Shinkansen")
@@ -527,7 +527,7 @@ private struct TripsScreen: View {
     }
 }
 
-private enum TripBucket: String, CaseIterable, Identifiable {
+enum TripBucket: String, CaseIterable, Identifiable {
     case upcoming
     case active
     case past
@@ -793,117 +793,10 @@ private struct ActiveTripSummary: View {
     }
 }
 
-private struct ControlMetricTile: View {
-    let title: LocalizedStringKey
-    let value: String
-    let symbol: String
-    let tint: Color
 
-    var body: some View {
-        VStack(alignment: .leading, spacing: 3) {
-            HStack(spacing: 4) {
-                Image(systemName: symbol)
-                    .imageScale(.small)
-                    .foregroundStyle(tint)
-                Text(title)
-                    .font(.caption2.weight(.semibold))
-                    .foregroundStyle(RailDesign.Palette.secondaryText)
-                    .lineLimit(1)
-            }
-            Text(value)
-                .font(.caption.weight(.bold))
-                .foregroundStyle(RailDesign.Palette.ink)
-                .lineLimit(1)
-                .minimumScaleFactor(0.68)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.horizontal, RailDesign.Spacing.s)
-        .padding(.vertical, 10)
-        .background(RailDesign.Palette.textSurface, in: RoundedRectangle(cornerRadius: 17, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: 17, style: .continuous)
-                .stroke(RailDesign.Palette.hairline.opacity(0.7), lineWidth: 1)
-        )
-        .accessibilityElement(children: .combine)
-    }
-}
 
-private struct SummaryActionLabel: View {
-    let symbol: String
-    let title: LocalizedStringKey
 
-    var body: some View {
-        Label(title, systemImage: symbol)
-            .font(.caption.weight(.bold))
-            .foregroundStyle(RailDesign.Palette.ink)
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 11)
-            .railLiquidGlass(cornerRadius: 18, tint: .white.opacity(0.12), interactive: true, strokeOpacity: 0.28)
-            .contentShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-    }
-}
 
-private struct SummaryIconLabel: View {
-    let symbol: String
-    let title: LocalizedStringKey
-
-    var body: some View {
-        Image(systemName: symbol)
-            .font(.subheadline.weight(.bold))
-            .foregroundStyle(RailDesign.Palette.ink)
-            .frame(width: 40, height: 34)
-            .railLiquidGlass(cornerRadius: 17, tint: .white.opacity(0.12), interactive: true, strokeOpacity: 0.26)
-            .accessibilityLabel(title)
-    }
-}
-
-private struct SummaryButton: View {
-    let symbol: String
-    let title: LocalizedStringKey
-    let action: () -> Void
-
-    var body: some View {
-        Button(action: action) {
-            SummaryActionLabel(symbol: symbol, title: title)
-        }
-        .buttonStyle(.plain)
-    }
-}
-
-private struct RailSegmentedPicker: View {
-    @Binding var selection: TripBucket
-    @Namespace private var namespace
-
-    var body: some View {
-        GlassEffectContainer(spacing: RailDesign.Spacing.xs) {
-            HStack(spacing: RailDesign.Spacing.xs) {
-                ForEach(TripBucket.allCases) { bucket in
-                    Button {
-                        selection = bucket
-                    } label: {
-                        Text(bucket.title)
-                            .font(.subheadline.weight(.semibold))
-                            .foregroundStyle(selection == bucket ? RailDesign.Palette.ink : RailDesign.Palette.secondaryText)
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, RailDesign.Spacing.s)
-                            .background {
-                                if selection == bucket {
-                                    Capsule()
-                                        .fill(RailDesign.Palette.accent.opacity(0.10))
-                                        .glassEffectID(bucket.id, in: namespace)
-                                        .railLiquidGlass(cornerRadius: 18, tint: RailDesign.Palette.accent.opacity(0.22), interactive: true)
-                                }
-                            }
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityAddTraits(selection == bucket ? .isSelected : [])
-                }
-            }
-            .padding(6)
-            .railLiquidGlass(cornerRadius: 24, tint: .white.opacity(0.12), interactive: true)
-        }
-    }
-}
 
 private struct SearchScreen: View {
     @ObservedObject var store: TrainStore
@@ -2067,11 +1960,7 @@ private final class CoverageGlobeMapView: UIView {
         mapView.register(MKMarkerAnnotationView.self, forAnnotationViewWithReuseIdentifier: NativeCoverageGlobeView.Coordinator.mutedMarkerReuseID)
 
         unsupportedMaskLayer.fillRule = .evenOdd
-        unsupportedMaskLayer.fillColor = UIColor { traits in
-            traits.userInterfaceStyle == .dark
-                ? UIColor(red: 0.028, green: 0.034, blue: 0.038, alpha: 0.56)
-                : UIColor(red: 0.790, green: 0.825, blue: 0.820, alpha: 0.56)
-        }.cgColor
+        unsupportedMaskLayer.fillColor = UIColor(RailDesign.Palette.ink).withAlphaComponent(0.56).cgColor
 
         activeFocusLayer.fillColor = UIColor.clear.cgColor
         activeFocusLayer.strokeColor = UIColor(RailDesign.Palette.mint.opacity(0.96)).cgColor
@@ -2145,21 +2034,6 @@ private final class CoverageMapAnnotation: NSObject, MKAnnotation {
     }
 }
 
-private struct CoverageLegendItem: View {
-    let title: LocalizedStringKey
-    let tint: Color
-
-    var body: some View {
-        HStack(spacing: RailDesign.Spacing.xs) {
-            Circle()
-                .fill(tint)
-                .frame(width: 9, height: 9)
-            Text(title)
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(RailDesign.Palette.secondaryText)
-        }
-    }
-}
 
 private struct SupportedRegionProviderRow: View {
     let provider: ProviderMetadata
@@ -2562,32 +2436,6 @@ private struct SourceStateCallout: View {
     }
 }
 
-private struct StatusSummaryItem: View {
-    let title: LocalizedStringKey
-    let value: String
-    let symbol: String
-    let tint: Color
-
-    var body: some View {
-        HStack(spacing: RailDesign.Spacing.s) {
-            Image(systemName: symbol)
-                .font(.headline)
-                .foregroundStyle(tint)
-                .frame(width: 34, height: 34)
-                .railLiquidGlass(cornerRadius: 17, tint: tint.opacity(0.18))
-            VStack(alignment: .leading, spacing: 2) {
-                Text(title)
-                    .font(.caption)
-                    .foregroundStyle(RailDesign.Palette.secondaryText)
-                Text(value)
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(RailDesign.Palette.ink)
-                    .lineLimit(2)
-            }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-    }
-}
 
 private struct JourneyProgressPanel: View {
     let trip: TrainTrip
@@ -2617,171 +2465,12 @@ private struct JourneyProgressPanel: View {
     }
 }
 
-private struct SectionHeader: View {
-    let title: LocalizedStringKey
-    let subtitle: Text
 
-    init(title: LocalizedStringKey, subtitle: LocalizedStringKey) {
-        self.title = title
-        self.subtitle = Text(subtitle)
-    }
 
-    init(title: LocalizedStringKey, subtitle: String) {
-        self.title = title
-        self.subtitle = Text(subtitle)
-    }
 
-    var body: some View {
-        VStack(alignment: .leading, spacing: 3) {
-            Text(title)
-                .font(.headline)
-                .foregroundStyle(RailDesign.Palette.ink)
-            subtitle
-                .font(.caption)
-                .foregroundStyle(RailDesign.Palette.secondaryText)
-                .fixedSize(horizontal: false, vertical: true)
-        }
-        .textCase(nil)
-    }
-}
 
-private struct MiniStat: View {
-    let title: LocalizedStringKey
-    let value: String
-    var tint: Color
 
-    var body: some View {
-        VStack(alignment: .leading, spacing: RailDesign.Spacing.xxs) {
-            Text(value)
-                .font(.headline.monospacedDigit().weight(.bold))
-                .foregroundStyle(RailDesign.Palette.ink)
-                .lineLimit(1)
-                .minimumScaleFactor(0.7)
-            Text(title)
-                .font(.caption2.weight(.medium))
-                .foregroundStyle(RailDesign.Palette.secondaryText)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(RailDesign.Spacing.s)
-        .railLiquidGlass(cornerRadius: RailDesign.Radius.control, tint: tint.opacity(0.12))
-    }
-}
 
-private struct InfoLine: View {
-    let symbol: String
-    let title: LocalizedStringKey
-    let value: String
-
-    var body: some View {
-        HStack(alignment: .top, spacing: RailDesign.Spacing.s) {
-            Image(systemName: symbol)
-                .foregroundStyle(RailDesign.Palette.accent)
-                .frame(width: 26)
-            VStack(alignment: .leading, spacing: 2) {
-                Text(title)
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(RailDesign.Palette.secondaryText)
-                Text(value.isEmpty ? "Not available" : value)
-                    .font(.subheadline)
-                    .foregroundStyle(RailDesign.Palette.ink)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-        }
-        .accessibilityElement(children: .combine)
-    }
-}
-
-private struct DelayBar: View {
-    let delayCount: Int
-    let total: Int
-
-    private var ratio: Double {
-        min(1, max(0, Double(delayCount) / Double(total)))
-    }
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: RailDesign.Spacing.xs) {
-            HStack {
-                Text("Delay share")
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(RailDesign.Palette.secondaryText)
-                Spacer()
-                Text("\(delayCount) of \(total)")
-                    .font(.caption.monospacedDigit().weight(.semibold))
-                    .foregroundStyle(RailDesign.Palette.ink)
-            }
-            GeometryReader { proxy in
-                ZStack(alignment: .leading) {
-                    Capsule()
-                        .fill(RailDesign.Palette.hairline)
-                    Capsule()
-                        .fill(delayCount == 0 ? RailDesign.Palette.mint : RailDesign.Palette.amber)
-                        .frame(width: max(10, proxy.size.width * ratio))
-                }
-            }
-            .frame(height: 10)
-        }
-    }
-}
-
-private struct SettingsGroup<Content: View>: View {
-    let title: LocalizedStringKey
-    let content: Content
-
-    init(title: LocalizedStringKey, @ViewBuilder content: () -> Content) {
-        self.title = title
-        self.content = content()
-    }
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: RailDesign.Spacing.s) {
-            Text(title)
-                .font(.headline)
-                .foregroundStyle(RailDesign.Palette.ink)
-            GlassPanel {
-                VStack(spacing: 0) {
-                    content
-                }
-            }
-        }
-    }
-}
-
-private struct SettingsToggleRow: View {
-    let symbol: String
-    let title: LocalizedStringKey
-    let detail: LocalizedStringKey
-    @Binding var isOn: Bool
-
-    var body: some View {
-        Toggle(isOn: $isOn) {
-            SettingsRowLabel(symbol: symbol, title: title, detail: detail)
-        }
-        .tint(RailDesign.Palette.accent)
-        .padding(.vertical, RailDesign.Spacing.s)
-    }
-}
-
-private struct SettingsPickerRow: View {
-    let symbol: String
-    let title: LocalizedStringKey
-    let detail: LocalizedStringKey
-    @Binding var selection: String
-    let options: [String]
-
-    var body: some View {
-        HStack {
-            SettingsRowLabel(symbol: symbol, title: title, detail: detail)
-            Picker("", selection: $selection) {
-                ForEach(options, id: \.self) { option in
-                    Text(option).tag(option)
-                }
-            }
-            .pickerStyle(.menu)
-        }
-        .padding(.vertical, RailDesign.Spacing.s)
-    }
-}
 
 private struct ProviderRegionPicker: View {
     @ObservedObject var store: TrainStore
@@ -2969,7 +2658,7 @@ private struct ProviderProxyHealthProviderRow: View {
         }
         .padding(.horizontal, RailDesign.Spacing.xs)
         .padding(.vertical, 6)
-        .background(RailDesign.Palette.hairline.opacity(0.6), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+        .background(RailDesign.Palette.hairline.opacity(0.6), in: RoundedRectangle(cornerRadius: RailDesign.Radius.xs, style: .continuous))
         .accessibilityElement(children: .combine)
     }
 }
@@ -3009,7 +2698,7 @@ private struct ProviderProxyProviderHealthBadge: View {
             .fixedSize(horizontal: false, vertical: true)
             .padding(.horizontal, RailDesign.Spacing.xs)
             .padding(.vertical, 6)
-            .background(health.status.tint.opacity(0.12), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+            .background(health.status.tint.opacity(0.12), in: RoundedRectangle(cornerRadius: RailDesign.Radius.sm, style: .continuous))
             .accessibilityLabel("Provider proxy health")
             .accessibilityValue("\(health.status.displayName), \(health.message)")
     }
@@ -3247,7 +2936,7 @@ private struct ProviderDeveloperCredentialStatus: View {
             .fixedSize(horizontal: false, vertical: true)
             .padding(.horizontal, RailDesign.Spacing.xs)
             .padding(.vertical, 6)
-            .background(credentialTint.opacity(0.12), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+            .background(credentialTint.opacity(0.12), in: RoundedRectangle(cornerRadius: RailDesign.Radius.sm, style: .continuous))
             .accessibilityLabel("Developer credential status")
             .accessibilityValue(credentialText)
     }
@@ -3309,7 +2998,7 @@ private struct ProviderSearchGate: View {
             .fixedSize(horizontal: false, vertical: true)
             .padding(.horizontal, RailDesign.Spacing.xs)
             .padding(.vertical, 6)
-            .background(RailDesign.Palette.hairline.opacity(0.75), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+            .background(RailDesign.Palette.hairline.opacity(0.75), in: RoundedRectangle(cornerRadius: RailDesign.Radius.sm, style: .continuous))
     }
 
     private var searchGateText: String {
@@ -3437,105 +3126,9 @@ private extension ProviderProxyHealthStatus {
     }
 }
 
-private struct SettingsInfoRow: View {
-    let symbol: String
-    let title: LocalizedStringKey
-    let detail: LocalizedStringKey
 
-    var body: some View {
-        SettingsRowLabel(symbol: symbol, title: title, detail: detail)
-            .padding(.vertical, RailDesign.Spacing.s)
-    }
-}
 
-private struct SettingsNavigationRow<Destination: View>: View {
-    let symbol: String
-    let title: LocalizedStringKey
-    let detail: LocalizedStringKey
-    let destination: Destination
 
-    init(
-        symbol: String,
-        title: LocalizedStringKey,
-        detail: LocalizedStringKey,
-        @ViewBuilder destination: () -> Destination
-    ) {
-        self.symbol = symbol
-        self.title = title
-        self.detail = detail
-        self.destination = destination()
-    }
-
-    var body: some View {
-        NavigationLink {
-            destination
-        } label: {
-            HStack(alignment: .center, spacing: RailDesign.Spacing.s) {
-                SettingsRowLabel(symbol: symbol, title: title, detail: detail)
-                Spacer(minLength: RailDesign.Spacing.s)
-                Image(systemName: "chevron.right")
-                    .font(.caption.weight(.bold))
-                    .foregroundStyle(RailDesign.Palette.secondaryText)
-            }
-            .contentShape(Rectangle())
-            .padding(.vertical, RailDesign.Spacing.s)
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel(title)
-        .accessibilityHint(detail)
-    }
-}
-
-private struct SettingsActionRow: View {
-    let symbol: String
-    let title: LocalizedStringKey
-    let detail: LocalizedStringKey
-    let actionTitle: LocalizedStringKey
-    let action: () -> Void
-
-    var body: some View {
-        Button(action: action) {
-            HStack(alignment: .center, spacing: RailDesign.Spacing.s) {
-                SettingsRowLabel(symbol: symbol, title: title, detail: detail)
-                Spacer(minLength: RailDesign.Spacing.s)
-                Text(actionTitle)
-                    .font(.caption.weight(.bold))
-                    .foregroundStyle(RailDesign.Palette.accent)
-                    .padding(.horizontal, RailDesign.Spacing.s)
-                    .padding(.vertical, 8)
-                    .background(RailDesign.Palette.accent.opacity(0.12), in: Capsule())
-            }
-            .contentShape(Rectangle())
-            .padding(.vertical, RailDesign.Spacing.s)
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel(title)
-        .accessibilityHint(detail)
-    }
-}
-
-private struct SettingsRowLabel: View {
-    let symbol: String
-    let title: LocalizedStringKey
-    let detail: LocalizedStringKey
-
-    var body: some View {
-        HStack(alignment: .top, spacing: RailDesign.Spacing.s) {
-            Image(systemName: symbol)
-                .foregroundStyle(RailDesign.Palette.accent)
-                .frame(width: 28, height: 28)
-            VStack(alignment: .leading, spacing: 2) {
-                Text(title)
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(RailDesign.Palette.ink)
-                Text(detail)
-                    .font(.caption)
-                    .foregroundStyle(RailDesign.Palette.secondaryText)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-        }
-    }
-}
 
 private struct RailHistoryMetrics {
     let trips: [TrainTrip]

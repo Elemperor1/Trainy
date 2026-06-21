@@ -53,6 +53,15 @@ enum RailDesign {
         static let amber = Color(red: 0.890, green: 0.570, blue: 0.140)
         static let red = Color(red: 0.820, green: 0.225, blue: 0.195)
         static let blue = Color(red: 0.170, green: 0.405, blue: 0.820)
+
+        // MARK: Semantic roles
+        // Route all status/meaning colors through these aliases so palette swaps
+        // and theming stay centralized. Do not hardcode status colors inline.
+        static let success = mint
+        static let warning = amber
+        static let danger = red
+        static let info = blue
+        static let onAccent = Color.white
     }
 
     enum Spacing {
@@ -66,6 +75,8 @@ enum RailDesign {
     }
 
     enum Radius {
+        static let xs: CGFloat = 8
+        static let sm: CGFloat = 10
         static let chip: CGFloat = 13
         static let control: CGFloat = 18
         static let panel: CGFloat = 28
@@ -78,9 +89,32 @@ enum RailDesign {
     }
 
     enum Typography {
+        static let largeTitle = Font.system(.largeTitle, design: .rounded).weight(.bold)
+        static let title = Font.system(.title, design: .rounded).weight(.bold)
         static let metricValue = Font.system(.title2, design: .rounded).weight(.bold)
         static let routeTitle = Font.system(.title3, design: .rounded).weight(.semibold)
+        static let headline = Font.system(.headline, design: .rounded).weight(.semibold)
+        static let body = Font.system(.body, design: .rounded)
+        static let callout = Font.system(.callout, design: .rounded).weight(.medium)
         static let compactLabel = Font.system(.caption, design: .rounded).weight(.semibold)
+        static let caption = Font.system(.caption, design: .rounded)
+        static let micro = Font.system(.caption2, design: .rounded).weight(.medium)
+    }
+
+    /// Elevation presets. Use with `railPanelShadow()` or custom shadows so
+    /// shadow values are never hardcoded inline in screens.
+    enum Elevation {
+        struct Shadow {
+            let radius: CGFloat
+            let y: CGFloat
+            let opacity: Double
+        }
+        /// Resting card.
+        static let resting = Shadow(radius: 18, y: 9, opacity: 0.10)
+        /// Raised / interactive.
+        static let raised = Shadow(radius: 26, y: 14, opacity: 0.16)
+        /// Hero panel.
+        static let hero = Shadow(radius: 34, y: 18, opacity: 0.22)
     }
 }
 
