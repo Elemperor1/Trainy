@@ -86,7 +86,7 @@ struct ProviderRegistry: Sendable {
 
     static var `default`: ProviderRegistry {
         ProviderRegistry(
-            providers: [ShinkansenTrainProvider()],
+            providers: [ShinkansenTrainProvider(), NSTrainProvider()],
             plannedProviders: Self.defaultPlannedProviders,
             defaultProviderID: "shinkansen"
         )
@@ -344,24 +344,6 @@ struct ProviderRegistry: Sendable {
                     ProviderSourceLink(title: "MTA developer resources", url: URL(string: "https://new.mta.info/developers")!)
                 ],
                 message: "Needs GTFS/GTFS-RT feed selection, commuter rail route mapping, and license review before search can be enabled."
-            ),
-            plannedProvider(
-                id: "netherlands-ns",
-                displayName: "Netherlands NS",
-                region: .netherlands,
-                authStrategy: .proxy(reason: "NS API keys should be brokered outside the app binary."),
-                requirements: [
-                    .networkAccess,
-                    .proxy,
-                    .providerAccount("NS API subscription key"),
-                    .attribution("NS attribution"),
-                    .terms("NS API terms review")
-                ],
-                capabilities: [.schedule, .stationBoard, .serviceAlerts],
-                sourceLinks: [
-                    ProviderSourceLink(title: "NS API portal", url: URL(string: "https://apiportal.ns.nl/")!)
-                ],
-                message: "Needs NS API access, station-code normalization, source attribution, and fixtures before search can be enabled."
             ),
             plannedProvider(
                 id: "south-korea-tago-topis",

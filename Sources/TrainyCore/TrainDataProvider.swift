@@ -49,7 +49,18 @@ enum TrainyAPIConfig {
             ?? cleanODPTKey(Bundle.main.object(forInfoDictionaryKey: "ODPTConsumerKey") as? String)
     }
 
+    static var nsSubscriptionKey: String? {
+        cleanSubscriptionKey(ProcessInfo.processInfo.environment["NS_SUBSCRIPTION_KEY"])
+            ?? cleanSubscriptionKey(Bundle.main.object(forInfoDictionaryKey: "NSSubscriptionKey") as? String)
+    }
+
     static func cleanODPTKey(_ value: String?) -> String? {
+        cleanSubscriptionKey(value)
+    }
+
+    // Shared cleanup for any provider subscription key / consumer key.
+    // Rejects empty strings and unresolved build-time placeholders like "$(VAR)".
+    static func cleanSubscriptionKey(_ value: String?) -> String? {
         guard let value else { return nil }
         let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty, !trimmed.hasPrefix("$(") else { return nil }
