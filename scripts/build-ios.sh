@@ -12,13 +12,20 @@ PACKAGE_CACHE_PATH="${PACKAGE_CACHE_PATH:-/private/tmp/trainy-swiftpm-cache}"
 XCODEBUILD_HOME="${XCODEBUILD_HOME:-/private/tmp/trainy-xcode-home}"
 CODE_SIGNING_ALLOWED="${CODE_SIGNING_ALLOWED:-NO}"
 ODPT_ENV_FILE="${ODPT_ENV_FILE:-$ROOT_DIR/TrainyIOS/Config/odpt.env}"
+NS_ENV_FILE="${NS_ENV_FILE:-$ROOT_DIR/TrainyIOS/Config/ns.env}"
 
 # shellcheck source=scripts/lib/odpt-env.sh
 source "$ROOT_DIR/scripts/lib/odpt-env.sh"
 load_trainy_odpt_env "$ODPT_ENV_FILE"
 
+# shellcheck source=scripts/lib/provider-smoke-env.sh
+source "$ROOT_DIR/scripts/lib/provider-smoke-env.sh"
+load_trainy_provider_env "$NS_ENV_FILE" NS_SUBSCRIPTION_KEY || true
+
 ODPT_CONSUMER_KEY="${ODPT_CONSUMER_KEY:-}"
 export ODPT_CONSUMER_KEY
+NS_SUBSCRIPTION_KEY="${NS_SUBSCRIPTION_KEY:-}"
+export NS_SUBSCRIPTION_KEY
 TRAINY_PROVIDER_PROXY_BASE_URL="${TRAINY_PROVIDER_PROXY_BASE_URL:-}"
 export TRAINY_PROVIDER_PROXY_BASE_URL
 
@@ -45,4 +52,5 @@ HOME="$XCODEBUILD_HOME" CFFIXED_USER_HOME="$XCODEBUILD_HOME" xcodebuild \
   -packageCachePath "$PACKAGE_CACHE_PATH" \
   CODE_SIGNING_ALLOWED="$CODE_SIGNING_ALLOWED" \
   TRAINY_PROVIDER_PROXY_BASE_URL="$TRAINY_PROVIDER_PROXY_BASE_URL" \
+  NS_SUBSCRIPTION_KEY="$NS_SUBSCRIPTION_KEY" \
   build
