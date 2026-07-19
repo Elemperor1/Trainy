@@ -4,6 +4,7 @@ dist/
 .playwright-cli/
 output/
 .build/
+xcuserdata/
 TrainyIOS/Config/odpt.env
 TrainyIOS/Config/*.env
 !TrainyIOS/Config/*.env.example

@@ -16,7 +16,7 @@ struct ProviderRegistrySmoke {
     static func main() async {
         do {
             try await run()
-            print("Provider registry smoke passed: Shinkansen remains active, planned providers are disabled, and region/provider settings are scoped.")
+            print("Provider registry smoke passed: Shinkansen is rider-active, NS is adapter-ready, planned providers remain disabled, and settings are scoped.")
         } catch {
             fputs("Provider registry smoke failed: \(error.localizedDescription)\n", stderr)
             exit(1)
@@ -33,12 +33,11 @@ struct ProviderRegistrySmoke {
             "uk-national-rail-darwin",
             "transport-for-nsw",
             "mta-lirr-metro-north",
-            "netherlands-ns",
             "south-korea-tago-topis",
             "france-sncf-transport-data-gouv"
         ]
 
-        try require(registry.providers.map(\.providerID) == ["shinkansen"], "Only the implemented Shinkansen provider should be an active provider.")
+        try require(registry.providers.map(\.providerID) == ["shinkansen", "netherlands-ns"], "Registered providers should include Shinkansen and the NS adapter.")
         try require(registry.defaultProviderID == "shinkansen", "Default provider should remain Shinkansen.")
         try require(registry.defaultScheduleProvider?.providerID == "shinkansen", "Default schedule provider should be Shinkansen.")
         try require(registry.canSearch(providerID: "shinkansen"), "Shinkansen should remain searchable.")
@@ -52,9 +51,17 @@ struct ProviderRegistrySmoke {
         try require(activeMetadata.sourceLinks.count >= 2, "Shinkansen metadata should expose source links.")
         try require(activeMetadata.isSearchable, "Shinkansen active metadata should be searchable.")
 
+        let nsMetadata = try unwrap(registry.metadata(id: "netherlands-ns"), "NS adapter metadata is missing.")
+        try require(nsMetadata.implementationStatus == .adapterReady, "NS should be adapter-ready, not rider-active.")
+        try require(nsMetadata.capabilities == [.stationBoard, .serviceAlerts], "NS adapter capabilities changed.")
+        try require(!nsMetadata.isSearchable, "NS should not be searchable without a rider-facing schedule surface.")
+        try require(!registry.activeProviderMetadata.contains { $0.id == "netherlands-ns" }, "NS must not appear in rider-active metadata.")
+        try require(registry.adapterReadyProviderMetadata.contains { $0.id == "netherlands-ns" }, "NS should appear in adapter-ready metadata.")
+        try require(!registry.canSearch(providerID: "netherlands-ns"), "NS should not be selectable for trip search.")
+
         let plannedIDs = Set(registry.plannedProviders.map(\.id))
         try require(plannedIDs == expectedPlannedIDs, "Planned provider IDs do not match the top 10 registry list.")
-        try require(registry.providerDirectory.count == expectedPlannedIDs.count + 1, "Directory should include one active provider plus ten planned providers.")
+        try require(registry.providerDirectory.count == expectedPlannedIDs.count + 2, "Directory should include one active provider, one adapter-ready provider, and nine planned providers.")
 
         for providerID in expectedPlannedIDs {
             let metadata = try unwrap(registry.metadata(id: providerID), "Missing planned metadata for \(providerID).")
@@ -72,7 +79,7 @@ struct ProviderRegistrySmoke {
         }
 
         try require(registry.providers(supporting: .schedule).map(\.providerID) == ["shinkansen"], "Schedule support should only include implemented providers.")
-        try require(registry.providers(supporting: .serviceAlerts).isEmpty, "No-key registry should not expose active alert providers.")
+        try require(registry.providers(supporting: .serviceAlerts).map(\.providerID) == ["netherlands-ns"], "NS should retain its adapter-level alert capability.")
         try await verifyTrainStoreSettings(registry: registry)
     }
 

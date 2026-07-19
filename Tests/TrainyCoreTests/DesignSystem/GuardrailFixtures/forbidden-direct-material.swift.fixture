@@ -1,0 +1,3 @@
+import SwiftUI
+
+let rogueMaterial = Text("Trainy").background(.regularMaterial)

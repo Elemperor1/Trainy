@@ -1,0 +1,3 @@
+import SwiftUI
+
+let rogueText = Text("Trainy").font(.headline)

@@ -98,6 +98,8 @@ Future-only provider credentials are documented without implying local keys exis
 
 Production credentials belong in the Cloudflare Worker `trainy-provider-proxy` as Worker secrets or equivalent backend secret storage. Local `.env` files are for developer smoke checks only and must not be copied into the iOS app bundle or committed.
 
+`scripts/build-ios.sh` intentionally loads only the existing ODPT app-development key. It never loads `ns.env` or passes `NS_SUBSCRIPTION_KEY` to Xcode. The NS adapter and fixtures are available for developer verification, but the iOS coverage UI must keep NS in the adapter-ready state until a proxy-backed station-board surface is implemented.
+
 The shared pattern verifier does not call live providers:
 
 ```bash

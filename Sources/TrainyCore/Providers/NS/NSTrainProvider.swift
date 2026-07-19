@@ -63,7 +63,7 @@ struct NSTrainProvider: StationBoardProvider {
     }
 
     var implementationStatus: ProviderImplementationStatus {
-        .active
+        .adapterReady
     }
 
     var includesCatalogResultsInSearch: Bool {

@@ -1,0 +1,9 @@
+import SwiftUI
+
+struct RogueLibraryComponent: View {
+    @AppStorage("rogue.preference") private var preference = false
+
+    var body: some View {
+        Text(preference ? "On" : "Off")
+    }
+}

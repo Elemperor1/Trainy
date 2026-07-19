@@ -1,0 +1,4 @@
+import SwiftUI
+
+let rogueWhite = Text("Trainy")
+    .foregroundStyle(.white)

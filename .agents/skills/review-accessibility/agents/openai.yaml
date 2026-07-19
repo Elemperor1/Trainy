@@ -1,0 +1,4 @@
+interface:
+  display_name: "Review Trainy Accessibility"
+  short_description: "Audit Trainy accessibility and responsive behavior"
+  default_prompt: "Use $review-accessibility to review the current Trainy worktree across browser viewports and relevant iOS accessibility scenarios, then report severity-ranked findings with a Before/After table."

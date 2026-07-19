@@ -15,6 +15,10 @@ load_trainy_odpt_env "$ODPT_ENV_FILE"
 ODPT_CONSUMER_KEY="${ODPT_CONSUMER_KEY:-}"
 export ODPT_CONSUMER_KEY
 
+# shellcheck source=scripts/lib/swift-smoke-sources.sh
+source "$ROOT_DIR/scripts/lib/swift-smoke-sources.sh"
+configure_trainy_swift_smoke_sources "$CORE_DIR"
+
 if [[ -d "$DEVELOPER_DIR" ]]; then
   export DEVELOPER_DIR
 fi
@@ -34,20 +38,7 @@ mkdir -p "$SWIFT_MODULE_CACHE"
   -sdk "$(xcrun --sdk macosx --show-sdk-path)" \
   -module-cache-path "$SWIFT_MODULE_CACHE" \
   -parse-as-library \
-  "$CORE_DIR/TrainModels.swift" \
-  "$CORE_DIR/Providers/ProviderCapabilities.swift" \
-  "$CORE_DIR/Providers/ProviderErrors.swift" \
-  "$CORE_DIR/Providers/TrainProvider.swift" \
-  "$CORE_DIR/Providers/ProviderRegistry.swift" \
-  "$CORE_DIR/Providers/ProviderTextUtilities.swift" \
-  "$CORE_DIR/Providers/ODPT/ODPTClient.swift" \
-  "$CORE_DIR/Providers/ODPT/ODPTModels.swift" \
-  "$CORE_DIR/Providers/JREast/JREastTimetableClient.swift" \
-  "$CORE_DIR/Providers/Shinkansen/ShinkansenTrainProvider.swift" \
-  "$CORE_DIR/Providers/Shinkansen/ShinkansenRouteCatalog.swift" \
-  "$CORE_DIR/Providers/Shinkansen/ShinkansenStarterCatalog.swift" \
-  "$CORE_DIR/Providers/Shinkansen/ShinkansenTrainTripMapper.swift" \
-  "$CORE_DIR/TrainDataProvider.swift" \
+  "${TRAINY_PROVIDER_SMOKE_SOURCES[@]}" \
   "$ROOT_DIR/scripts/ODPTSmoke.swift" \
   -o "$SMOKE_BINARY"
 

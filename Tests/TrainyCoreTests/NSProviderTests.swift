@@ -15,14 +15,15 @@ final class NSProviderTests: XCTestCase {
 
     // MARK: - Provider Metadata
 
-    func testNSProviderMetadataIsActiveWithStationBoardAndServiceAlerts() throws {
+    /// Verifies the NS adapter advertises only its implemented capabilities.
+    func testNSProviderMetadataIsAdapterReadyWithStationBoardAndServiceAlerts() throws {
         let provider = NSTrainProvider(subscriptionKey: nil)
         let registry = ProviderRegistry(providers: [provider], defaultProviderID: provider.providerID)
         let metadata = try XCTUnwrap(registry.metadata(id: provider.providerID))
 
         XCTAssertEqual(metadata.displayName, "Netherlands NS")
         XCTAssertEqual(metadata.region, .netherlands)
-        XCTAssertEqual(metadata.implementationStatus, .active)
+        XCTAssertEqual(metadata.implementationStatus, .adapterReady)
         XCTAssertEqual(metadata.capabilities, [.stationBoard, .serviceAlerts])
         XCTAssertEqual(metadata.availability.status, .requiresConfiguration)
         XCTAssertFalse(metadata.availability.canSearch)
@@ -44,13 +45,17 @@ final class NSProviderTests: XCTestCase {
         XCTAssertEqual(provider.availability.status, .requiresConfiguration)
     }
 
-    func testNSProviderAppearsInActiveDirectoryAndNotPlanned() throws {
+    /// Verifies NS appears in the adapter-ready directory rather than the planned list.
+    func testNSProviderAppearsAsAdapterReadyAndNotPlanned() throws {
         let registry = ProviderRegistry.default
         let metadata = try XCTUnwrap(registry.metadata(id: "netherlands-ns"))
 
-        XCTAssertEqual(metadata.implementationStatus, .active)
+        XCTAssertEqual(metadata.implementationStatus, .adapterReady)
         XCTAssertFalse(registry.plannedProviders.contains { $0.id == "netherlands-ns" })
-        XCTAssertTrue(registry.activeProviderMetadata.contains { $0.id == "netherlands-ns" })
+        XCTAssertFalse(registry.activeProviderMetadata.contains { $0.id == "netherlands-ns" })
+        XCTAssertTrue(registry.adapterReadyProviderMetadata.contains { $0.id == "netherlands-ns" })
+        XCTAssertTrue(registry.providerDirectory.contains { $0.id == "netherlands-ns" })
+        XCTAssertFalse(registry.canSearch(providerID: "netherlands-ns"))
     }
 
     // MARK: - Departures Fixture Mapping
@@ -75,6 +80,25 @@ final class NSProviderTests: XCTestCase {
         XCTAssertEqual(entry.estimatedDeparture, "15:44")
         XCTAssertEqual(entry.platform, "9")
         XCTAssertEqual(entry.status, "At platform")
+    }
+
+    /// Verifies nested and flat NS departure payloads decode to identical values.
+    func testNSDeparturesNestedPayloadMatchesFlatResponse() throws {
+        let departure = #"{"direction":"Rotterdam Centraal","name":"Intercity 1735","plannedDateTime":"2026-06-17T15:37:00+0200","actualDateTime":"2026-06-17T15:41:00+0200","plannedTrack":"8","actualTrack":"9","cancelled":false,"departureStatus":"INCOMING","product":{"number":"1735","categoryCode":"IC","shortCategoryName":"IC","longCategoryName":"Intercity","operatorName":"NS","operatorCode":"NS"}}"#
+        let flatData = Data(#"{"source":"NS","departures":[\#(departure)]}"#.utf8)
+        let nestedData = Data(#"{"payload":{"source":"NS","departures":[\#(departure)]}}"#.utf8)
+        let decoder = JSONDecoder()
+
+        let flat = try decoder.decode(NSDeparturesResponse.self, from: flatData)
+        let nested = try decoder.decode(NSDeparturesResponse.self, from: nestedData)
+
+        XCTAssertEqual(nested.source, flat.source)
+        XCTAssertEqual(nested.departures.count, flat.departures.count)
+        XCTAssertEqual(nested.departures.map(\.effectiveTrack), flat.departures.map(\.effectiveTrack))
+        XCTAssertEqual(
+            nested.departures.map { NSTrainProvider.boardEntry(from: $0) },
+            flat.departures.map { NSTrainProvider.boardEntry(from: $0) }
+        )
     }
 
     func testNSDeparturesCancelledEntryMapsToCancelledStatus() throws {

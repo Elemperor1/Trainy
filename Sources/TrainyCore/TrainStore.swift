@@ -248,14 +248,15 @@ final class TrainStore: ObservableObject {
     }
 
     var searchableResults: [TrainTrip] {
-        let live = liveResults.filter { candidate in
-            !trips.contains { $0.id == candidate.id }
-        }
         let cleanQuery = query.trimmingCharacters(in: .whitespacesAndNewlines)
         if !provider.includesCatalogResultsInSearch && !cleanQuery.isEmpty {
-            return live
+            return liveResults
         }
-        return live + discoveryResults(matching: query)
+
+        var seenIDs: Set<TrainTrip.ID> = []
+        return (liveResults + discoveryResults(matching: query)).filter { candidate in
+            seenIDs.insert(candidate.id).inserted
+        }
     }
 
     var filteredTrips: [TrainTrip] {

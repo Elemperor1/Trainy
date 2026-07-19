@@ -8,6 +8,8 @@ Summary
 
 Trainy has successfully obtained access to most of the target provider ecosystem.
 
+Scope note (2026-07-19): status in this document describes upstream portal or credential access, not rider-facing availability in the iOS app. App implementation truth is owned by `docs/global-provider-implementation-checklist.md`. Japan Shinkansen is the current rider-active experience; Netherlands NS is adapter-ready and fixture-tested but still requires a production proxy and station-board surface.
+
 Current provider status:
 
 * Japan ODPT: Active

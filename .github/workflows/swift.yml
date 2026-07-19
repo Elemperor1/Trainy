@@ -21,12 +21,40 @@ jobs:
       - name: Show SDKs
         run: xcodebuild -showsdks
 
-      - name: Build Trainy
+      - name: Run static and provider smoke gates
         run: |
-          xcodebuild \
+          export DEVELOPER_DIR="$(xcode-select -p)"
+          bash -n scripts/*.sh scripts/lib/*.sh
+          node --check app.js
+          node --check components.js
+          bash scripts/check-design-system-bypass.sh --self-test
+          bash scripts/check-design-system-bypass.sh
+          scripts/test-provider-smoke-pattern.sh
+          scripts/smoke-source-provenance.sh
+          scripts/smoke-provider-registry.sh
+          scripts/smoke-shinkansen-provider.sh
+
+      - name: Build Trainy
+        env:
+          ODPT_ENV_FILE: /dev/null
+          ODPT_CONSUMER_KEY: ""
+        run: |
+          export DEVELOPER_DIR="$(xcode-select -p)"
+          scripts/build-ios.sh
+
+      - name: Test Trainy
+        env:
+          ODPT_CONSUMER_KEY: ""
+        run: |
+          export DEVELOPER_DIR="$(xcode-select -p)"
+          xcodebuild test \
+            -quiet \
             -project TrainyIOS/Trainy.xcodeproj \
-            -scheme Trainy \
-            -destination 'generic/platform=iOS Simulator' \
+            -scheme TrainyTests \
+            -destination 'platform=iOS Simulator,name=iPhone 17,OS=latest' \
             -derivedDataPath /private/tmp/trainy-derived \
+            -clonedSourcePackagesDirPath /private/tmp/trainy-source-packages \
+            -packageCachePath /private/tmp/trainy-swiftpm-cache \
+            -disableAutomaticPackageResolution \
             CODE_SIGNING_ALLOWED=NO \
-            build
+            TRAINY_SOURCE_PACKAGES_DIR=/private/tmp/trainy-source-packages

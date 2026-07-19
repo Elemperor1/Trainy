@@ -1,0 +1,7 @@
+import SwiftUI
+
+struct FixtureScreen: View {
+    var body: some View {
+        RoundedRectangle(cornerRadius: 9) // ds-allow: map annotation geometry
+    }
+}

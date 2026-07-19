@@ -1,0 +1,7 @@
+import SwiftUI
+
+let firstLegacyIcon = Text("First")
+    .font(.system(size: 36, weight: .semibold))
+
+let duplicatedLegacyIcon = Text("Second")
+    .font(.system(size: 36, weight: .semibold))

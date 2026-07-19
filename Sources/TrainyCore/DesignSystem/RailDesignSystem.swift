@@ -27,10 +27,28 @@ enum RailDesign {
                 : UIColor(red: 1.000, green: 1.000, blue: 1.000, alpha: 0.58)
         })
 
+        // Inset surface — slightly lighter than the canvas, used for chips, search
+        // fields, and the duration capsule inside a trip card. Defined here so
+        // every inset call site uses the same value and the dark-mode contrast
+        // stays in sync with --surface-inset in the web tokens.
+        static let inset = Color(uiColor: UIColor { traits in
+            traits.userInterfaceStyle == .dark
+                ? UIColor(red: 0.121, green: 0.130, blue: 0.140, alpha: 1)
+                : UIColor(red: 0.949, green: 0.957, blue: 0.965, alpha: 1)
+        })
+
         static let ink = Color(uiColor: UIColor { traits in
             traits.userInterfaceStyle == .dark
                 ? UIColor(red: 0.936, green: 0.944, blue: 0.930, alpha: 1)
                 : UIColor(red: 0.050, green: 0.077, blue: 0.084, alpha: 1)
+        })
+
+        // Disabled / hairline ink for dividers and inactive separators.
+        // Lives next to `ink` so the design system stays compact.
+        static let inkDisabled = Color(uiColor: UIColor { traits in
+            traits.userInterfaceStyle == .dark
+                ? UIColor(red: 0.420, green: 0.450, blue: 0.460, alpha: 1)
+                : UIColor(red: 0.628, green: 0.654, blue: 0.682, alpha: 1)
         })
 
         static let secondaryText = Color(uiColor: UIColor { traits in
@@ -65,40 +83,102 @@ enum RailDesign {
     }
 
     enum Spacing {
+        // Tokens: 4 / 8 / 12 / 16 / 24 / 32 / 48 / 64
         static let xxs: CGFloat = 4
         static let xs: CGFloat = 8
         static let s: CGFloat = 12
         static let m: CGFloat = 16
-        static let l: CGFloat = 20
-        static let xl: CGFloat = 28
-        static let xxl: CGFloat = 36
+        static let l: CGFloat = 24
+        static let xl: CGFloat = 32
+        static let xxl: CGFloat = 48
+        static let hero: CGFloat = 64
     }
 
     enum Radius {
         static let xs: CGFloat = 8
-        static let sm: CGFloat = 10
+        static let sm: CGFloat = 12
         static let chip: CGFloat = 13
-        static let control: CGFloat = 18
-        static let panel: CGFloat = 28
-        static let hero: CGFloat = 34
+        static let control: CGFloat = 16
+        static let card: CGFloat = 16
+        static let panel: CGFloat = 24
+        static let hero: CGFloat = 32
+        static let pill: CGFloat = 999
+        static let station: CGFloat = 12
+    }
+
+    /// Shared layout measurements that are not spacing-scale tokens.
+    enum Layout {
+        /// Keeps the final scroll item clear of the persistent tab bar and
+        /// floating controls without reconstructing an arbitrary inset.
+        static let deepScrollBottomInset: CGFloat = 160
+        /// Optical inset for sub-pixel progress strokes.
+        static let progressStrokeInset: CGFloat = 0.5
     }
 
     enum Motion {
         static let soft = Animation.spring(response: 0.36, dampingFraction: 0.86)
         static let quick = Animation.spring(response: 0.24, dampingFraction: 0.82)
+        static let shimmer = Animation.linear(duration: 1.4).repeatForever(autoreverses: false)
     }
 
     enum Typography {
-        static let largeTitle = Font.system(.largeTitle, design: .rounded).weight(.bold)
-        static let title = Font.system(.title, design: .rounded).weight(.bold)
-        static let metricValue = Font.system(.title2, design: .rounded).weight(.bold)
-        static let routeTitle = Font.system(.title3, design: .rounded).weight(.semibold)
-        static let headline = Font.system(.headline, design: .rounded).weight(.semibold)
-        static let body = Font.system(.body, design: .rounded)
-        static let callout = Font.system(.callout, design: .rounded).weight(.medium)
-        static let compactLabel = Font.system(.caption, design: .rounded).weight(.semibold)
-        static let caption = Font.system(.caption, design: .rounded)
-        static let micro = Font.system(.caption2, design: .rounded).weight(.medium)
+        // Display / H1 / H2 / H3 / Body / Small / Caption. Each maps to a
+        // semantic role so we don't sprinkle raw `.font(.system(...))`
+        // across screens; the legacy aliases below stay so existing call
+        // sites compile and read the same as before.
+
+        /// 36 pt display value. Large enough to anchor journey times while
+        /// preserving an optical gap between two 12-hour timestamps on iPhone.
+        static let display = Font.system(size: 36, weight: .bold, design: .rounded)
+
+        /// 28 pt screen title. Used by every `navigationTitle`.
+        static let h1 = Font.system(size: 28, weight: .semibold, design: .rounded)
+
+        /// 18 pt section header. Used by every `SectionHeader` and card title.
+        static let h2 = Font.system(size: 18, weight: .semibold, design: .rounded)
+
+        /// 15 pt card title / list-row title.
+        static let h3 = Font.system(size: 15, weight: .semibold, design: .rounded)
+
+        /// 14 pt default body copy.
+        static let body = Font.system(size: 14, weight: .regular, design: .default)
+
+        /// 13 pt secondary metadata.
+        static let small = Font.system(size: 13, weight: .regular, design: .default)
+
+        /// 11 pt uppercase eyebrow text.
+        static let caption = Font.system(size: 11, weight: .medium, design: .default)
+
+        // Legacy aliases so existing call sites still compile and read the
+        // same shape they used to. New code should prefer the tokens above.
+        static let largeTitle = display
+        static let title = h1
+        static let metricValue = display
+        static let routeTitle = h3
+        static let headline = h3
+        static let callout = body
+        static let compactLabel = Font.system(size: 12, weight: .semibold, design: .default)
+        static let micro = small
+
+        // Illustration and map-canvas roles are intentionally named here
+        // instead of being reconstructed at each annotation call site.
+        static let regionGlobe = Font.system(size: 152, weight: .regular)
+        static let mapPositionLabel = Font.system(size: 10, weight: .bold, design: .rounded)
+
+        /// Returns the transfer symbol font for normal or emphasized map states.
+        static func mapTransferSymbol(isEmphasized: Bool) -> Font {
+            Font.system(size: isEmphasized ? 11 : 8, weight: .bold)
+        }
+
+        /// Returns the station-label font for normal or emphasized map states.
+        static func mapStationLabel(isEmphasized: Bool) -> Font {
+            Font.system(size: isEmphasized ? 10 : 9, weight: .bold, design: .rounded)
+        }
+
+        /// Returns the vehicle symbol font for live or schedule-derived positions.
+        static func mapVehicle(isLive: Bool) -> Font {
+            isLive ? h2.weight(.black) : small.weight(.black)
+        }
     }
 
     /// Elevation presets. Use with `railPanelShadow()` or custom shadows so
@@ -115,6 +195,37 @@ enum RailDesign {
         static let raised = Shadow(radius: 26, y: 14, opacity: 0.16)
         /// Hero panel.
         static let hero = Shadow(radius: 34, y: 18, opacity: 0.22)
+        /// Compact map annotation.
+        static let mapLabel = Shadow(radius: 4, y: 2, opacity: 0.08)
+        /// Service alert annotation.
+        static let mapAlert = Shadow(radius: 8, y: 3, opacity: 0.32)
+
+        /// Returns station-pin elevation for normal or emphasized map states.
+        static func mapStation(isEmphasized: Bool) -> Shadow {
+            Shadow(radius: isEmphasized ? 8 : 3, y: 2, opacity: 0.34)
+        }
+
+        /// Returns vehicle-pin elevation based on position provenance.
+        static func mapVehicle(isLive: Bool) -> Shadow {
+            Shadow(radius: isLive ? 14 : 9, y: 5, opacity: 0.26)
+        }
+    }
+}
+
+extension TrainStatusTone {
+    var tint: Color {
+        switch self {
+        case .good:
+            return RailDesign.Palette.success
+        case .watch:
+            return RailDesign.Palette.warning
+        case .late:
+            return RailDesign.Palette.danger
+        }
+    }
+
+    var softFill: Color {
+        tint.opacity(0.14)
     }
 }
 
@@ -130,6 +241,25 @@ enum RailServiceStatus: String, CaseIterable, Identifiable {
     var id: String { rawValue }
 
     var title: LocalizedStringKey {
+        switch self {
+        case .onTime:
+            return "On time"
+        case .delayed:
+            return "Delayed"
+        case .canceled:
+            return "Canceled"
+        case .platformChanged:
+            return "Platform changed"
+        case .boarding:
+            return "Boarding open"
+        case .arrived:
+            return "Arrived"
+        case .disruption:
+            return "Disruption"
+        }
+    }
+
+    var accessibilityTitle: String {
         switch self {
         case .onTime:
             return "On time"
@@ -304,16 +434,24 @@ private struct RailLiquidGlassModifier: ViewModifier {
 }
 
 private struct RailPanelShadowModifier: ViewModifier {
+    let elevation: RailDesign.Elevation.Shadow
+    let tint: Color?
+
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.colorSchemeContrast) private var contrast
 
     func body(content: Content) -> some View {
+        let baseColor = tint ?? RailDesign.Palette.ink
+        let resolvedOpacity = tint == nil
+            ? (colorScheme == .dark ? elevation.opacity : elevation.opacity * 0.75)
+            : elevation.opacity
+
         content
             .shadow(
-                color: RailDesign.Palette.ink.opacity(contrast == .increased ? 0.05 : (colorScheme == .dark ? 0.22 : 0.075)),
-                radius: contrast == .increased ? 4 : 18,
+                color: baseColor.opacity(contrast == .increased ? min(resolvedOpacity, 0.08) : resolvedOpacity),
+                radius: contrast == .increased ? 4 : elevation.radius,
                 x: 0,
-                y: contrast == .increased ? 2 : 9
+                y: contrast == .increased ? 2 : elevation.y
             )
     }
 }
@@ -335,13 +473,40 @@ extension View {
         )
     }
 
-    func railPanelShadow() -> some View {
-        modifier(RailPanelShadowModifier())
+    /// Applies a neutral semantic elevation preset to a panel.
+    func railPanelShadow(
+        _ elevation: RailDesign.Elevation.Shadow = RailDesign.Elevation.resting
+    ) -> some View {
+        modifier(RailPanelShadowModifier(elevation: elevation, tint: nil))
+    }
+
+    /// Applies a tinted semantic elevation preset to a view.
+    func railShadow(
+        _ elevation: RailDesign.Elevation.Shadow,
+        tint: Color
+    ) -> some View {
+        modifier(RailPanelShadowModifier(elevation: elevation, tint: tint))
     }
 
     func railScreenChrome() -> some View {
         background(RailGradientBackground().ignoresSafeArea())
             .toolbarBackground(.ultraThinMaterial, for: .navigationBar)
             .toolbarBackground(.visible, for: .navigationBar)
+    }
+
+    /// Applies the canonical translucent tab-bar appearance.
+    func railTabBarChrome() -> some View {
+        toolbarBackground(.ultraThinMaterial, for: .tabBar)
+            .toolbarBackground(.visible, for: .tabBar)
+    }
+
+    /// Applies the canonical material behind a bottom action bar.
+    func railBottomMaterialBar() -> some View {
+        background(.ultraThinMaterial)
+    }
+
+    /// Applies the canonical regular-material capsule background.
+    func railMaterialCapsule() -> some View {
+        background(.regularMaterial, in: Capsule())
     }
 }

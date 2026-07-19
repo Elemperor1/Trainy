@@ -1,0 +1,7 @@
+:root {
+  --ink: #101419;
+}
+
+.fixture {
+  color: #ffffff;
+}

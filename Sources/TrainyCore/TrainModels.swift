@@ -1,25 +1,9 @@
 import Foundation
-import SwiftUI
 
 enum TrainStatusTone: String, Codable, CaseIterable, Sendable {
     case good
     case watch
     case late
-
-    var tint: Color {
-        switch self {
-        case .good:
-            return RailDesign.Palette.success
-        case .watch:
-            return RailDesign.Palette.warning
-        case .late:
-            return RailDesign.Palette.danger
-        }
-    }
-
-    var softFill: Color {
-        tint.opacity(0.14)
-    }
 }
 
 enum TripFilter: String, CaseIterable, Identifiable, Codable, Sendable {

@@ -1,0 +1,7 @@
+import SwiftUI
+
+struct RogueButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+    }
+}

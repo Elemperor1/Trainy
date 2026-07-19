@@ -5,6 +5,31 @@ import Foundation
 struct NSDeparturesResponse: Decodable, Sendable {
     let source: String?
     let departures: [NSDeparture]
+
+    /// Nested response envelope returned by some NS proxy integrations.
+    private struct Payload: Decodable {
+        let source: String?
+        let departures: [NSDeparture]
+    }
+
+    /// Keys shared by the flat and nested NS departure response shapes.
+    private enum CodingKeys: String, CodingKey {
+        case payload
+        case source
+        case departures
+    }
+
+    /// Decodes either a flat NS response or a response wrapped in `payload`.
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        if let payload = try container.decodeIfPresent(Payload.self, forKey: .payload) {
+            source = payload.source
+            departures = payload.departures
+        } else {
+            source = try container.decodeIfPresent(String.self, forKey: .source)
+            departures = try container.decode([NSDeparture].self, forKey: .departures)
+        }
+    }
 }
 
 struct NSDeparture: Decodable, Sendable {

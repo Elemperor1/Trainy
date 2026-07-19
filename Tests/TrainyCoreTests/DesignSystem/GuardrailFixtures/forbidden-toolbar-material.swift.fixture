@@ -1,0 +1,4 @@
+import SwiftUI
+
+let rogueToolbarMaterial = Text("Trainy")
+    .toolbarBackground(.ultraThinMaterial, for: .tabBar)

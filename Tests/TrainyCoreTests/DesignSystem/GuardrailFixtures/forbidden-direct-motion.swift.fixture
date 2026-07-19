@@ -1,0 +1,3 @@
+import SwiftUI
+
+let rogueMotion = Text("Trainy").animation(.spring(), value: true)

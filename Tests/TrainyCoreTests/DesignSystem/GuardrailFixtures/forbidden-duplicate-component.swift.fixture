@@ -1,0 +1,5 @@
+import SwiftUI
+
+struct SectionHeader: View {
+    var body: some View { EmptyView() }
+}
