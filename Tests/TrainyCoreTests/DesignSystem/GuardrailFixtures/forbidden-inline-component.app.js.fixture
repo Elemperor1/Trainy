@@ -1,0 +1,3 @@
+"use strict";
+
+const card = `<article class="trip-card">Bypassed component</article>`;

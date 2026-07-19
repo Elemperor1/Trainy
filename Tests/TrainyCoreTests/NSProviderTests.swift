@@ -15,14 +15,14 @@ final class NSProviderTests: XCTestCase {
 
     // MARK: - Provider Metadata
 
-    func testNSProviderMetadataIsActiveWithStationBoardAndServiceAlerts() throws {
+    func testNSProviderMetadataIsAdapterReadyWithStationBoardAndServiceAlerts() throws {
         let provider = NSTrainProvider(subscriptionKey: nil)
         let registry = ProviderRegistry(providers: [provider], defaultProviderID: provider.providerID)
         let metadata = try XCTUnwrap(registry.metadata(id: provider.providerID))
 
         XCTAssertEqual(metadata.displayName, "Netherlands NS")
         XCTAssertEqual(metadata.region, .netherlands)
-        XCTAssertEqual(metadata.implementationStatus, .active)
+        XCTAssertEqual(metadata.implementationStatus, .adapterReady)
         XCTAssertEqual(metadata.capabilities, [.stationBoard, .serviceAlerts])
         XCTAssertEqual(metadata.availability.status, .requiresConfiguration)
         XCTAssertFalse(metadata.availability.canSearch)
@@ -44,13 +44,16 @@ final class NSProviderTests: XCTestCase {
         XCTAssertEqual(provider.availability.status, .requiresConfiguration)
     }
 
-    func testNSProviderAppearsInActiveDirectoryAndNotPlanned() throws {
+    func testNSProviderAppearsAsAdapterReadyAndNotPlanned() throws {
         let registry = ProviderRegistry.default
         let metadata = try XCTUnwrap(registry.metadata(id: "netherlands-ns"))
 
-        XCTAssertEqual(metadata.implementationStatus, .active)
+        XCTAssertEqual(metadata.implementationStatus, .adapterReady)
         XCTAssertFalse(registry.plannedProviders.contains { $0.id == "netherlands-ns" })
-        XCTAssertTrue(registry.activeProviderMetadata.contains { $0.id == "netherlands-ns" })
+        XCTAssertFalse(registry.activeProviderMetadata.contains { $0.id == "netherlands-ns" })
+        XCTAssertTrue(registry.adapterReadyProviderMetadata.contains { $0.id == "netherlands-ns" })
+        XCTAssertTrue(registry.providerDirectory.contains { $0.id == "netherlands-ns" })
+        XCTAssertFalse(registry.canSearch(providerID: "netherlands-ns"))
     }
 
     // MARK: - Departures Fixture Mapping

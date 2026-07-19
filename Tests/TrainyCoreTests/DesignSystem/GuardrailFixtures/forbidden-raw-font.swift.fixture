@@ -1,0 +1,3 @@
+import SwiftUI
+
+let rogueText = Text("Trainy").font(.system(size: 17, weight: .bold))

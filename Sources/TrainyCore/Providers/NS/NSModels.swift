@@ -5,6 +5,28 @@ import Foundation
 struct NSDeparturesResponse: Decodable, Sendable {
     let source: String?
     let departures: [NSDeparture]
+
+    private struct Payload: Decodable {
+        let source: String?
+        let departures: [NSDeparture]
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case payload
+        case source
+        case departures
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        if let payload = try container.decodeIfPresent(Payload.self, forKey: .payload) {
+            source = payload.source
+            departures = payload.departures
+        } else {
+            source = try container.decodeIfPresent(String.self, forKey: .source)
+            departures = try container.decode([NSDeparture].self, forKey: .departures)
+        }
+    }
 }
 
 struct NSDeparture: Decodable, Sendable {

@@ -8,6 +8,10 @@ DEVELOPER_DIR="${DEVELOPER_DIR:-$XCODE_APP/Contents/Developer}"
 SMOKE_BINARY="${SMOKE_BINARY:-/private/tmp/trainy-shinkansen-provider-smoke}"
 SWIFT_MODULE_CACHE="${SWIFT_MODULE_CACHE:-/private/tmp/trainy-swift-module-cache}"
 
+# shellcheck source=scripts/lib/swift-smoke-sources.sh
+source "$ROOT_DIR/scripts/lib/swift-smoke-sources.sh"
+configure_trainy_swift_smoke_sources "$CORE_DIR"
+
 if [[ -d "$DEVELOPER_DIR" ]]; then
   export DEVELOPER_DIR
 fi
@@ -27,21 +31,8 @@ mkdir -p "$SWIFT_MODULE_CACHE"
   -sdk "$(xcrun --sdk macosx --show-sdk-path)" \
   -module-cache-path "$SWIFT_MODULE_CACHE" \
   -parse-as-library \
-  "$CORE_DIR/TrainModels.swift" \
-  "$CORE_DIR/Providers/ProviderCapabilities.swift" \
-  "$CORE_DIR/Providers/ProviderErrors.swift" \
-  "$CORE_DIR/Providers/TrainProvider.swift" \
-  "$CORE_DIR/Providers/ProviderRegistry.swift" \
-  "$CORE_DIR/Providers/ProviderTextUtilities.swift" \
-  "$CORE_DIR/Providers/ODPT/ODPTClient.swift" \
-  "$CORE_DIR/Providers/ODPT/ODPTModels.swift" \
-  "$CORE_DIR/Providers/JREast/JREastTimetableClient.swift" \
-  "$CORE_DIR/Providers/Shinkansen/ShinkansenTrainProvider.swift" \
-  "$CORE_DIR/Providers/Shinkansen/ShinkansenRouteCatalog.swift" \
-  "$CORE_DIR/Providers/Shinkansen/ShinkansenStarterCatalog.swift" \
-  "$CORE_DIR/Providers/Shinkansen/ShinkansenTrainTripMapper.swift" \
-  "$CORE_DIR/TrainDataProvider.swift" \
-  "$CORE_DIR/TrainStore.swift" \
+  "${TRAINY_PROVIDER_SMOKE_SOURCES[@]}" \
+  "${TRAINY_STORE_SMOKE_SOURCES[@]}" \
   "$ROOT_DIR/scripts/ShinkansenProviderSmoke.swift" \
   -o "$SMOKE_BINARY"
 

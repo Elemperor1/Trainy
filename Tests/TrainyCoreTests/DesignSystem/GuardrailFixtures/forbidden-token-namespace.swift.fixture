@@ -1,0 +1,5 @@
+import SwiftUI
+
+enum Spacing {
+    static let card: CGFloat = 16
+}

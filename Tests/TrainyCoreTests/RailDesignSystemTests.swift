@@ -1,63 +1,223 @@
+import SwiftUI
+import UIKit
 import XCTest
 @testable import TrainyCore
 
 @MainActor
 final class RailDesignSystemTests: XCTestCase {
-
-    // MARK: - Tokens
-
-    func testSpacingScaleValues() {
-        XCTAssertEqual(RailDesign.Spacing.xxs, 4)
-        XCTAssertEqual(RailDesign.Spacing.xs, 8)
-        XCTAssertEqual(RailDesign.Spacing.s, 12)
-        XCTAssertEqual(RailDesign.Spacing.m, 16)
-        XCTAssertEqual(RailDesign.Spacing.l, 20)
-        XCTAssertEqual(RailDesign.Spacing.xl, 28)
-        XCTAssertEqual(RailDesign.Spacing.xxl, 36)
-        // Monotonically non-decreasing.
-        let values: [CGFloat] = [RailDesign.Spacing.xxs, RailDesign.Spacing.xs, RailDesign.Spacing.s, RailDesign.Spacing.m, RailDesign.Spacing.l, RailDesign.Spacing.xl, RailDesign.Spacing.xxl]
-        XCTAssertEqual(values, values.sorted())
+    private struct RGBA {
+        let red: CGFloat
+        let green: CGFloat
+        let blue: CGFloat
+        let alpha: CGFloat
     }
 
-    func testRadiusScaleValues() {
+    private func resolvedRGBA(
+        _ color: Color,
+        style: UIUserInterfaceStyle,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) -> RGBA {
+        let traits = UITraitCollection(userInterfaceStyle: style)
+        let resolved = UIColor(color).resolvedColor(with: traits)
+        var red: CGFloat = 0
+        var green: CGFloat = 0
+        var blue: CGFloat = 0
+        var alpha: CGFloat = 0
+        XCTAssertTrue(
+            resolved.getRed(&red, green: &green, blue: &blue, alpha: &alpha),
+            "Expected an RGB-compatible design token",
+            file: file,
+            line: line
+        )
+        return RGBA(red: red, green: green, blue: blue, alpha: alpha)
+    }
+
+    private func assertColorsEqual(
+        _ lhs: Color,
+        _ rhs: Color,
+        style: UIUserInterfaceStyle = .light,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) {
+        let lhsRGBA = resolvedRGBA(lhs, style: style, file: file, line: line)
+        let rhsRGBA = resolvedRGBA(rhs, style: style, file: file, line: line)
+        XCTAssertEqual(lhsRGBA.red, rhsRGBA.red, accuracy: 0.001, file: file, line: line)
+        XCTAssertEqual(lhsRGBA.green, rhsRGBA.green, accuracy: 0.001, file: file, line: line)
+        XCTAssertEqual(lhsRGBA.blue, rhsRGBA.blue, accuracy: 0.001, file: file, line: line)
+        XCTAssertEqual(lhsRGBA.alpha, rhsRGBA.alpha, accuracy: 0.001, file: file, line: line)
+    }
+
+    private func relativeLuminance(_ color: RGBA) -> CGFloat {
+        func linearized(_ component: CGFloat) -> CGFloat {
+            component <= 0.04045
+                ? component / 12.92
+                : pow((component + 0.055) / 1.055, 2.4)
+        }
+
+        return (0.2126 * linearized(color.red))
+            + (0.7152 * linearized(color.green))
+            + (0.0722 * linearized(color.blue))
+    }
+
+    private func contrastRatio(_ lhs: RGBA, _ rhs: RGBA) -> CGFloat {
+        let lighter = max(relativeLuminance(lhs), relativeLuminance(rhs))
+        let darker = min(relativeLuminance(lhs), relativeLuminance(rhs))
+        return (lighter + 0.05) / (darker + 0.05)
+    }
+
+    // MARK: - Token scales
+
+    func testSpacingScaleUsesDocumentedFourPointGrid() {
+        let values: [CGFloat] = [
+            RailDesign.Spacing.xxs,
+            RailDesign.Spacing.xs,
+            RailDesign.Spacing.s,
+            RailDesign.Spacing.m,
+            RailDesign.Spacing.l,
+            RailDesign.Spacing.xl,
+            RailDesign.Spacing.xxl,
+            RailDesign.Spacing.hero
+        ]
+
+        XCTAssertEqual(values, [4, 8, 12, 16, 24, 32, 48, 64])
+        XCTAssertTrue(zip(values, values.dropFirst()).allSatisfy(<))
+        XCTAssertTrue(values.allSatisfy { $0.truncatingRemainder(dividingBy: 4) == 0 })
+    }
+
+    func testRadiusScalePreservesSemanticContracts() {
         XCTAssertEqual(RailDesign.Radius.xs, 8)
-        XCTAssertEqual(RailDesign.Radius.sm, 10)
+        XCTAssertEqual(RailDesign.Radius.sm, 12)
         XCTAssertEqual(RailDesign.Radius.chip, 13)
-        XCTAssertEqual(RailDesign.Radius.control, 18)
-        XCTAssertEqual(RailDesign.Radius.panel, 28)
-        XCTAssertEqual(RailDesign.Radius.hero, 34)
-        let values: [CGFloat] = [RailDesign.Radius.xs, RailDesign.Radius.sm, RailDesign.Radius.chip, RailDesign.Radius.control, RailDesign.Radius.panel, RailDesign.Radius.hero]
-        XCTAssertEqual(values, values.sorted())
+        XCTAssertEqual(RailDesign.Radius.control, 16)
+        XCTAssertEqual(RailDesign.Radius.card, RailDesign.Radius.control)
+        XCTAssertEqual(RailDesign.Radius.panel, 24)
+        XCTAssertEqual(RailDesign.Radius.hero, 32)
+        XCTAssertEqual(RailDesign.Radius.pill, 999)
+        XCTAssertEqual(RailDesign.Radius.station, RailDesign.Radius.sm)
+
+        let structuralScale = [
+            RailDesign.Radius.xs,
+            RailDesign.Radius.sm,
+            RailDesign.Radius.control,
+            RailDesign.Radius.panel,
+            RailDesign.Radius.hero,
+            RailDesign.Radius.pill
+        ]
+        XCTAssertTrue(zip(structuralScale, structuralScale.dropFirst()).allSatisfy(<))
+        XCTAssertTrue(RailDesign.Radius.chip > RailDesign.Radius.sm)
+        XCTAssertTrue(RailDesign.Radius.chip < RailDesign.Radius.control)
     }
 
-    func testElevationPresetsAreOrdered() {
-        XCTAssertTrue(RailDesign.Elevation.resting.radius < RailDesign.Elevation.raised.radius)
-        XCTAssertTrue(RailDesign.Elevation.raised.radius < RailDesign.Elevation.hero.radius)
-        XCTAssertTrue(RailDesign.Elevation.resting.opacity < RailDesign.Elevation.hero.opacity)
+    func testElevationPresetsIncreasePredictably() {
+        let presets = [
+            RailDesign.Elevation.resting,
+            RailDesign.Elevation.raised,
+            RailDesign.Elevation.hero
+        ]
+
+        XCTAssertEqual(presets.map(\.radius), [18, 26, 34])
+        XCTAssertEqual(presets.map(\.y), [9, 14, 18])
+        XCTAssertEqual(presets.map(\.opacity), [0.10, 0.16, 0.22])
+        XCTAssertTrue(zip(presets, presets.dropFirst()).allSatisfy { $0.radius < $1.radius })
+        XCTAssertTrue(zip(presets, presets.dropFirst()).allSatisfy { $0.y < $1.y })
+        XCTAssertTrue(zip(presets, presets.dropFirst()).allSatisfy { $0.opacity < $1.opacity })
+        XCTAssertTrue(presets.allSatisfy { (0 ... 1).contains($0.opacity) })
     }
 
-    func testTypographyPresetsAreAccessible() {
-        // Referencing each preset ensures the public typography scale compiles
-        // and is wired into the design system (regression guard).
+    func testTypographyScaleAndCompatibilityAliasesRemainAvailable() {
+        _ = RailDesign.Typography.display
+        _ = RailDesign.Typography.h1
+        _ = RailDesign.Typography.h2
+        _ = RailDesign.Typography.h3
+        _ = RailDesign.Typography.body
+        _ = RailDesign.Typography.small
+        _ = RailDesign.Typography.caption
+
         _ = RailDesign.Typography.largeTitle
         _ = RailDesign.Typography.title
         _ = RailDesign.Typography.metricValue
         _ = RailDesign.Typography.routeTitle
         _ = RailDesign.Typography.headline
-        _ = RailDesign.Typography.body
         _ = RailDesign.Typography.callout
         _ = RailDesign.Typography.compactLabel
-        _ = RailDesign.Typography.caption
         _ = RailDesign.Typography.micro
     }
 
-    // MARK: - Service status display assets
+    // MARK: - Palette contracts
 
-    func testEveryServiceStatusHasDisplayAssets() {
-        XCTAssertEqual(RailServiceStatus.allCases.count, 7)
-        for status in RailServiceStatus.allCases {
-            XCTAssertFalse(status.symbolName.isEmpty, "Status \(status) missing symbol")
+    func testSemanticPaletteAliasesResolveToTheirCanonicalTokens() {
+        for style in [UIUserInterfaceStyle.light, .dark] {
+            assertColorsEqual(RailDesign.Palette.success, RailDesign.Palette.mint, style: style)
+            assertColorsEqual(RailDesign.Palette.warning, RailDesign.Palette.amber, style: style)
+            assertColorsEqual(RailDesign.Palette.danger, RailDesign.Palette.red, style: style)
+            assertColorsEqual(RailDesign.Palette.info, RailDesign.Palette.blue, style: style)
         }
+    }
+
+    func testTextTokensMaintainReadableCanvasContrastInLightAndDarkModes() {
+        for style in [UIUserInterfaceStyle.light, .dark] {
+            let background = resolvedRGBA(RailDesign.Palette.background, style: style)
+            let ink = resolvedRGBA(RailDesign.Palette.ink, style: style)
+            let secondary = resolvedRGBA(RailDesign.Palette.secondaryText, style: style)
+
+            XCTAssertGreaterThanOrEqual(
+                contrastRatio(ink, background),
+                7,
+                "Primary text should retain enhanced contrast in \(style)"
+            )
+            XCTAssertGreaterThanOrEqual(
+                contrastRatio(secondary, background),
+                4.5,
+                "Secondary text should retain normal-text contrast in \(style)"
+            )
+        }
+    }
+
+    // MARK: - Component and semantic display contracts
+
+    func testSourceBadgeStylesKeepAStableCompactHeight() {
+        XCTAssertEqual(SourceBadge.Style.compact.height, 30)
+        XCTAssertEqual(SourceBadge.Style.regular.height, 30)
+    }
+
+    func testEveryServiceStatusHasUniqueDisplayAssetsAndExpectedTint() {
+        XCTAssertEqual(RailServiceStatus.allCases.count, 7)
+        XCTAssertEqual(Set(RailServiceStatus.allCases.map(\.symbolName)).count, 7)
+        XCTAssertEqual(Set(RailServiceStatus.allCases.map(\.accessibilityTitle)).count, 7)
+        XCTAssertTrue(RailServiceStatus.allCases.allSatisfy { !$0.symbolName.isEmpty })
+        XCTAssertTrue(RailServiceStatus.allCases.allSatisfy { !$0.accessibilityTitle.isEmpty })
+
+        let expectedTints: [(RailServiceStatus, Color)] = [
+            (.onTime, RailDesign.Palette.success),
+            (.boarding, RailDesign.Palette.success),
+            (.arrived, RailDesign.Palette.success),
+            (.delayed, RailDesign.Palette.warning),
+            (.platformChanged, RailDesign.Palette.warning),
+            (.canceled, RailDesign.Palette.danger),
+            (.disruption, RailDesign.Palette.copper)
+        ]
+        for (status, expectedTint) in expectedTints {
+            assertColorsEqual(status.tint, expectedTint)
+            XCTAssertEqual(resolvedRGBA(status.glassTint, style: .light).alpha, 0.16, accuracy: 0.001)
+        }
+    }
+
+    func testInterfacePreferencesHaveOnePredictableDefaultContract() {
+        XCTAssertEqual(RailInterfacePreferences.defaults.timeFormat, .hour12)
+        XCTAssertEqual(RailInterfacePreferences.defaults.unitSystem, .metric)
+        XCTAssertEqual(RailInterfacePreferences.defaults.sourceLabelVerbosity, .compact)
+        XCTAssertTrue(RailInterfacePreferences.defaults.usesMetricUnits)
+
+        var preferences = RailInterfacePreferences.defaults
+        preferences.unitSystem = .imperial
+        XCTAssertFalse(preferences.usesMetricUnits)
+    }
+
+    func testTimeFormattingRequiresAnExplicitPreference() {
+        let tokyo = TimeZone(identifier: "Asia/Tokyo")!
+        XCTAssertEqual("13:05".formattedAsTime(in: tokyo, format: .hour24), "13:05")
+        XCTAssertEqual("not-a-time".formattedAsTime(in: tokyo, format: .hour24), "not-a-time")
     }
 
     // MARK: - RailServiceStatus.from(trip) mapping
@@ -107,52 +267,57 @@ final class RailDesignSystemTests: XCTestCase {
         )
     }
 
-    func testStatusMappingOnTime() {
-        let trip = makeStatusTrip(status: "On time", tone: .good, progress: 0.3)
-        XCTAssertEqual(RailServiceStatus.from(trip), .onTime)
+    func testStatusMappingCoversEachSemanticState() {
+        XCTAssertEqual(
+            RailServiceStatus.from(makeStatusTrip(status: "On time", tone: .good, progress: 0.3)),
+            .onTime
+        )
+        XCTAssertEqual(
+            RailServiceStatus.from(makeStatusTrip(status: "Running", tone: .late, progress: 0.3)),
+            .delayed
+        )
+        XCTAssertEqual(
+            RailServiceStatus.from(makeStatusTrip(status: "Canceled", tone: .late, progress: 0)),
+            .canceled
+        )
+        XCTAssertEqual(
+            RailServiceStatus.from(makeStatusTrip(status: "On time", tone: .good, progress: 0.99)),
+            .arrived
+        )
+        XCTAssertEqual(
+            RailServiceStatus.from(makeStatusTrip(status: "Platform change", tone: .good, progress: 0)),
+            .platformChanged
+        )
+        XCTAssertEqual(
+            RailServiceStatus.from(makeStatusTrip(status: "Boarding open", tone: .good, progress: 0)),
+            .boarding
+        )
+        XCTAssertEqual(
+            RailServiceStatus.from(makeStatusTrip(status: "On time", tone: .watch, progress: 0.3)),
+            .disruption
+        )
     }
 
-    func testStatusMappingDelayed() {
-        let trip = makeStatusTrip(status: "Running", tone: .late, progress: 0.3)
-        XCTAssertEqual(RailServiceStatus.from(trip), .delayed)
-    }
-
-    func testStatusMappingCanceled() {
-        let trip = makeStatusTrip(status: "Canceled", tone: .late, progress: 0.0)
-        XCTAssertEqual(RailServiceStatus.from(trip), .canceled)
-    }
-
-    func testStatusMappingArrivedByProgress() {
-        let trip = makeStatusTrip(status: "On time", tone: .good, progress: 0.99)
-        XCTAssertEqual(RailServiceStatus.from(trip), .arrived)
-    }
-
-    func testStatusMappingPlatformChanged() {
-        let trip = makeStatusTrip(status: "Platform change", tone: .good, progress: 0.0)
+    func testStatusMappingUsesAlertTextForPlatformChanges() {
+        let trip = makeStatusTrip(
+            status: "On time",
+            tone: .good,
+            progress: 0.3,
+            alerts: [TrainAlert(title: "Notice", detail: "Platform changed to 14", tone: .watch)]
+        )
         XCTAssertEqual(RailServiceStatus.from(trip), .platformChanged)
     }
 
-    func testStatusMappingBoarding() {
-        let trip = makeStatusTrip(status: "Boarding open", tone: .good, progress: 0.0)
-        XCTAssertEqual(RailServiceStatus.from(trip), .boarding)
-    }
+    func testTrainStatusToneRoutesThroughSemanticPaletteRoles() {
+        let expectedTints: [(TrainStatusTone, Color)] = [
+            (.good, RailDesign.Palette.success),
+            (.watch, RailDesign.Palette.warning),
+            (.late, RailDesign.Palette.danger)
+        ]
 
-    func testStatusMappingDisruptionFromWatchTone() {
-        let trip = makeStatusTrip(status: "On time", tone: .watch, progress: 0.3)
-        XCTAssertEqual(RailServiceStatus.from(trip), .disruption)
-    }
-
-    // MARK: - TrainStatusTone routes through design-system semantic roles
-
-    func testTrainStatusToneTintRoutesThroughPalette() {
-        // After the refactor, TrainStatusTone.tint must resolve via RailDesign
-        // semantic role aliases, not the removed TrainyColor duplicate palette.
-        // We assert the mapping is stable and non-default for each case.
-        for tone in TrainStatusTone.allCases {
-            _ = tone.tint
-            _ = tone.softFill
+        for (tone, expectedTint) in expectedTints {
+            assertColorsEqual(tone.tint, expectedTint)
+            XCTAssertEqual(resolvedRGBA(tone.softFill, style: .light).alpha, 0.14, accuracy: 0.001)
         }
-        XCTAssertEqual(TrainStatusTone.allCases.count, 3)
     }
 }
-

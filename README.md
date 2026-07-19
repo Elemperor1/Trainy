@@ -37,6 +37,8 @@ scripts/smoke-odpt.sh
 
 The smoke compiles Trainy's provider code and verifies that `Tokyo to Shin-Osaka` and `JR East` searches return real ODPT-backed or official timetable trips instead of starter data.
 
+Other credentialed-provider env files, including `ns.env`, are developer smoke inputs only. `scripts/build-ios.sh` does not load or pass those keys to Xcode. Netherlands NS is adapter-ready and fixture-tested, but it is not rider-available until a proxy-backed station-board surface is connected.
+
 ## Provider Proxy
 
 Cloudflare Workers is the selected production proxy path for credentialed or heavy providers. The app reads only the proxy base URL from `TRAINY_PROVIDER_PROXY_BASE_URL` or `TrainyProviderProxyBaseURL` in the app `Info.plist`; production provider keys stay in Worker secrets or equivalent backend secret storage.
@@ -72,6 +74,47 @@ python3 -m http.server 4173
 
 Then visit `http://localhost:4173`.
 
+## Run on iOS Simulator
+
+If the goal is to launch Trainy in the iPhone Simulator, the path is Xcode + `scripts/build-ios.sh`. Plain host `swift build` / `swift test` target macOS and fail with `No such module 'UIKit'`, so they are not a way to run the iOS app.
+
+Before the first build, the non-App-Store Xcode install at `/Applications/Xcode-26.5.0.app` needs the iOS 26.5 Simulator runtime and an accepted license:
+
+```bash
+sudo xcode-select -s /Applications/Xcode-26.5.0.app/Contents/Developer
+sudo xcodebuild -license accept
+sudo xcodebuild -runFirstLaunch
+xcodebuild -downloadPlatform iOS
+```
+
+Then open the Xcode project, pick an iPhone simulator, and run the `Trainy` scheme:
+
+```bash
+open TrainyIOS/Trainy.xcodeproj
+# In Xcode: Product > Run (⌘R) with an iPhone simulator destination
+```
+
+From the command line, the wrapper script builds the `Trainy` scheme against the generic iOS Simulator destination and produces an app bundle under `/private/tmp/trainy-derived`:
+
+```bash
+scripts/build-ios.sh
+```
+
+To boot a specific simulator, install the freshly built `Trainy.app`, and launch it headlessly with `simctl`:
+
+```bash
+DEVICE='iPhone 17'
+UDID=$(xcrun simctl list devices available | awk -v d="$DEVICE" -F'[()]' '/\(/ && $0 ~ d {gsub(/^ +| +$/,"",$2); print $2; exit}')
+xcrun simctl boot "$UDID" || true
+open -a Simulator
+xcrun simctl install "$UDID" /private/tmp/trainy-derived/Build/Products/Debug-iphonesimulator/Trainy.app
+xcrun simctl launch "$UDID" com.jacobcyber.Trainy
+```
+
+`xcodebuild -downloadPlatform iOS` is only required once per Xcode install. After that, `scripts/build-ios.sh` plus the optional `simctl install`/`launch` pair above is enough to get Trainy running on a simulator.
+
+If `xcrun simctl` errors with `CoreSimulatorService connection became invalid`, restart Simulator.app or run `xcrun simctl shutdown all` and then `open -a Simulator` to revive the service.
+
 ## Tests
 
 Trainy's package tests live in `Tests/TrainyCoreTests`. The Xcode `TrainyTests` scheme points at the same test source so the iOS app wrapper and package code are tested together:
@@ -84,10 +127,11 @@ xcodebuild test \
   -derivedDataPath /private/tmp/trainy-derived \
   -clonedSourcePackagesDirPath /private/tmp/trainy-source-packages \
   -packageCachePath /private/tmp/trainy-swiftpm-cache \
-  CODE_SIGNING_ALLOWED=NO
+  CODE_SIGNING_ALLOWED=NO \
+  TRAINY_SOURCE_PACKAGES_DIR=/private/tmp/trainy-source-packages
 ```
 
-`TrainyTests` does not require ODPT credentials or live network access. It covers source provenance mapping, fallback behavior, route matching, station normalization, time parsing across midnight, persistence migration by `dataScope`, proxy health/config wiring, and provider error to user-message mapping.
+`TrainyTests` does not require provider credentials or live network access. It covers source provenance mapping, fallback behavior, route matching, station normalization, time parsing across midnight, persistence migration by `dataScope`, proxy health/config wiring, provider error-to-message mapping, NS fixtures, and design-system contracts. Keep `TRAINY_SOURCE_PACKAGES_DIR` equal to `-clonedSourcePackagesDirPath` so the Crashlytics build phase resolves the same Swift package checkout.
 
 The standalone smoke harnesses remain useful for focused script checks:
 
@@ -98,6 +142,27 @@ scripts/smoke-shinkansen-provider.sh
 ```
 
 `scripts/smoke-odpt.sh` is the credentialed live-data smoke and should only be run after configuring `ODPT_CONSUMER_KEY`.
+
+## Design System
+
+The native UI has one component library under
+`Sources/TrainyCore/DesignSystem/`. Tokens, interface preferences, primitives,
+patterns, domain UI, loading/empty/error states, and interaction behavior are
+owned there; screens only compose them.
+
+Architecture and contribution rules are documented in
+`docs/design-system-architecture.md`.
+
+Run both policy checks before submitting UI work:
+
+```bash
+bash scripts/check-design-system-bypass.sh --self-test
+bash scripts/check-design-system-bypass.sh
+```
+
+The first command proves the guardrail catches deliberate bypass fixtures. The
+second checks the real iOS and web sources. The repository review workflow is
+available at `.agents/skills/review-design-system/SKILL.md`.
 
 Additional credentialed provider smokes are documented in `TrainyIOS/README.md`. They use provider-specific ignored env files with strict key whitelists; do not create or use a combined provider env file unless its parser keeps the same reject-by-default behavior.
 

@@ -9,6 +9,7 @@ struct ProviderSourceLink: Hashable, Identifiable, Sendable {
 
 enum ProviderImplementationStatus: String, Hashable, Sendable {
     case active
+    case adapterReady = "adapter-ready"
     case planned
     case disabled
 
@@ -16,10 +17,25 @@ enum ProviderImplementationStatus: String, Hashable, Sendable {
         switch self {
         case .active:
             return "Active"
+        case .adapterReady:
+            return "Adapter ready"
         case .planned:
             return "Planned"
         case .disabled:
             return "Disabled"
+        }
+    }
+
+    var directorySortRank: Int {
+        switch self {
+        case .active:
+            return 0
+        case .adapterReady:
+            return 1
+        case .planned:
+            return 2
+        case .disabled:
+            return 3
         }
     }
 }
@@ -98,8 +114,16 @@ struct ProviderRegistry: Sendable {
         }
     }
 
-    var activeProviderMetadata: [ProviderMetadata] {
+    var registeredProviderMetadata: [ProviderMetadata] {
         providers.map(Self.metadata)
+    }
+
+    var activeProviderMetadata: [ProviderMetadata] {
+        registeredProviderMetadata.filter { $0.implementationStatus == .active }
+    }
+
+    var adapterReadyProviderMetadata: [ProviderMetadata] {
+        registeredProviderMetadata.filter { $0.implementationStatus == .adapterReady }
     }
 
     var plannedProviders: [ProviderMetadata] {
@@ -109,9 +133,9 @@ struct ProviderRegistry: Sendable {
     }
 
     var providerDirectory: [ProviderMetadata] {
-        (activeProviderMetadata + plannedProviders).sorted { lhs, rhs in
+        (registeredProviderMetadata + plannedProviders).sorted { lhs, rhs in
             if lhs.implementationStatus != rhs.implementationStatus {
-                return lhs.implementationStatus == .active
+                return lhs.implementationStatus.directorySortRank < rhs.implementationStatus.directorySortRank
             }
             return lhs.displayName.localizedStandardCompare(rhs.displayName) == .orderedAscending
         }

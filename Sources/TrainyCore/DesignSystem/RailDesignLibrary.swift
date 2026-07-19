@@ -1,3 +1,25 @@
+/// Subtle press feedback. Apple HIG and the make-interfaces-feel-better
+/// skill both call for `scale(0.96)` on press. Apply this style to any
+/// custom interactive surface that isn't already using a system button style.
+struct PressableButtonStyle: ButtonStyle {
+    var isStatic = false
+
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(
+                configuration.isPressed && !reduceMotion && !isStatic
+                    ? 0.96
+                    : 1
+            )
+            .animation(
+                reduceMotion || isStatic ? nil : RailDesign.Motion.quick,
+                value: configuration.isPressed
+            )
+    }
+}
+
 import SwiftUI
 
 // MARK: - RailDesignLibrary
@@ -44,126 +66,6 @@ struct ControlMetricTile: View {
     }
 }
 
-struct SummaryActionLabel: View {
-    let symbol: String
-    let title: LocalizedStringKey
-
-    var body: some View {
-        Label(title, systemImage: symbol)
-            .font(.caption.weight(.bold))
-            .foregroundStyle(RailDesign.Palette.ink)
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 11)
-            .railLiquidGlass(cornerRadius: 18, tint: .white.opacity(0.12), interactive: true, strokeOpacity: 0.28)
-            .contentShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-    }
-}
-
-struct SummaryIconLabel: View {
-    let symbol: String
-    let title: LocalizedStringKey
-
-    var body: some View {
-        Image(systemName: symbol)
-            .font(.subheadline.weight(.bold))
-            .foregroundStyle(RailDesign.Palette.ink)
-            .frame(width: 40, height: 34)
-            .railLiquidGlass(cornerRadius: 17, tint: .white.opacity(0.12), interactive: true, strokeOpacity: 0.26)
-            .accessibilityLabel(title)
-    }
-}
-
-struct SummaryButton: View {
-    let symbol: String
-    let title: LocalizedStringKey
-    let action: () -> Void
-
-    var body: some View {
-        Button(action: action) {
-            SummaryActionLabel(symbol: symbol, title: title)
-        }
-        .buttonStyle(.plain)
-    }
-}
-
-struct RailSegmentedPicker: View {
-    @Binding var selection: TripBucket
-    @Namespace private var namespace
-
-    var body: some View {
-        GlassEffectContainer(spacing: RailDesign.Spacing.xs) {
-            HStack(spacing: RailDesign.Spacing.xs) {
-                ForEach(TripBucket.allCases) { bucket in
-                    Button {
-                        selection = bucket
-                    } label: {
-                        Text(bucket.title)
-                            .font(.subheadline.weight(.semibold))
-                            .foregroundStyle(selection == bucket ? RailDesign.Palette.ink : RailDesign.Palette.secondaryText)
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, RailDesign.Spacing.s)
-                            .background {
-                                if selection == bucket {
-                                    Capsule()
-                                        .fill(RailDesign.Palette.accent.opacity(0.10))
-                                        .glassEffectID(bucket.id, in: namespace)
-                                        .railLiquidGlass(cornerRadius: 18, tint: RailDesign.Palette.accent.opacity(0.22), interactive: true)
-                                }
-                            }
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityAddTraits(selection == bucket ? .isSelected : [])
-                }
-            }
-            .padding(6)
-            .railLiquidGlass(cornerRadius: 24, tint: .white.opacity(0.12), interactive: true)
-        }
-    }
-}
-
-struct CoverageLegendItem: View {
-    let title: LocalizedStringKey
-    let tint: Color
-
-    var body: some View {
-        HStack(spacing: RailDesign.Spacing.xs) {
-            Circle()
-                .fill(tint)
-                .frame(width: 9, height: 9)
-            Text(title)
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(RailDesign.Palette.secondaryText)
-        }
-    }
-}
-
-struct StatusSummaryItem: View {
-    let title: LocalizedStringKey
-    let value: String
-    let symbol: String
-    let tint: Color
-
-    var body: some View {
-        HStack(spacing: RailDesign.Spacing.s) {
-            Image(systemName: symbol)
-                .font(.headline)
-                .foregroundStyle(tint)
-                .frame(width: 34, height: 34)
-                .railLiquidGlass(cornerRadius: 17, tint: tint.opacity(0.18))
-            VStack(alignment: .leading, spacing: 2) {
-                Text(title)
-                    .font(.caption)
-                    .foregroundStyle(RailDesign.Palette.secondaryText)
-                Text(value)
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(RailDesign.Palette.ink)
-                    .lineLimit(2)
-            }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-    }
-}
-
 struct SectionHeader: View {
     let title: LocalizedStringKey
     let subtitle: Text
@@ -192,82 +94,29 @@ struct SectionHeader: View {
     }
 }
 
-struct MiniStat: View {
-    let title: LocalizedStringKey
-    let value: String
-    var tint: Color
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: RailDesign.Spacing.xxs) {
-            Text(value)
-                .font(.headline.monospacedDigit().weight(.bold))
-                .foregroundStyle(RailDesign.Palette.ink)
-                .lineLimit(1)
-                .minimumScaleFactor(0.7)
-            Text(title)
-                .font(.caption2.weight(.medium))
-                .foregroundStyle(RailDesign.Palette.secondaryText)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(RailDesign.Spacing.s)
-        .railLiquidGlass(cornerRadius: RailDesign.Radius.control, tint: tint.opacity(0.12))
-    }
-}
-
-struct InfoLine: View {
+struct TripToolButton: View {
     let symbol: String
     let title: LocalizedStringKey
-    let value: String
 
     var body: some View {
-        HStack(alignment: .top, spacing: RailDesign.Spacing.s) {
+        HStack(spacing: RailDesign.Spacing.xs) {
             Image(systemName: symbol)
-                .foregroundStyle(RailDesign.Palette.accent)
-                .frame(width: 26)
-            VStack(alignment: .leading, spacing: 2) {
-                Text(title)
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(RailDesign.Palette.secondaryText)
-                Text(value.isEmpty ? "Not available" : value)
-                    .font(.subheadline)
-                    .foregroundStyle(RailDesign.Palette.ink)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
+                .font(RailDesign.Typography.small.weight(.semibold))
+            Text(title)
+                .font(RailDesign.Typography.caption.weight(.semibold))
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
         }
+        .foregroundStyle(RailDesign.Palette.ink)
+        .frame(maxWidth: .infinity, minHeight: 44)
+        .background(RailDesign.Palette.inset, in: RoundedRectangle(cornerRadius: RailDesign.Radius.sm, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: RailDesign.Radius.sm, style: .continuous)
+                .stroke(RailDesign.Palette.hairline, lineWidth: 1)
+        )
+        .contentShape(RoundedRectangle(cornerRadius: RailDesign.Radius.sm, style: .continuous))
         .accessibilityElement(children: .combine)
-    }
-}
-
-struct DelayBar: View {
-    let delayCount: Int
-    let total: Int
-
-    private var ratio: Double {
-        min(1, max(0, Double(delayCount) / Double(total)))
-    }
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: RailDesign.Spacing.xs) {
-            HStack {
-                Text("Delay share")
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(RailDesign.Palette.secondaryText)
-                Spacer()
-                Text("\(delayCount) of \(total)")
-                    .font(.caption.monospacedDigit().weight(.semibold))
-                    .foregroundStyle(RailDesign.Palette.ink)
-            }
-            GeometryReader { proxy in
-                ZStack(alignment: .leading) {
-                    Capsule()
-                        .fill(RailDesign.Palette.hairline)
-                    Capsule()
-                        .fill(delayCount == 0 ? RailDesign.Palette.mint : RailDesign.Palette.amber)
-                        .frame(width: max(10, proxy.size.width * ratio))
-                }
-            }
-            .frame(height: 10)
-        }
+        .accessibilityLabel(title)
     }
 }
 
@@ -283,13 +132,22 @@ struct SettingsGroup<Content: View>: View {
     var body: some View {
         VStack(alignment: .leading, spacing: RailDesign.Spacing.s) {
             Text(title)
-                .font(.headline)
-                .foregroundStyle(RailDesign.Palette.ink)
-            GlassPanel {
-                VStack(spacing: 0) {
-                    content
-                }
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(RailDesign.Palette.secondaryText)
+                .textCase(.uppercase)
+                .fixedSize(horizontal: false, vertical: true)
+            VStack(spacing: 0) {
+                content
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(
+                RoundedRectangle(cornerRadius: RailDesign.Radius.card, style: .continuous)
+                    .fill(RailDesign.Palette.panel)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: RailDesign.Radius.card, style: .continuous)
+                    .stroke(RailDesign.Palette.hairline, lineWidth: 1)
+            )
         }
     }
 }
@@ -306,6 +164,10 @@ struct SettingsToggleRow: View {
         }
         .tint(RailDesign.Palette.accent)
         .padding(.vertical, RailDesign.Spacing.s)
+        .accessibilityRepresentation {
+            Toggle(title, isOn: $isOn)
+                .accessibilityHint(detail)
+        }
     }
 }
 

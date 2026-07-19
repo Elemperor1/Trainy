@@ -1,0 +1,4 @@
+interface:
+  display_name: "Review Trainy Design System"
+  short_description: "Audit Trainy UI for design-system bypasses"
+  default_prompt: "Use $review-design-system to audit the current Trainy UI changes and report findings with runtime evidence and a Before/After table."

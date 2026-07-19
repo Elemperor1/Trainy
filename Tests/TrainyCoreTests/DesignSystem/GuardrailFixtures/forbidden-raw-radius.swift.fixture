@@ -1,0 +1,3 @@
+import SwiftUI
+
+let rogueShape = RoundedRectangle(cornerRadius: 12)

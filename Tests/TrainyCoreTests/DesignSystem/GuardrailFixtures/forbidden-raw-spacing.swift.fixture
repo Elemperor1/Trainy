@@ -1,0 +1,6 @@
+import SwiftUI
+
+let rogueSpacing = VStack(spacing: 6) {
+    Text("Trainy")
+        .padding(.horizontal, 10)
+}

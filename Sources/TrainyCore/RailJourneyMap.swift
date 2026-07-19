@@ -46,8 +46,9 @@ struct RailJourneyMapPanel: View {
     let trip: TrainTrip
     let style: Style
 
-    @State private var mapMode: RailMapMode = .route
+    @State private var mapMode: RailMapMode = .all  // kept for future re-introduction
     @State private var cameraPosition: MapCameraPosition
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private var model: RailMapModel {
         RailMapModel(trip: trip)
@@ -62,11 +63,11 @@ struct RailJourneyMapPanel: View {
     var body: some View {
         let model = model
 
-        GlassPanel(cornerRadius: RailDesign.Radius.hero, tint: .white.opacity(0.06), padding: 0) {
+        GlassPanel(cornerRadius: RailDesign.Radius.hero, tint: RailDesign.Palette.onAccent.opacity(0.06), padding: 0) {
             ZStack(alignment: .top) {
                 Map(position: $cameraPosition, interactionModes: .all) {
                     MapPolyline(coordinates: model.routeCoordinates)
-                        .stroke(.white.opacity(0.90), style: StrokeStyle(lineWidth: 15, lineCap: .round, lineJoin: .round))
+                        .stroke(RailDesign.Palette.onAccent.opacity(0.90), style: StrokeStyle(lineWidth: 15, lineCap: .round, lineJoin: .round))
 
                     MapPolyline(coordinates: model.upcomingCoordinates)
                         .stroke(RailDesign.Palette.ink.opacity(0.22), style: StrokeStyle(lineWidth: 8, lineCap: .round, lineJoin: .round, dash: [11, 8]))
@@ -116,10 +117,13 @@ struct RailJourneyMapPanel: View {
                         RailMapStatusOverlay(model: model)
                         Spacer(minLength: RailDesign.Spacing.s)
                         RailMapControls(
-                            mode: $mapMode,
                             recenter: {
-                                withAnimation(RailDesign.Motion.soft) {
+                                if reduceMotion {
                                     cameraPosition = .region(model.region)
+                                } else {
+                                    withAnimation(RailDesign.Motion.soft) {
+                                        cameraPosition = .region(model.region)
+                                    }
                                 }
                             }
                         )
@@ -129,7 +133,7 @@ struct RailJourneyMapPanel: View {
 
                     RailMapStopRail(
                         title: mapMode.title,
-                        stops: mapMode == .alerts ? model.disruptionAwareStops : model.upcomingStops,
+                        stops: model.upcomingStops,
                         status: model.status
                     )
                 }
@@ -169,9 +173,8 @@ struct RailJourneyMapScreen: View {
                 }
             }
             .padding(RailDesign.Spacing.m)
-            .padding(.bottom, 120)
+            .padding(.bottom, RailDesign.Spacing.xxl)
         }
-        .background(RailGradientBackground().ignoresSafeArea())
         .navigationTitle("Rail map")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar(.hidden, for: .tabBar)
@@ -180,65 +183,26 @@ struct RailJourneyMapScreen: View {
 }
 
 private enum RailMapMode: String, CaseIterable, Identifiable {
-    case route
-    case stops
-    case alerts
+    case all
 
     var id: String { rawValue }
 
     var title: LocalizedStringKey {
-        switch self {
-        case .route:
-            return "Route focus"
-        case .stops:
-            return "Upcoming stops"
-        case .alerts:
-            return "Disruptions"
-        }
+        return "Route focus"
     }
 
-    var symbolName: String {
-        switch self {
-        case .route:
-            return "train.side.front.car"
-        case .stops:
-            return "mappin.circle.fill"
-        case .alerts:
-            return "exclamationmark.triangle.fill"
-        }
-    }
+    var symbolName: String { "train.side.front.car" }
 
     var controlTitle: LocalizedStringKey {
-        switch self {
-        case .route:
-            return "Route"
-        case .stops:
-            return "Stops"
-        case .alerts:
-            return "Disruptions"
-        }
+        return "Route"
     }
 
     var accessibilityTitle: LocalizedStringKey {
-        switch self {
-        case .route:
-            return "Route"
-        case .stops:
-            return "Stops"
-        case .alerts:
-            return "Disruptions"
-        }
+        return "Route focus"
     }
 
     var contextTitle: String {
-        switch self {
-        case .route:
-            return "Show route emphasis"
-        case .stops:
-            return "Show upcoming stops"
-        case .alerts:
-            return "Show disruptions"
-        }
+        return "Show route, upcoming stops, and any disruption pins."
     }
 }
 
@@ -570,14 +534,13 @@ private struct RailMapInsight: Identifiable {
 
 private struct RailMapStatusOverlay: View {
     let model: RailMapModel
-    @AppStorage("trainy.timeFormat") private var timeFormatRaw = UserPreferences.TimeFormat.hour12.rawValue
-
-    private var timeFormat: UserPreferences.TimeFormat {
-        UserPreferences.TimeFormat(rawValue: timeFormatRaw) ?? .hour12
-    }
+    @Environment(\.railInterfacePreferences) private var interfacePreferences
 
     private var formattedETA: String {
-        model.trip.eta.formattedAsTime(in: model.trip.destination.timeZone, format: timeFormat)
+        model.trip.eta.formattedAsTime(
+            in: model.trip.destination.timeZone,
+            format: interfacePreferences.timeFormat
+        )
     }
 
     private var platformText: String {
@@ -589,88 +552,58 @@ private struct RailMapStatusOverlay: View {
             HStack(spacing: RailDesign.Spacing.xs) {
                 ServiceStatusPill(status: model.status)
                 Text("\(Int(model.trip.progress * 100))%")
-                    .font(.caption.monospacedDigit().weight(.bold))
+                    .font(RailDesign.Typography.small.weight(.semibold).monospacedDigit())
                     .foregroundStyle(RailDesign.Palette.ink)
                     .padding(.horizontal, RailDesign.Spacing.s)
-                    .padding(.vertical, 7)
-                    .background(RailDesign.Palette.textSurface, in: Capsule())
+                    .padding(.vertical, RailDesign.Spacing.xs + 2)
+                    .background(RailDesign.Palette.inset, in: Capsule())
             }
             SourceBadge(trip: model.trip)
             Label(model.positionState.mapLabel, systemImage: model.positionState.symbolName)
-                .font(.caption.weight(.semibold))
+                .font(RailDesign.Typography.caption.weight(.semibold))
                 .foregroundStyle(model.positionState.isLiveVehiclePosition ? RailDesign.Palette.blue : RailDesign.Palette.secondaryText)
                 .lineLimit(1)
                 .minimumScaleFactor(0.74)
                 .padding(.horizontal, RailDesign.Spacing.xs)
-                .padding(.vertical, 6)
+                .padding(.vertical, RailDesign.Spacing.xs)
                 .background(RailDesign.Palette.textSurface, in: Capsule())
 
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: RailDesign.Spacing.xxs) {
                 Text("Next stop")
-                    .font(.caption2.weight(.semibold))
+                    .font(RailDesign.Typography.caption)
                     .foregroundStyle(RailDesign.Palette.secondaryText)
+                    .textCase(.uppercase)
                 Text(model.nextStop?.name ?? model.trip.nextStop)
-                    .font(.headline.weight(.bold))
+                    .font(RailDesign.Typography.h3)
                     .foregroundStyle(RailDesign.Palette.ink)
                     .lineLimit(1)
                     .minimumScaleFactor(0.72)
-                Text("Platform \(platformText) - \(formattedETA)")
-                    .font(.caption.weight(.medium))
+                Text("Platform \(platformText) · \(formattedETA)")
+                    .font(RailDesign.Typography.small)
                     .foregroundStyle(RailDesign.Palette.ink.opacity(0.74))
             }
         }
         .padding(RailDesign.Spacing.s)
-        .railLiquidGlass(cornerRadius: 22, tint: .white.opacity(0.16), strokeOpacity: 0.34)
+        .railSurfaceStyle(role: .material)
         .accessibilityElement(children: .combine)
     }
 }
 
 private struct RailMapControls: View {
-    @Binding var mode: RailMapMode
     let recenter: () -> Void
 
     var body: some View {
-        VStack(spacing: RailDesign.Spacing.xs) {
-            ForEach(RailMapMode.allCases) { item in
-                Button {
-                    mode = item
-                } label: {
-                    VStack(spacing: 2) {
-                        Image(systemName: item.symbolName)
-                            .font(.caption.weight(.bold))
-                        Text(item.controlTitle)
-                            .font(.system(size: 8, weight: .bold, design: .rounded))
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.76)
-                    }
-                    .foregroundStyle(mode == item ? RailDesign.Palette.ink : RailDesign.Palette.secondaryText)
-                    .frame(width: 68, height: 42)
-                }
-                .buttonStyle(.plain)
-                .railLiquidGlass(cornerRadius: 19, tint: mode == item ? RailDesign.Palette.accent.opacity(0.18) : .white.opacity(0.10), interactive: true, strokeOpacity: 0.26)
-                .accessibilityLabel(item.accessibilityTitle)
-                .contextMenu {
-                    Text(item.contextTitle)
-                }
-            }
-
-            Button(action: recenter) {
-                VStack(spacing: 2) {
-                    Image(systemName: "location.north.circle.fill")
-                        .font(.caption.weight(.bold))
-                    Text("Map")
-                        .font(.system(size: 9, weight: .bold, design: .rounded))
-                }
-                .foregroundStyle(RailDesign.Palette.accent)
-                .frame(width: 68, height: 42)
-            }
-            .buttonStyle(.plain)
-            .railLiquidGlass(cornerRadius: 19, tint: RailDesign.Palette.accent.opacity(0.12), interactive: true, strokeOpacity: 0.26)
-            .accessibilityLabel("Center map marker")
-            .contextMenu {
-                Text("Center map marker")
-            }
+        Button(action: recenter) {
+            Image(systemName: "scope")
+                .font(RailDesign.Typography.h3)
+                .foregroundStyle(RailDesign.Palette.ink)
+                .frame(width: 44, height: 44)
+                .background(RailDesign.Palette.panel, in: Circle())
+                .overlay(Circle().stroke(RailDesign.Palette.hairline, lineWidth: 1))
         }
+        .buttonStyle(PressableButtonStyle())
+        .accessibilityLabel("Center map")
+        .accessibilityHint("Re-centers the map on the trip route")
     }
 }
 
@@ -682,9 +615,9 @@ private struct RailMapStopRail: View {
     var body: some View {
         VStack(alignment: .leading, spacing: RailDesign.Spacing.xs) {
             Text(title)
-                .font(.caption.weight(.bold))
+                .font(RailDesign.Typography.h3)
                 .foregroundStyle(RailDesign.Palette.ink)
-                .padding(.horizontal, 2)
+                .padding(.horizontal, RailDesign.Spacing.xxs)
 
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: RailDesign.Spacing.s) {
@@ -692,7 +625,7 @@ private struct RailMapStopRail: View {
                         RailMapStopCard(stop: stop, status: status)
                     }
                 }
-                .padding(.vertical, 2)
+                .padding(.vertical, RailDesign.Spacing.xxs)
             }
         }
     }
@@ -701,11 +634,7 @@ private struct RailMapStopRail: View {
 private struct RailMapStopCard: View {
     let stop: RailMapStop
     let status: RailServiceStatus
-    @AppStorage("trainy.timeFormat") private var timeFormatRaw = UserPreferences.TimeFormat.hour12.rawValue
-
-    private var timeFormat: UserPreferences.TimeFormat {
-        UserPreferences.TimeFormat(rawValue: timeFormatRaw) ?? .hour12
-    }
+    @Environment(\.railInterfacePreferences) private var interfacePreferences
 
     private var platformBadgeText: String {
         stop.platformDisplayState.isKnown ? "P\(stop.platform)" : "Platform n/a"
@@ -718,30 +647,30 @@ private struct RailMapStopCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: RailDesign.Spacing.xs) {
             HStack {
-                Text(stop.formattedTime(format: timeFormat))
-                    .font(.caption.monospacedDigit().weight(.bold))
+                Text(stop.formattedTime(format: interfacePreferences.timeFormat))
+                    .font(RailDesign.Typography.caption.weight(.semibold).monospacedDigit())
                     .foregroundStyle(RailDesign.Palette.ink)
                 Spacer()
                 Text(platformBadgeText)
-                    .font(.caption2.weight(.bold))
-                    .foregroundStyle(platformTint)
-                    .padding(.horizontal, 7)
-                    .padding(.vertical, 4)
-                    .background(platformTint.opacity(0.12), in: Capsule())
+                    .font(RailDesign.Typography.caption.weight(.semibold))
+                    .foregroundStyle(RailDesign.Palette.ink)
+                    .padding(.horizontal, RailDesign.Spacing.s)
+                    .padding(.vertical, RailDesign.Spacing.xxs)
+                    .background(platformTint.opacity(0.16), in: Capsule())
             }
             Text(stop.name)
-                .font(.subheadline.weight(.bold))
+                .font(RailDesign.Typography.h3)
                 .foregroundStyle(RailDesign.Palette.ink)
                 .lineLimit(1)
                 .minimumScaleFactor(0.74)
             Text(stop.note)
-                .font(.caption2.weight(.medium))
+                .font(RailDesign.Typography.caption)
                 .foregroundStyle(RailDesign.Palette.secondaryText)
-                .lineLimit(1)
+                .lineLimit(2)
         }
         .frame(width: 150, alignment: .leading)
         .padding(RailDesign.Spacing.s)
-        .railLiquidGlass(cornerRadius: 20, tint: .white.opacity(0.18), strokeOpacity: 0.32)
+        .railSurfaceStyle(role: .material)
         .accessibilityElement(children: .combine)
     }
 }
@@ -750,37 +679,53 @@ private struct RailMapStopDetailCard: View {
     let stop: RailMapStop
     let isNext: Bool
     let status: RailServiceStatus
-    @AppStorage("trainy.timeFormat") private var timeFormatRaw = UserPreferences.TimeFormat.hour12.rawValue
-
-    private var timeFormat: UserPreferences.TimeFormat {
-        UserPreferences.TimeFormat(rawValue: timeFormatRaw) ?? .hour12
-    }
+    @Environment(\.railInterfacePreferences) private var interfacePreferences
 
     var body: some View {
         HStack(spacing: RailDesign.Spacing.s) {
             RailMapStationPin(stop: stop, isNext: isNext)
-            VStack(alignment: .leading, spacing: 3) {
+            VStack(alignment: .leading, spacing: RailDesign.Spacing.xxs) {
                 Text(stop.name)
-                    .font(.headline.weight(.bold))
+                    .font(RailDesign.Typography.h3)
                     .foregroundStyle(RailDesign.Palette.ink)
-                Text("\(stop.formattedTime(format: timeFormat)) - Platform \(stop.platformDisplayState.displayText)")
-                    .font(.subheadline.weight(.medium))
-                    .foregroundStyle(RailDesign.Palette.ink.opacity(0.74))
+                HStack(spacing: RailDesign.Spacing.xs) {
+                    Text(stop.formattedTime(format: interfacePreferences.timeFormat))
+                        .font(RailDesign.Typography.small.monospacedDigit().weight(.semibold))
+                        .foregroundStyle(RailDesign.Palette.ink)
+                    Text("·")
+                        .foregroundStyle(RailDesign.Palette.inkDisabled)
+                    Text("Platform \(stop.platformDisplayState.displayText)")
+                        .font(RailDesign.Typography.small)
+                        .foregroundStyle(RailDesign.Palette.secondaryText)
+                }
                 Text(stop.note)
-                    .font(.caption)
+                    .font(RailDesign.Typography.small)
                     .foregroundStyle(RailDesign.Palette.secondaryText)
+                    .lineLimit(2)
             }
-            Spacer()
+            Spacer(minLength: 0)
             if stop.isTransferPoint {
                 Image(systemName: "arrow.triangle.branch")
-                    .foregroundStyle(RailDesign.Palette.amber)
+                    .font(RailDesign.Typography.h3)
+                    .foregroundStyle(RailDesign.Palette.warning)
+                    .frame(width: 28, height: 28)
+                    .background(RailDesign.Palette.warning.opacity(0.12), in: Circle())
+                    .accessibilityLabel("Transfer cue")
             } else if isNext {
                 Image(systemName: "location.north.line.fill")
+                    .font(RailDesign.Typography.h3)
                     .foregroundStyle(status.tint)
+                    .frame(width: 28, height: 28)
+                    .background(status.tint.opacity(0.12), in: Circle())
+                    .accessibilityLabel("Next stop")
             }
         }
         .padding(RailDesign.Spacing.m)
-        .railLiquidGlass(cornerRadius: RailDesign.Radius.control, tint: .white.opacity(0.11), strokeOpacity: 0.28)
+        .background(RailDesign.Palette.panel, in: RoundedRectangle(cornerRadius: RailDesign.Radius.card, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: RailDesign.Radius.card, style: .continuous)
+                .stroke(RailDesign.Palette.hairline, lineWidth: 1)
+        )
         .accessibilityElement(children: .combine)
     }
 }
@@ -791,31 +736,31 @@ private struct RailMapStationPin: View {
     var showsLabel = false
 
     var body: some View {
-        VStack(spacing: 4) {
+        VStack(spacing: RailDesign.Spacing.xxs) {
             ZStack {
                 Circle()
                     .fill(fillColor)
                     .frame(width: isNext ? 28 : 18, height: isNext ? 28 : 18)
-                    .shadow(color: fillColor.opacity(0.34), radius: isNext ? 8 : 3, y: 2)
+                    .railShadow(RailDesign.Elevation.mapStation(isEmphasized: isNext), tint: fillColor)
                 Circle()
-                    .stroke(.white.opacity(0.82), lineWidth: isNext ? 3 : 2)
+                    .stroke(RailDesign.Palette.onAccent.opacity(0.82), lineWidth: isNext ? 3 : 2)
                     .frame(width: isNext ? 28 : 18, height: isNext ? 28 : 18)
                 if stop.isTransferPoint {
                     Image(systemName: "arrow.triangle.branch")
-                        .font(.system(size: isNext ? 11 : 8, weight: .bold))
-                        .foregroundStyle(.white)
+                        .font(RailDesign.Typography.mapTransferSymbol(isEmphasized: isNext))
+                        .foregroundStyle(RailDesign.Palette.onAccent)
                 }
             }
 
             if showsLabel {
                 Text(stop.shortLabel)
-                    .font(.system(size: isNext ? 10 : 9, weight: .bold, design: .rounded))
+                    .font(RailDesign.Typography.mapStationLabel(isEmphasized: isNext))
                     .foregroundStyle(RailDesign.Palette.ink)
                     .lineLimit(1)
-                    .padding(.horizontal, 6)
-                    .padding(.vertical, 3)
+                    .padding(.horizontal, RailDesign.Spacing.xs)
+                    .padding(.vertical, RailDesign.Spacing.xxs)
                     .background(RailDesign.Palette.textSurface, in: Capsule())
-                    .shadow(color: RailDesign.Palette.ink.opacity(0.08), radius: 4, y: 2)
+                    .railPanelShadow(RailDesign.Elevation.mapLabel)
             }
         }
         .accessibilityLabel("\(stop.name), platform \(stop.platformDisplayState.displayText), \(stop.note)")
@@ -848,30 +793,30 @@ private struct RailMapPositionPin: View {
     }
 
     var body: some View {
-        VStack(spacing: 6) {
+        VStack(spacing: RailDesign.Spacing.xs) {
             ZStack {
                 Circle()
                     .fill(tint.opacity(state.isLiveVehiclePosition ? 0.16 : 0.10))
                     .frame(width: state.isLiveVehiclePosition ? 76 : 58, height: state.isLiveVehiclePosition ? 76 : 58)
-                    .overlay(Circle().stroke(.white.opacity(0.58), lineWidth: 1))
+                    .overlay(Circle().stroke(RailDesign.Palette.onAccent.opacity(0.58), lineWidth: 1))
                 Circle()
                     .stroke(tint.opacity(state.isLiveVehiclePosition ? 0.38 : 0.30), lineWidth: state.isLiveVehiclePosition ? 3 : 2)
                     .frame(width: state.isLiveVehiclePosition ? 60 : 44, height: state.isLiveVehiclePosition ? 60 : 44)
                 Image(systemName: state.isLiveVehiclePosition ? "train.side.front.car" : state.symbolName)
-                    .font(state.isLiveVehiclePosition ? .title3.weight(.black) : .subheadline.weight(.black))
-                    .foregroundStyle(.white)
+                    .font(RailDesign.Typography.mapVehicle(isLive: state.isLiveVehiclePosition))
+                    .foregroundStyle(RailDesign.Palette.onAccent)
                     .padding(state.isLiveVehiclePosition ? 14 : 11)
                     .background(tint, in: Circle())
-                    .overlay(Circle().stroke(.white.opacity(0.88), lineWidth: 2))
+                    .overlay(Circle().stroke(RailDesign.Palette.onAccent.opacity(0.88), lineWidth: 2))
             }
             Text(state.mapLabel)
-                .font(.system(size: 10, weight: .bold, design: .rounded))
+                .font(RailDesign.Typography.mapPositionLabel)
                 .foregroundStyle(RailDesign.Palette.ink)
-                .padding(.horizontal, 8)
-                .padding(.vertical, 4)
+                .padding(.horizontal, RailDesign.Spacing.xs)
+                .padding(.vertical, RailDesign.Spacing.xxs)
                 .background(RailDesign.Palette.textSurface, in: Capsule())
         }
-        .shadow(color: tint.opacity(0.26), radius: state.isLiveVehiclePosition ? 14 : 9, y: 5)
+        .railShadow(RailDesign.Elevation.mapVehicle(isLive: state.isLiveVehiclePosition), tint: tint)
         .accessibilityLabel(state.mapLabel)
         .accessibilityValue(state.detailText)
     }
@@ -882,15 +827,15 @@ private struct RailMapDisruptionMarker: View {
 
     var body: some View {
         Image(systemName: status == .platformChanged ? "rectangle.split.3x1.fill" : "exclamationmark.triangle.fill")
-            .font(.caption.weight(.bold))
-            .foregroundStyle(.white)
-            .padding(7)
+            .font(RailDesign.Typography.caption.weight(.bold))
+            .foregroundStyle(RailDesign.Palette.onAccent)
+            .padding(RailDesign.Spacing.xs)
             .background(status.tint, in: RoundedRectangle(cornerRadius: 9, style: .continuous)) // ds-allow: map canvas
             .overlay(
                 RoundedRectangle(cornerRadius: 9, style: .continuous) // ds-allow: map canvas
-                    .stroke(.white.opacity(0.8), lineWidth: 1.5)
+                    .stroke(RailDesign.Palette.onAccent.opacity(0.8), lineWidth: 1.5)
             )
-            .shadow(color: status.tint.opacity(0.32), radius: 8, y: 3)
+            .railShadow(RailDesign.Elevation.mapAlert, tint: status.tint)
             .accessibilityLabel("Service marker")
     }
 }
@@ -900,12 +845,12 @@ private struct RailMapSectionHeader: View {
     let subtitle: LocalizedStringKey
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 3) {
+        VStack(alignment: .leading, spacing: RailDesign.Spacing.xxs) {
             Text(title)
-                .font(.headline)
+                .font(RailDesign.Typography.h3)
                 .foregroundStyle(RailDesign.Palette.ink)
             Text(subtitle)
-                .font(.caption)
+                .font(RailDesign.Typography.caption)
                 .foregroundStyle(RailDesign.Palette.secondaryText)
                 .fixedSize(horizontal: false, vertical: true)
         }
@@ -918,24 +863,31 @@ private struct RailMapInsightCard: View {
     var body: some View {
         HStack(alignment: .top, spacing: RailDesign.Spacing.s) {
             Image(systemName: insight.symbolName)
-                .font(.headline.weight(.bold))
+                .font(RailDesign.Typography.h3.weight(.bold))
                 .foregroundStyle(insight.tint)
                 .frame(width: 34, height: 34)
                 .background(insight.tint.opacity(0.12), in: Circle())
 
-            VStack(alignment: .leading, spacing: 4) {
+            VStack(alignment: .leading, spacing: RailDesign.Spacing.xxs) {
                 Text(insight.title)
-                    .font(.subheadline.weight(.bold))
+                    .font(RailDesign.Typography.h3.weight(.bold))
                     .foregroundStyle(RailDesign.Palette.ink)
                 Text(insight.detail)
-                    .font(.caption)
+                    .font(RailDesign.Typography.caption)
                     .foregroundStyle(RailDesign.Palette.secondaryText)
                     .fixedSize(horizontal: false, vertical: true)
             }
             Spacer(minLength: 0)
         }
         .padding(RailDesign.Spacing.m)
-        .railLiquidGlass(cornerRadius: RailDesign.Radius.control, tint: insight.tint.opacity(0.10), strokeOpacity: 0.28)
+        .background(
+            RoundedRectangle(cornerRadius: RailDesign.Radius.card, style: .continuous)
+                .fill(insight.tint.opacity(0.08))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: RailDesign.Radius.card, style: .continuous)
+                .stroke(insight.tint.opacity(0.18), lineWidth: 1)
+        )
         .accessibilityElement(children: .combine)
     }
 }
@@ -970,8 +922,8 @@ private extension String {
     }
 }
 
-#Preview("Rail Map Detail") {
-    RailJourneyMapPanel(trip: TrainTrip.samples[0], style: .detail)
-        .padding()
-        .background(RailGradientBackground())
-}
+// // // // // // // #Preview("Rail Map Detail") {
+// // // // // // //     RailJourneyMapPanel(trip: TrainTrip.samples[0], style: .detail)
+// // // // // // //         .padding()
+// // // // // // //         .background(RailGradientBackground())
+// // // // // // // }

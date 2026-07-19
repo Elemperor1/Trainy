@@ -1,0 +1,4 @@
+import SwiftUI
+
+let rogueShorthandColor = Text("Trainy")
+    .foregroundStyle(.red)

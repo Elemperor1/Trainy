@@ -43,7 +43,8 @@
         "/private/tmp/trainy-source-packages",
         "-packageCachePath",
         "/private/tmp/trainy-swiftpm-cache",
-        "CODE_SIGNING_ALLOWED=NO"
+        "CODE_SIGNING_ALLOWED=NO",
+        "TRAINY_SOURCE_PACKAGES_DIR=/private/tmp/trainy-source-packages"
       ],
       "options": {
         "cwd": "${workspaceFolder}"

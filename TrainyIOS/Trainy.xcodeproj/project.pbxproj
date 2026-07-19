@@ -12,6 +12,8 @@
 		9D0A10012C10000100A00001 /* TrainyApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D0A10002C10000100A00001 /* TrainyApp.swift */; };
 		9D0A10092C10000100A00001 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 9D0A10082C10000100A00001 /* Assets.xcassets */; };
 		9D0A10462C10000100A00001 /* ../Tests/TrainyCoreTests/TrainyCoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D0A10432C10000100A00001 /* ../Tests/TrainyCoreTests/TrainyCoreTests.swift */; };
+		9D0A10502C10000100A00001 /* ../Tests/TrainyCoreTests/NSProviderTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D0A10522C10000100A00001 /* ../Tests/TrainyCoreTests/NSProviderTests.swift */; };
+		9D0A10512C10000100A00001 /* ../Tests/TrainyCoreTests/RailDesignSystemTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D0A10532C10000100A00001 /* ../Tests/TrainyCoreTests/RailDesignSystemTests.swift */; };
 		9D0A20002C10000100A00001 /* TrainyCore in Frameworks */ = {isa = PBXBuildFile; productRef = 9D0A20032C10000100A00001 /* TrainyCore */; };
 		9D0A20012C10000100A00001 /* TrainyCore in Frameworks */ = {isa = PBXBuildFile; productRef = 9D0A20032C10000100A00001 /* TrainyCore */; };
 		B6EEB5DDDD71F3C63D510D4C /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = 74E4105AC9E5411577F4B5F3 /* GoogleService-Info.plist */; };
@@ -34,6 +36,8 @@
 		9D0A100A2C10000100A00001 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		9D0A100B2C10000100A00001 /* Trainy.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Trainy.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		9D0A10432C10000100A00001 /* ../Tests/TrainyCoreTests/TrainyCoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ../Tests/TrainyCoreTests/TrainyCoreTests.swift; sourceTree = SOURCE_ROOT; };
+		9D0A10522C10000100A00001 /* ../Tests/TrainyCoreTests/NSProviderTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ../Tests/TrainyCoreTests/NSProviderTests.swift; sourceTree = SOURCE_ROOT; };
+		9D0A10532C10000100A00001 /* ../Tests/TrainyCoreTests/RailDesignSystemTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ../Tests/TrainyCoreTests/RailDesignSystemTests.swift; sourceTree = SOURCE_ROOT; };
 		9D0A10442C10000100A00001 /* TrainyTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = TrainyTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		9D0A10452C10000100A00001 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -93,6 +97,8 @@
 			isa = PBXGroup;
 			children = (
 				9D0A10432C10000100A00001 /* ../Tests/TrainyCoreTests/TrainyCoreTests.swift */,
+				9D0A10522C10000100A00001 /* ../Tests/TrainyCoreTests/NSProviderTests.swift */,
+				9D0A10532C10000100A00001 /* ../Tests/TrainyCoreTests/RailDesignSystemTests.swift */,
 				9D0A10452C10000100A00001 /* Info.plist */,
 			);
 			path = TrainyTests;
@@ -209,6 +215,7 @@
 /* Begin PBXShellScriptBuildPhase section */
 		27D5AD1772C160EB0543A7EF /* ShellScript */ = {
 			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
 			buildActionMask = 2147483647;
 			files = (
 			);
@@ -224,7 +231,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "\"${BUILD_DIR%/Build/*}/SourcePackages/checkouts/firebase-ios-sdk/Crashlytics/run\"\n";
+			shellScript = "SOURCE_PACKAGES_DIR=\"${TRAINY_SOURCE_PACKAGES_DIR:-${BUILD_DIR%/Build/*}/SourcePackages}\"\nCRASHLYTICS_RUN=\"$SOURCE_PACKAGES_DIR/checkouts/firebase-ios-sdk/Crashlytics/run\"\nif [ ! -x \"$CRASHLYTICS_RUN\" ]; then\n  echo \"error: Firebase Crashlytics upload tool was not found at $CRASHLYTICS_RUN\" >&2\n  exit 1\nfi\n\"$CRASHLYTICS_RUN\"\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 
@@ -242,6 +249,8 @@
 			buildActionMask = 2147483647;
 			files = (
 				9D0A10462C10000100A00001 /* ../Tests/TrainyCoreTests/TrainyCoreTests.swift in Sources */,
+				9D0A10502C10000100A00001 /* ../Tests/TrainyCoreTests/NSProviderTests.swift in Sources */,
+				9D0A10512C10000100A00001 /* ../Tests/TrainyCoreTests/RailDesignSystemTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

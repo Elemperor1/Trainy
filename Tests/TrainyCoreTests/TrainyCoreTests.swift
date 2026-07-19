@@ -215,6 +215,29 @@ final class TrainyTests: XCTestCase {
         XCTAssertNil(store.searchEmptyState(for: "Tokyo to Shin-Osaka", results: results))
     }
 
+    func testSearchKeepsAnAlreadyTrackedMatchingServiceVisible() async throws {
+        let suiteName = "TrainyTests-\(UUID().uuidString)"
+        guard let defaults = UserDefaults(suiteName: suiteName) else {
+            XCTFail("Could not create UserDefaults suite")
+            return
+        }
+        defer {
+            defaults.removePersistentDomain(forName: suiteName)
+        }
+
+        let store = TrainStore(defaults: defaults, provider: ShinkansenTrainProvider(consumerKey: nil))
+        let query = "Tokyo to Shin-Osaka"
+        XCTAssertTrue(store.trips.contains { $0.id == "nozomi-231" })
+
+        store.query = query
+        await store.searchLiveTrips(matching: query)
+        let results = store.searchableResults
+
+        XCTAssertTrue(results.contains { $0.id == "nozomi-231" })
+        XCTAssertTrue(results.allSatisfy { ($0.routeID ?? "") == "tokaido" })
+        XCTAssertNil(store.searchEmptyState(for: query, results: results))
+    }
+
     func testSearchEmptyStateDistinguishesNoMatchesFromProviderUnavailable() async throws {
         let suiteName = "TrainyTests-\(UUID().uuidString)"
         guard let defaults = UserDefaults(suiteName: suiteName) else {

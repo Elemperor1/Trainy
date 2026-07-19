@@ -1,0 +1,14 @@
+import SwiftUI
+
+struct FixtureScreen: View {
+    var body: some View {
+        Text("Trainy")
+            .font(RailDesign.Typography.body)
+            .foregroundStyle(RailDesign.Palette.ink)
+            .padding(RailDesign.Spacing.m)
+            .background(
+                RailDesign.Palette.panel,
+                in: RoundedRectangle(cornerRadius: RailDesign.Radius.card)
+            )
+    }
+}
