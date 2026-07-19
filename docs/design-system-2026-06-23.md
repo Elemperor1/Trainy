@@ -1,15 +1,15 @@
 # Trainy Design System Specification
 
 Date: 2026-06-23
-Applies to: iOS (`Sources/TrainyCore/`) + web prototype (`index.html`, `styles.css`).
+Applies now to iOS (`Sources/TrainyCore/`); defines the target contract for the deferred web prototype migration (`index.html`, `styles.css`).
 
-The system is the single source of truth. Every screen, component, and animation must route through these tokens. The legacy `RailDesign.Spacing` and `--space-*` scales are replaced.
+The system is the single source of truth for iOS. Every native screen, component, and animation must route through these tokens. Web adoption is planned but remains deferred while the prototype is out of scope; its legacy `--space-*` scale is not yet replaced or guarded.
 
 ---
 
 ## 1. Spacing scale
 
-Required scale: `4 / 8 / 12 / 16 / 24 / 32 / 48 / 64`. Adopted everywhere.
+Required scale: `4 / 8 / 12 / 16 / 24 / 32 / 48 / 64`. Adopted throughout iOS; planned for the deferred web migration.
 
 | Token | Value (pt / px) | When to use |
 | --- | --- | --- |
@@ -24,13 +24,13 @@ Required scale: `4 / 8 / 12 / 16 / 24 / 32 / 48 / 64`. Adopted everywhere.
 
 iOS: `RailDesign.Spacing` becomes `xxs = 4, xs = 8, s = 12, m = 16, l = 24, xl = 32, xxl = 48, hero = 64`. The 20/28/36 half-step values are removed; everything snaps to the new grid.
 
-Web: `:root` exposes `--space-{1..16}` (and the numeric values for the actual steps). All margin/padding/gap declarations use these tokens; no `4px`, `8px`, etc. literals in component CSS.
+Planned web contract: `:root` will expose `--space-{1..16}` (and the numeric values for the actual steps). After migration, all margin/padding/gap declarations will use these tokens and the dormant spacing/radius guardrail will be enabled. This is not enforced in the current legacy prototype.
 
 ---
 
 ## 2. Typography
 
-Required scale: `Display / H1 / H2 / H3 / Body / Small / Caption`. Adopted everywhere.
+Required scale: `Display / H1 / H2 / H3 / Body / Small / Caption`. Adopted throughout iOS; the web mapping remains the deferred target.
 
 | Token | iOS font | Web font / size | Use |
 | --- | --- | --- | --- |
@@ -91,13 +91,13 @@ A single accent: `#0E5F4E` (deep teal). Used for the active tab, the primary CTA
 
 `--line: rgba(15,17,21,0.08)` (light) / `rgba(255,255,255,0.08)` (dark). Use only on inset regions. Prefer shadows over borders (see Section 5).
 
-iOS: `RailDesign.Palette` collapses to `background / panel / inset / ink / secondaryText / accent / success / warning / danger / info` and their `*-soft` variants. The decorative `marine / violet / copper / copper / amber / mint / red / blue` colors are removed.
+iOS semantic target: `RailDesign.Palette` collapses to `background / panel / inset / ink / secondaryText / accent / success / warning / danger / info` and their `*-soft` variants. A transitional exception currently keeps `marine / violet / copper / amber / mint / red / blue` for provider-status, source-state, and rail-map cues. A Phase 17 semantic-palette cleanup, required before another rider-facing provider is marked active, will route those remaining call sites through semantic roles and remove the decorative names.
 
 ---
 
 ## 4. Radius
 
-Required scale: `8 / 12 / 16 / 24 / full`. Adopted everywhere.
+Required scale: `8 / 12 / 16 / 24 / full`. Adopted throughout iOS; planned for the deferred web migration.
 
 | Token | Value | Use |
 | --- | --- | --- |

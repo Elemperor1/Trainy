@@ -1,5 +1,6 @@
 import SwiftUI
 
+/// Display preferences propagated through the SwiftUI environment.
 struct RailInterfacePreferences: Equatable {
     var timeFormat: UserPreferences.TimeFormat
     var unitSystem: UserPreferences.UnitSystem
@@ -16,6 +17,7 @@ struct RailInterfacePreferences: Equatable {
     }
 }
 
+/// Environment key supplying one predictable interface-preference default.
 private struct RailInterfacePreferencesKey: EnvironmentKey {
     static let defaultValue = RailInterfacePreferences.defaults
 }

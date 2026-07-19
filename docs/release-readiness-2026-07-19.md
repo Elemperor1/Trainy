@@ -81,14 +81,32 @@ pull request, merge, or deployment is part of this work.
   provider screen keeps its complete headings and status copy at AX2XL.
 - Focused NS metadata tests pass.
 
+### Follow-up PR review checkpoint
+
+- Restored source-provenance disclosure on unsaved search matches and restored
+  configured proxy health, provider/cache detail, failure copy, and retry in
+  Settings > Providers.
+- Removed both tracked personal Xcode `xcuserdata` files while preserving the
+  shared workspace definition; `.gitignore` now prevents those local files from
+  returning.
+- Added the nested NS departures-envelope regression test, corrected the
+  segmented-control geometry identifier, reconciled the owning design records,
+  and documented PR-added Swift declarations instead of weakening the 80%
+  docstring policy.
+- Follow-up proof: the focused NS suite passed 14/14 and the complete
+  authoritative suite passed 55/55. Simulator checks opened source details from
+  Search, exercised proxy failure and Retry, and switched Upcoming/Active with
+  Reduce Motion enabled. The restored flows remained readable and scrollable in
+  Light/Large and Dark/AX3XL with Increase Contrast.
+
 ## Final validation
 
 - Canonical wrapper: `BUILD SUCCEEDED` from
   `/private/tmp/trainy-final-ax-build`; the Crashlytics build phase found its
   cloned-package tool and reported successful environment validation.
-- Authoritative XCTest: the `TrainyTests` scheme passed 54/54 tests with zero
+- Authoritative XCTest: the `TrainyTests` scheme passed 55/55 tests with zero
   failures or skips on iPhone 17 / iOS 26.5. Result bundle:
-  `/private/tmp/trainy-final-ax-tests-pass.xcresult`.
+  `/private/tmp/trainy-derived/Logs/Test/Test-TrainyTests-2026.07.19_13-36-41--0400.xcresult`.
 - Repository gates: shell and JavaScript syntax, workflow YAML parsing, the
   24-fixture design-system guardrail self-test, the 26-file repository scan,
   provider-smoke security pattern, and all three credential-free provider

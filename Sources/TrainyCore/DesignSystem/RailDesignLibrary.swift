@@ -6,6 +6,7 @@ struct PressableButtonStyle: ButtonStyle {
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
+    /// Applies subtle press feedback unless motion is reduced or disabled.
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .scaleEffect(
@@ -94,6 +95,7 @@ struct SectionHeader: View {
     }
 }
 
+/// Compact label used by pin, alert, and related trip tools.
 struct TripToolButton: View {
     let symbol: String
     let title: LocalizedStringKey

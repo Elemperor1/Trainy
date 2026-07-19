@@ -520,6 +520,7 @@ private struct ActiveTripSummary: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.railInterfacePreferences) private var interfacePreferences
 
+    /// Presents a transient action status message to the rider.
     private func showStatus(_ message: LocalizedStringKey) {
         updateStatus(message)
         DispatchQueue.main.asyncAfter(deadline: .now() + 2.4) {
@@ -527,6 +528,7 @@ private struct ActiveTripSummary: View {
         }
     }
 
+    /// Replaces or clears the current transient action status message.
     private func updateStatus(_ message: LocalizedStringKey?) {
         if reduceMotion {
             activeStatusMessage = message
@@ -1058,14 +1060,23 @@ private struct SearchResultCard: View {
                         .foregroundStyle(RailDesign.Palette.ink)
                         .lineLimit(1)
                         .minimumScaleFactor(0.72)
-                    Text("\(trip.operatorName) · \(trip.sourceProvenance.sourceKind.riderTitle)")
+                    Text(trip.operatorName)
                         .font(RailDesign.Typography.caption.weight(.semibold))
                         .foregroundStyle(RailDesign.Palette.secondaryText)
                         .lineLimit(1)
                         .minimumScaleFactor(0.76)
                 }
                 Spacer()
-                ServiceStatusPill(status: RailServiceStatus.from(trip))
+                VStack(alignment: .trailing, spacing: RailDesign.Spacing.xs) {
+                    ServiceStatusPill(status: RailServiceStatus.from(trip))
+                    Button {
+                        sourceDetailTrip = trip
+                    } label: {
+                        SourceBadge(trip: trip)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityHint("Opens source details")
+                }
             }
 
             HStack {
@@ -1107,6 +1118,9 @@ private struct SearchResultCard: View {
             RoundedRectangle(cornerRadius: RailDesign.Radius.card, style: .continuous)
                 .fill(RailDesign.Palette.panel)
         )
+        .sheet(item: $sourceDetailTrip) { trip in
+            SourceDetailSheet(trip: trip)
+        }
     }
 }
 
@@ -1130,6 +1144,7 @@ private struct StationsScreen: View {
         return "\(store.stationSnapshots.count) stations · \(platforms) platforms · \(risks) need watch"
     }
 
+    /// Builds one accessible station-navigation row for the station directory.
     @ViewBuilder
     private func stationRow(for station: StationSnapshot) -> some View {
         NavigationLink {
@@ -1460,6 +1475,7 @@ private struct HistoryScreen: View {
 }
 
 
+/// Compact history row that preserves the trip's route and duration context.
 private struct HistoryTripRow: View {
     let trip: TrainTrip
 
@@ -1507,6 +1523,7 @@ private struct SettingsScreen: View {
         )
     }
 
+    /// Returns rider-facing setup guidance without exposing credential names.
     private func providerDetail(for provider: ProviderMetadata) -> LocalizedStringKey {
         if provider.availability.message.contains("ODPT_CONSUMER_KEY") {
             return "Starter catalog is active. Add an ODPT consumer key in the developer configuration for official timetable and alert feeds."
@@ -1537,6 +1554,11 @@ private struct SettingsScreen: View {
                     } else {
                         SettingsInfoRow(symbol: "exclamationmark.triangle", title: "No active provider", detail: "Configured provider keys were not found.")
                     }
+                    if store.providerProxyConfiguration.isConfigured {
+                        Divider()
+                            .background(RailDesign.Palette.hairline)
+                        ProviderProxyStatusSummary(store: store)
+                    }
                 }
 
                 SettingsGroup(title: "About") {
@@ -1563,6 +1585,188 @@ private struct SettingsScreen: View {
 }
 
 
+/// Displays configured proxy availability, per-provider health, and recovery controls.
+private struct ProviderProxyStatusSummary: View {
+    @ObservedObject var store: TrainStore
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: RailDesign.Spacing.s) {
+            HStack(alignment: .top, spacing: RailDesign.Spacing.s) {
+                Image(systemName: statusSymbol)
+                    .font(RailDesign.Typography.h3)
+                    .symbolRenderingMode(.hierarchical)
+                    .foregroundStyle(statusTint)
+                    .frame(width: 28, height: 28)
+                    .accessibilityHidden(true)
+
+                VStack(alignment: .leading, spacing: RailDesign.Spacing.xxs) {
+                    HStack(alignment: .firstTextBaseline, spacing: RailDesign.Spacing.xs) {
+                        Text("Provider proxy")
+                            .font(RailDesign.Typography.h3)
+                            .foregroundStyle(RailDesign.Palette.ink)
+                        ProviderStatusPill(text: statusText, tint: statusTint)
+                    }
+                    Text(detailText)
+                        .font(RailDesign.Typography.caption)
+                        .foregroundStyle(RailDesign.Palette.secondaryText)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
+                Spacer(minLength: RailDesign.Spacing.xs)
+
+                Button {
+                    Task {
+                        await store.refreshProviderProxyHealth()
+                    }
+                } label: {
+                    Label(actionTitle, systemImage: "arrow.clockwise")
+                }
+                .font(RailDesign.Typography.caption.weight(.semibold))
+                .buttonStyle(.bordered)
+                .controlSize(.regular)
+                .disabled(store.providerProxyLoadState == .loading)
+                .accessibilityHint("Checks provider, cache, and proxy availability again")
+            }
+
+            if !store.providerProxyHealthProviders.isEmpty {
+                VStack(spacing: 0) {
+                    ForEach(Array(store.providerProxyHealthProviders.prefix(6).enumerated()), id: \.element.id) { index, health in
+                        if index > 0 {
+                            Divider()
+                                .background(RailDesign.Palette.hairline)
+                        }
+                        ProviderProxyHealthProviderRow(health: health)
+                    }
+                }
+            }
+        }
+        .padding(.vertical, RailDesign.Spacing.s)
+        .task {
+            guard store.providerProxyHealth == nil else { return }
+            await store.refreshProviderProxyHealth()
+        }
+    }
+
+    private var statusText: String {
+        switch store.providerProxyLoadState {
+        case .notConfigured:
+            return "Not configured"
+        case .idle:
+            return "Configured"
+        case .loading:
+            return "Checking"
+        case .loaded:
+            return hasAttention ? "Attention" : "Healthy"
+        case .unavailable:
+            return "Unavailable"
+        }
+    }
+
+    private var detailText: String {
+        switch store.providerProxyLoadState {
+        case .notConfigured:
+            return "No provider proxy base URL is configured."
+        case .idle:
+            return "Ready to check app-safe provider health at \(store.providerProxyConfiguration.displayHost)."
+        case .loading:
+            return "Checking provider and cache health at \(store.providerProxyConfiguration.displayHost)."
+        case .loaded(let generatedAt):
+            let timestamp = generatedAt.map { Self.dateFormatter.string(from: $0) } ?? "an unknown time"
+            return "Provider health was generated at \(timestamp)."
+        case .unavailable(let message):
+            return "Could not load provider health: \(message)"
+        }
+    }
+
+    private var actionTitle: LocalizedStringKey {
+        switch store.providerProxyLoadState {
+        case .loading:
+            return "Checking"
+        case .unavailable:
+            return "Retry"
+        case .notConfigured, .idle, .loaded:
+            return "Check"
+        }
+    }
+
+    private var statusTint: Color {
+        switch store.providerProxyLoadState {
+        case .notConfigured:
+            return RailDesign.Palette.secondaryText
+        case .idle, .loading:
+            return RailDesign.Palette.info
+        case .loaded:
+            return hasAttention ? RailDesign.Palette.warning : RailDesign.Palette.success
+        case .unavailable:
+            return RailDesign.Palette.danger
+        }
+    }
+
+    private var statusSymbol: String {
+        switch store.providerProxyLoadState {
+        case .notConfigured:
+            return "lock.slash"
+        case .idle:
+            return "cloud"
+        case .loading:
+            return "arrow.clockwise"
+        case .loaded:
+            return hasAttention ? "exclamationmark.shield.fill" : "checkmark.shield.fill"
+        case .unavailable:
+            return "wifi.slash"
+        }
+    }
+
+    private var hasAttention: Bool {
+        store.providerProxyHealthProviders.contains { $0.status != .ok }
+    }
+
+    private static let dateFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .medium
+        formatter.timeStyle = .short
+        return formatter
+    }()
+}
+
+/// One proxy provider's reported health and static-feed cache state.
+private struct ProviderProxyHealthProviderRow: View {
+    let health: ProviderProxyProviderHealth
+
+    var body: some View {
+        HStack(alignment: .top, spacing: RailDesign.Spacing.s) {
+            Image(systemName: health.status.symbolName)
+                .foregroundStyle(health.status.tint)
+                .frame(width: 28, height: 28)
+                .accessibilityHidden(true)
+
+            VStack(alignment: .leading, spacing: RailDesign.Spacing.xxs) {
+                HStack(alignment: .firstTextBaseline, spacing: RailDesign.Spacing.xs) {
+                    Text(health.id)
+                        .font(RailDesign.Typography.caption.weight(.bold))
+                        .foregroundStyle(RailDesign.Palette.ink)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
+                    ProviderStatusPill(text: health.status.displayName, tint: health.status.tint)
+                }
+                Text(health.message)
+                    .font(RailDesign.Typography.caption)
+                    .foregroundStyle(RailDesign.Palette.secondaryText)
+                    .fixedSize(horizontal: false, vertical: true)
+                if let cache = health.cache {
+                    Text("Static feed: \(cache.staticFeed.displayName)")
+                        .font(RailDesign.Typography.caption.weight(.semibold))
+                        .foregroundStyle(RailDesign.Palette.secondaryText)
+                }
+            }
+        }
+        .padding(.vertical, RailDesign.Spacing.xs)
+        .accessibilityElement(children: .combine)
+    }
+}
+
+
+/// Provider-coverage directory grouped by rider availability and implementation readiness.
 private struct SupportedRegionsScreen: View {
     @ObservedObject var store: TrainStore
 
@@ -1672,9 +1876,11 @@ private struct SupportedRegionsScreen: View {
 }
 
 
+/// Decorative globe that summarizes only regions riders can currently use.
 private struct SupportedRegionsGlobe: View {
     let activeRegions: [String]
 
+    /// Normalized marker position on the decorative globe.
     private struct Marker: Identifiable {
         let id: String
         let x: CGFloat
@@ -1762,6 +1968,7 @@ private struct SupportedRegionsGlobe: View {
 }
 
 
+/// One provider's region, readiness, and honest availability explanation.
 private struct SupportedRegionProviderRow: View {
     let provider: ProviderMetadata
     let isActive: Bool
@@ -1824,6 +2031,7 @@ private struct SupportedRegionProviderRow: View {
     }
 }
 
+/// Compact grid for regions that remain outside the rider-available directory.
 private struct SupportedRegionPillGrid: View {
     let names: [String]
 
@@ -1844,6 +2052,7 @@ private struct SupportedRegionPillGrid: View {
     }
 }
 
+/// Complete rider-facing detail surface for one selected trip.
 private struct TrainDetailView: View {
     @ObservedObject var store: TrainStore
     let tripID: TrainTrip.ID
@@ -1931,6 +2140,7 @@ private struct TrainDetailView: View {
 }
 
 
+/// Navigation surface that opens the selected trip's full rail map.
 private struct TrainDetailMapLink: View {
     let trip: TrainTrip
 
@@ -2228,6 +2438,7 @@ private extension String {
 
 // MARK: - TrainDetail refactor
 
+/// Rider-facing trip summary with route times and current service status.
 struct TrainDetailHero: View {
     let trip: TrainTrip
     @Environment(\.railInterfacePreferences) private var interfacePreferences
@@ -2303,6 +2514,7 @@ private extension TrainTrip {
     var fromTo: String { "\(origin.name) → \(destination.name)" }
 }
 
+/// Flat timeline of the stops belonging to a selected trip.
 struct StopTimelineList: View {
     let trip: TrainTrip
 
@@ -2317,6 +2529,7 @@ struct StopTimelineList: View {
     }
 }
 
+/// Source-backed boarding, carriage, seat, and speed facts for a trip.
 struct TrainDetailBoardingCard: View {
     let trip: TrainTrip
     let useMetric: Bool
@@ -2336,6 +2549,7 @@ struct TrainDetailBoardingCard: View {
     }
 }
 
+/// Compact provenance summary with a route to the complete source disclosure.
 struct CompactSourcePanel: View {
     let trip: TrainTrip
     let showDetails: () -> Void
@@ -2383,6 +2597,7 @@ struct CompactSourcePanel: View {
     }
 }
 
+/// One explanation row in the first-run data-scope contract.
 private struct FirstRunScopeRow: View {
     let symbol: String
     let title: LocalizedStringKey
@@ -2409,6 +2624,7 @@ private struct FirstRunScopeRow: View {
     }
 }
 
+/// First-run actions for starting with supported data or browsing planned regions.
 private struct FirstRunActionBar: View {
     let startWithShinkansen: () -> Void
     let explorePlannedRegions: () -> Void

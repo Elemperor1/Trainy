@@ -99,6 +99,7 @@ struct GlassPanel<Content: View>: View {
     }
 }
 
+/// Semantic badge for the current rider-facing service state.
 struct ServiceStatusPill: View {
     let status: RailServiceStatus
 
@@ -111,6 +112,7 @@ struct ServiceStatusPill: View {
     }
 }
 
+/// Compact provider or proxy status label with a caller-supplied semantic tint.
 struct ProviderStatusPill: View {
     let text: String
     let tint: Color

@@ -106,6 +106,7 @@ enum RailDesign {
         static let station: CGFloat = 12
     }
 
+    /// Shared layout measurements that are not spacing-scale tokens.
     enum Layout {
         /// Keeps the final scroll item clear of the persistent tab bar and
         /// floating controls without reconstructing an arbitrary inset.
@@ -164,14 +165,17 @@ enum RailDesign {
         static let regionGlobe = Font.system(size: 152, weight: .regular)
         static let mapPositionLabel = Font.system(size: 10, weight: .bold, design: .rounded)
 
+        /// Returns the transfer symbol font for normal or emphasized map states.
         static func mapTransferSymbol(isEmphasized: Bool) -> Font {
             Font.system(size: isEmphasized ? 11 : 8, weight: .bold)
         }
 
+        /// Returns the station-label font for normal or emphasized map states.
         static func mapStationLabel(isEmphasized: Bool) -> Font {
             Font.system(size: isEmphasized ? 10 : 9, weight: .bold, design: .rounded)
         }
 
+        /// Returns the vehicle symbol font for live or schedule-derived positions.
         static func mapVehicle(isLive: Bool) -> Font {
             isLive ? h2.weight(.black) : small.weight(.black)
         }
@@ -196,10 +200,12 @@ enum RailDesign {
         /// Service alert annotation.
         static let mapAlert = Shadow(radius: 8, y: 3, opacity: 0.32)
 
+        /// Returns station-pin elevation for normal or emphasized map states.
         static func mapStation(isEmphasized: Bool) -> Shadow {
             Shadow(radius: isEmphasized ? 8 : 3, y: 2, opacity: 0.34)
         }
 
+        /// Returns vehicle-pin elevation based on position provenance.
         static func mapVehicle(isLive: Bool) -> Shadow {
             Shadow(radius: isLive ? 14 : 9, y: 5, opacity: 0.26)
         }
@@ -467,12 +473,14 @@ extension View {
         )
     }
 
+    /// Applies a neutral semantic elevation preset to a panel.
     func railPanelShadow(
         _ elevation: RailDesign.Elevation.Shadow = RailDesign.Elevation.resting
     ) -> some View {
         modifier(RailPanelShadowModifier(elevation: elevation, tint: nil))
     }
 
+    /// Applies a tinted semantic elevation preset to a view.
     func railShadow(
         _ elevation: RailDesign.Elevation.Shadow,
         tint: Color
@@ -486,15 +494,18 @@ extension View {
             .toolbarBackground(.visible, for: .navigationBar)
     }
 
+    /// Applies the canonical translucent tab-bar appearance.
     func railTabBarChrome() -> some View {
         toolbarBackground(.ultraThinMaterial, for: .tabBar)
             .toolbarBackground(.visible, for: .tabBar)
     }
 
+    /// Applies the canonical material behind a bottom action bar.
     func railBottomMaterialBar() -> some View {
         background(.ultraThinMaterial)
     }
 
+    /// Applies the canonical regular-material capsule background.
     func railMaterialCapsule() -> some View {
         background(.regularMaterial, in: Capsule())
     }

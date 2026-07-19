@@ -4,7 +4,7 @@ Date: 2026-06-23
 Scope: Native SwiftUI iOS app (`Sources/TrainyCore/`, `TrainyIOS/`)
 Companion docs: `design-audit-2026-06-23.md`, `design-system-2026-06-23.md`, `screen-redesign-2026-06-23.md`, `implementation-plan-2026-06-23.md`.
 
-The web prototype (`index.html`, `styles.css`, `app.js`, `components.js`) was intentionally left untouched per the user's direction ("I don't care about web, only the app"). The legacy web files are unchanged; the design-system guardrail's new spacing/radius rule was added and then commented out with an explicit note that it should be re-enabled when the web prototype is back in scope.
+The web prototype (`index.html`, `styles.css`, `app.js`, `components.js`) was intentionally left untouched per the user's direction ("I don't care about web, only the app"). The legacy web files are unchanged; web adoption of the [canonical design-system specification](design-system-2026-06-23.md) and its spacing/radius guardrail remains deferred until the prototype is back in scope.
 
 ---
 
@@ -14,7 +14,7 @@ The web prototype (`index.html`, `styles.css`, `app.js`, `components.js`) was in
 | --- | --- |
 | `bash scripts/check-design-system-bypass.sh` | passes (`exit 0`) |
 | iOS Sources typecheck via `xcrun -sdk iphonesimulator swiftc -typecheck` (with `#Preview` macros temporarily commented so the sandbox plugin server can resolve them) | passes (`exit 0`) |
-| `git diff --stat HEAD` | three files changed: `Sources/TrainyCore/ContentView.swift`, `Sources/TrainyCore/RailDesignSystem.swift`, `scripts/check-design-system-bypass.sh` |
+| Historical pre-redesign `git diff --stat HEAD` snapshot | three files changed at that earlier checkpoint: `Sources/TrainyCore/ContentView.swift`, `Sources/TrainyCore/RailDesignSystem.swift`, `scripts/check-design-system-bypass.sh`; this is not the final PR scope |
 
 The user-side `scripts/build-ios.sh` cannot be exercised in this sandbox (CoreSimulatorService connection refused), but every `xcrun`-level typecheck on the iPhone Simulator SDK target compiles cleanly.
 
@@ -29,7 +29,7 @@ The user-side `scripts/build-ios.sh` cannot be exercised in this sandbox (CoreSi
 - **`Sources/TrainyCore/ContentView.swift`** — removed `RouteHeaderPanel`, `HeaderStation`, `SourceProvenancePanel`, `JourneyProgressPanel`, `SourceStateCallout` (orphans after the train-detail rewrite; their only consumers were inside the removed blocks).
 - **`Sources/TrainyCore/ContentView.swift:660-790`** — `ActiveTripSummary` (Trips tab) collapsed from 6 nested glass layers to 1 outer `VStack` + 1 inline progress view + a flat trip-tools panel.
 - **`Sources/TrainyCore/ContentView.swift:1493-1602`** — `SettingsScreen` reduced from 7 `SettingsGroup`s (Notifications, Time & Units, Providers, Privacy, Support, Developer, plus an inline hero panel) to 3 (`Display`, `Providers`, `About`) with one CTA per screen.
-- **`Sources/TrainyCore/ContentView.swift:1545-1620`** — `SupportedRegionsScreen` (the provider-coverage detail screen) reduced from 435 lines (with a 318-pt MKMapView globe, a `NativeCoverageGlobeView`, two coverage-legend rows, and a `ProviderPillGrid`) to a single `SettingsGroup` listing each region as a row with an Active / Coming soon status pill. The decorative MKMapView is gone; the list is more honest.
+- **Superseded earlier summary — `Sources/TrainyCore/ContentView.swift:1545-1620`** — an intermediate redesign removed the MKMapView. The final implementation restores a lightweight coverage globe and separates rider-available providers from adapter-ready and planned-region groupings, while keeping the list as the authoritative status detail.
 - **`Sources/TrainyCore/ContentView.swift:1437-1495`** — `HistoryScreen` reduced from a 6-tile metric grid + a `DelayBar` + a 4-row `InfoLine` list to one summary line ("X trips · Y stations · Z operators") and a 3-row Highlights `SettingsGroup`.
 - **`Sources/TrainyCore/ContentView.swift:1216-1268`** — `StationsScreen` reduced from a `List` with a separate `StationOverviewPanel` + section header + per-station `StationCard` to a single scroll view with one inline overview line and a vertical list of stations. The 3-tile `MiniStat` strip ("Departures / Tracks / Routes") that was duplicated across three screens now appears once on the detail screen.
 
@@ -38,7 +38,7 @@ The user-side `scripts/build-ios.sh` cannot be exercised in this sandbox (CoreSi
 - **`Sources/TrainyCore/RailDesignSystem.swift:78-90`** — `Spacing` collapsed from `xxs/xs/s/l/xl/xxl` (4/8/12/16/20/28/36) to `xxs/xs/s/m/l/xl/xxl/hero` (4/8/12/16/24/32/48/64), aligning to the required `4/8/12/16/24/32/48/64` scale and dropping the off-by-one `20` and the half-step `28/36`.
 
 ### Design-system guardrail
-- **`scripts/check-design-system-bypass.sh`** — added a new "Web: spacing/radius must use tokens" rule, then immediately commented it out and noted in the file that the rule is intentionally dormant while the legacy web prototype is out of scope. When the prototype is back in scope, deleting the comment characters re-enables the rule.
+- **`scripts/check-design-system-bypass.sh`** — records the planned "Web: spacing/radius must use tokens" boundary, but the rule is intentionally dormant while the legacy web prototype is out of scope. Web migration and enabling that guard are still open work.
 
 ---
 
@@ -47,13 +47,13 @@ The user-side `scripts/build-ios.sh` cannot be exercised in this sandbox (CoreSi
 ### Before
 - **Trip detail** was a 12-row vertical scroll of nested `GlassPanel`s, every one tinted with a different accent. The actual rider-critical fact (Next stop / ETA / Platform) sat below the route header, the source panel, the map, and the timeline.
 - **Trips tab** active-trip card stacked six layers of glass inside one card: an outer `GlassPanel(30)`, a progress card with its own `railLiquidGlass(22)`, three `ControlMetricTile`s, a button row of `SummaryIconLabel`s, and a chevron glass.
-- **Settings** had 7 `SettingsGroup`s plus a hero, plus a 435-line `SupportedRegionsScreen` with a decorative globe.
+- **Settings** had 7 `SettingsGroup`s plus a hero, plus a 435-line `SupportedRegionsScreen` with a heavyweight MKMapView globe.
 - **History** had a 6-tile metric grid + a `DelayBar` showing "0%" because no trip had a delay fact yet.
 
 ### After
 - **Trip detail** has 5 flat panels: hero (operator + times + train name), `StopTimelineList` (one flat row per stop), `TrainDetailBoardingCard` (platform/carriage/seat/speed), `CompactSourcePanel` (source + freshness + open link), `RailJourneyMapPanel`. Each panel sits on `--surface-panel` with no glass.
 - **Trips tab** active-trip card has one outer `VStack` with hero time / route, an inline `ProgressView`, and a flat trip-tools row.
-- **Settings** has 3 groups + 1 navigation row to Supported regions. Supported regions is a vertical list with Active / Coming soon status pills.
+- **Settings** has 3 groups + 1 navigation row to Supported regions. Supported regions combines a lightweight coverage globe with rider-available, adapter-ready, and planned-region groupings.
 - **History** has one summary line and a 3-row Highlights list.
 
 ---
@@ -62,7 +62,7 @@ The user-side `scripts/build-ios.sh` cannot be exercised in this sandbox (CoreSi
 
 1. **iOS Simulator screenshot proof is not yet captured.** `xcrun simctl` and `npx playwright` both fail inside this sandbox because CoreSimulatorService is unreachable. The user must run `scripts/build-ios.sh` and `npx playwright` locally to capture visual evidence. The compile/typecheck evidence is the strongest verification we can produce here.
 2. **`#Preview` macros are intact in the source tree but the iOS Simulator SDK's `swift-plugin-server` cannot resolve `PreviewsMacros.SwiftUIView` in this sandbox.** Xcode's Previews canvas will resolve them normally outside the sandbox.
-3. **The new spacing/radius rule in `scripts/check-design-system-bypass.sh` is intentionally commented out** to avoid breaking the existing legacy web prototype. Re-enable it when the prototype is back in scope by deleting the leading `# ` from each line in the comment block.
+3. **Open acceptance item: migrate the legacy web prototype to the canonical spacing/radius tokens and enable the currently dormant guardrail.** Until web work returns to scope, the rule is deliberately not an active completion claim.
 4. **The Settings "Providers" row still references `ProviderMetadata.availability.message`** — that wording assumes the new Settings UX, but the legacy provider-directory strings are still generated by `TrainStore.providerDirectory` and may not be tuned yet for the simplified navigation. The message itself is already concise, so the screen renders cleanly.
 
 ---

@@ -141,7 +141,7 @@ Primary action: scroll. There is no primary action on this screen.
 
 | Today | Tomorrow |
 | --- | --- |
-| `ProviderDirectoryList` is a `ForEach` of `ProviderDirectoryRow`s inside `GlassPanel` with dividers. Each row has an `Image(systemName)` icon, name, capability strip, source disclosure, credential status, requirement summary, and (if applicable) "Use provider" button. | Screen opens with a single 16-pt panel containing a vertical list of providers. Each row: provider name + status pill + "Schedule + Reatime" caption. Tap to open detail. No inline credential disclosure — that lives in the detail. |
+| `ProviderDirectoryList` is a `ForEach` of `ProviderDirectoryRow`s inside `GlassPanel` with dividers. Each row has an `Image(systemName)` icon, name, capability strip, source disclosure, credential status, requirement summary, and (if applicable) "Use provider" button. | Screen opens with a single 16-pt panel containing a vertical list of providers. Each row: provider name + status pill + "Schedule + Realtime" caption. Tap to open detail. No inline credential disclosure — that lives in the detail. |
 
 Primary action: scroll. Tap a row to open detail.
 

@@ -5,6 +5,7 @@ import XCTest
 
 @MainActor
 final class RailDesignSystemTests: XCTestCase {
+    /// Resolved red, green, blue, and alpha components for one interface style.
     private struct RGBA {
         let red: CGFloat
         let green: CGFloat
@@ -12,6 +13,7 @@ final class RailDesignSystemTests: XCTestCase {
         let alpha: CGFloat
     }
 
+    /// Resolves a SwiftUI color to RGB components under a specific appearance.
     private func resolvedRGBA(
         _ color: Color,
         style: UIUserInterfaceStyle,
@@ -33,6 +35,7 @@ final class RailDesignSystemTests: XCTestCase {
         return RGBA(red: red, green: green, blue: blue, alpha: alpha)
     }
 
+    /// Asserts two dynamic colors resolve equally under the selected appearance.
     private func assertColorsEqual(
         _ lhs: Color,
         _ rhs: Color,
@@ -48,7 +51,9 @@ final class RailDesignSystemTests: XCTestCase {
         XCTAssertEqual(lhsRGBA.alpha, rhsRGBA.alpha, accuracy: 0.001, file: file, line: line)
     }
 
+    /// Calculates WCAG relative luminance for resolved RGB components.
     private func relativeLuminance(_ color: RGBA) -> CGFloat {
+        /// Linearizes one sRGB component for luminance calculation.
         func linearized(_ component: CGFloat) -> CGFloat {
             component <= 0.04045
                 ? component / 12.92
@@ -60,6 +65,7 @@ final class RailDesignSystemTests: XCTestCase {
             + (0.0722 * linearized(color.blue))
     }
 
+    /// Calculates the WCAG contrast ratio between two resolved colors.
     private func contrastRatio(_ lhs: RGBA, _ rhs: RGBA) -> CGFloat {
         let lighter = max(relativeLuminance(lhs), relativeLuminance(rhs))
         let darker = min(relativeLuminance(lhs), relativeLuminance(rhs))
@@ -68,6 +74,7 @@ final class RailDesignSystemTests: XCTestCase {
 
     // MARK: - Token scales
 
+    /// Verifies spacing tokens follow the documented four-point grid.
     func testSpacingScaleUsesDocumentedFourPointGrid() {
         let values: [CGFloat] = [
             RailDesign.Spacing.xxs,
@@ -85,6 +92,7 @@ final class RailDesignSystemTests: XCTestCase {
         XCTAssertTrue(values.allSatisfy { $0.truncatingRemainder(dividingBy: 4) == 0 })
     }
 
+    /// Verifies radius tokens preserve their documented semantic ordering.
     func testRadiusScalePreservesSemanticContracts() {
         XCTAssertEqual(RailDesign.Radius.xs, 8)
         XCTAssertEqual(RailDesign.Radius.sm, 12)
@@ -109,6 +117,7 @@ final class RailDesignSystemTests: XCTestCase {
         XCTAssertTrue(RailDesign.Radius.chip < RailDesign.Radius.control)
     }
 
+    /// Verifies elevation presets increase predictably without invalid opacity.
     func testElevationPresetsIncreasePredictably() {
         let presets = [
             RailDesign.Elevation.resting,
@@ -125,6 +134,7 @@ final class RailDesignSystemTests: XCTestCase {
         XCTAssertTrue(presets.allSatisfy { (0 ... 1).contains($0.opacity) })
     }
 
+    /// Verifies the canonical typography scale and compatibility aliases compile.
     func testTypographyScaleAndCompatibilityAliasesRemainAvailable() {
         _ = RailDesign.Typography.display
         _ = RailDesign.Typography.h1
@@ -146,6 +156,7 @@ final class RailDesignSystemTests: XCTestCase {
 
     // MARK: - Palette contracts
 
+    /// Verifies semantic status colors resolve to their canonical palette tokens.
     func testSemanticPaletteAliasesResolveToTheirCanonicalTokens() {
         for style in [UIUserInterfaceStyle.light, .dark] {
             assertColorsEqual(RailDesign.Palette.success, RailDesign.Palette.mint, style: style)
@@ -155,6 +166,7 @@ final class RailDesignSystemTests: XCTestCase {
         }
     }
 
+    /// Verifies primary and secondary text meet contrast targets in both appearances.
     func testTextTokensMaintainReadableCanvasContrastInLightAndDarkModes() {
         for style in [UIUserInterfaceStyle.light, .dark] {
             let background = resolvedRGBA(RailDesign.Palette.background, style: style)
@@ -176,11 +188,13 @@ final class RailDesignSystemTests: XCTestCase {
 
     // MARK: - Component and semantic display contracts
 
+    /// Verifies both source-badge styles retain the compact height contract.
     func testSourceBadgeStylesKeepAStableCompactHeight() {
         XCTAssertEqual(SourceBadge.Style.compact.height, 30)
         XCTAssertEqual(SourceBadge.Style.regular.height, 30)
     }
 
+    /// Verifies every service status has distinct assets and the expected tint.
     func testEveryServiceStatusHasUniqueDisplayAssetsAndExpectedTint() {
         XCTAssertEqual(RailServiceStatus.allCases.count, 7)
         XCTAssertEqual(Set(RailServiceStatus.allCases.map(\.symbolName)).count, 7)
@@ -203,6 +217,7 @@ final class RailDesignSystemTests: XCTestCase {
         }
     }
 
+    /// Verifies interface preferences expose one stable default contract.
     func testInterfacePreferencesHaveOnePredictableDefaultContract() {
         XCTAssertEqual(RailInterfacePreferences.defaults.timeFormat, .hour12)
         XCTAssertEqual(RailInterfacePreferences.defaults.unitSystem, .metric)
@@ -214,6 +229,7 @@ final class RailDesignSystemTests: XCTestCase {
         XCTAssertFalse(preferences.usesMetricUnits)
     }
 
+    /// Verifies rail time formatting honors an explicit clock preference.
     func testTimeFormattingRequiresAnExplicitPreference() {
         let tokyo = TimeZone(identifier: "Asia/Tokyo")!
         XCTAssertEqual("13:05".formattedAsTime(in: tokyo, format: .hour24), "13:05")
@@ -267,6 +283,7 @@ final class RailDesignSystemTests: XCTestCase {
         )
     }
 
+    /// Verifies trip facts map to every semantic service state.
     func testStatusMappingCoversEachSemanticState() {
         XCTAssertEqual(
             RailServiceStatus.from(makeStatusTrip(status: "On time", tone: .good, progress: 0.3)),
@@ -298,6 +315,7 @@ final class RailDesignSystemTests: XCTestCase {
         )
     }
 
+    /// Verifies alert text can identify a platform-change service state.
     func testStatusMappingUsesAlertTextForPlatformChanges() {
         let trip = makeStatusTrip(
             status: "On time",
@@ -308,6 +326,7 @@ final class RailDesignSystemTests: XCTestCase {
         XCTAssertEqual(RailServiceStatus.from(trip), .platformChanged)
     }
 
+    /// Verifies train tones route exclusively through semantic palette roles.
     func testTrainStatusToneRoutesThroughSemanticPaletteRoles() {
         let expectedTints: [(TrainStatusTone, Color)] = [
             (.good, RailDesign.Palette.success),

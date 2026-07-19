@@ -215,6 +215,7 @@ final class TrainyTests: XCTestCase {
         XCTAssertNil(store.searchEmptyState(for: "Tokyo to Shin-Osaka", results: results))
     }
 
+    /// Verifies search retains a matching service even when the rider already tracks it.
     func testSearchKeepsAnAlreadyTrackedMatchingServiceVisible() async throws {
         let suiteName = "TrainyTests-\(UUID().uuidString)"
         guard let defaults = UserDefaults(suiteName: suiteName) else {

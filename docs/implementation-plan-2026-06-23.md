@@ -31,11 +31,11 @@ Replace `largeTitle / title / metricValue / routeTitle / headline / body / callo
 
 ### 1.5 Guardrail: extend `scripts/check-design-system-bypass.sh`
 
-Add a rule: any new CSS rule outside `:root` containing a numeric `padding`/`margin`/`gap`/`border-radius` value must reference a `--space-*` or `--radius-*` token. Lint fails the build.
+Deferred with the web migration: add a rule so any new CSS rule outside `:root` containing a numeric `padding`/`margin`/`gap`/`border-radius` value must reference a `--space-*` or `--radius-*` token. The repository records this boundary, but enforcement remains dormant while the legacy web prototype is out of scope.
 
 ### Acceptance
 
-- `bash scripts/check-design-system-bypass.sh` passes (after the rule is added).
+- Deferred acceptance item: migrate web spacing/radius values, enable the dormant rule, and then require `bash scripts/check-design-system-bypass.sh` to pass with that rule active.
 - `node --check app.js` passes.
 - Web app renders identically (we changed names, not values yet).
 

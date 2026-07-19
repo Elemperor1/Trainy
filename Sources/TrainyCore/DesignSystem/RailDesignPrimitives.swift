@@ -2,6 +2,7 @@ import SwiftUI
 
 // MARK: - Semantic surfaces
 
+/// Semantic fill and border roles for reusable rail surfaces.
 enum RailSurfaceRole {
     case panel
     case inset
@@ -34,6 +35,7 @@ enum RailSurfaceRole {
     }
 }
 
+/// Reusable flat surface that applies semantic fill, stroke, radius, and padding.
 struct RailSurface<Content: View>: View {
     let role: RailSurfaceRole
     let cornerRadius: CGFloat
@@ -41,6 +43,7 @@ struct RailSurface<Content: View>: View {
     let showsStroke: Bool
     let content: Content
 
+    /// Creates a semantic rail surface around view-builder content.
     init(
         role: RailSurfaceRole = .panel,
         cornerRadius: CGFloat = RailDesign.Radius.card,
@@ -67,11 +70,13 @@ struct RailSurface<Content: View>: View {
     }
 }
 
+/// Applies the selected semantic surface role without duplicating styling.
 private struct RailSurfaceModifier: ViewModifier {
     let role: RailSurfaceRole
     let cornerRadius: CGFloat
     let showsStroke: Bool
 
+    /// Renders a semantic background and optional canonical stroke.
     func body(content: Content) -> some View {
         content
             .background(
@@ -89,7 +94,9 @@ private struct RailSurfaceModifier: ViewModifier {
 
 // MARK: - Icons and dividers
 
+/// Standardized SF Symbol badge for compact, regular, and hero contexts.
 struct RailIconBadge: View {
+    /// Supported icon badge sizes and their corresponding design tokens.
     enum Size {
         case compact
         case regular
@@ -143,12 +150,14 @@ struct RailIconBadge: View {
     }
 }
 
+/// Compact status badge with optional SF Symbol and accessible fixed height.
 struct RailBadge: View {
     private let title: Text
     let tint: Color
     var symbol: String?
     var minHeight: CGFloat = 30
 
+    /// Creates a badge from a localizable title.
     init(
         _ title: LocalizedStringKey,
         tint: Color,
@@ -161,6 +170,7 @@ struct RailBadge: View {
         self.minHeight = minHeight
     }
 
+    /// Creates a badge from a runtime string.
     init(
         _ title: String,
         tint: Color,
@@ -195,6 +205,7 @@ struct RailBadge: View {
     }
 }
 
+/// Canonical divider using the design system's hairline color.
 struct RailDivider: View {
     var body: some View {
         Divider()
@@ -204,7 +215,9 @@ struct RailDivider: View {
 
 // MARK: - Rows
 
+/// Labeled fact row for compact or vertically stacked values.
 struct RailValueRow: View {
+    /// Layout choices for short values and longer source-backed details.
     enum Layout {
         case compact
         case stacked
@@ -258,6 +271,7 @@ struct RailValueRow: View {
     }
 }
 
+/// Accessible card content that signals navigation to a rail destination.
 struct RailNavigationCard: View {
     let symbol: String
     let title: LocalizedStringKey
@@ -293,7 +307,9 @@ struct RailNavigationCard: View {
 
 // MARK: - Actions
 
+/// Shared label treatment for primary, secondary, and quiet rail actions.
 struct RailActionLabel: View {
+    /// Visual prominence roles for rail actions.
     enum Role {
         case primary
         case secondary
@@ -342,6 +358,7 @@ struct RailActionLabel: View {
     }
 }
 
+/// Pressable action button backed by the shared rail action label.
 struct RailActionButton: View {
     let title: LocalizedStringKey
     let symbol: String
@@ -356,6 +373,7 @@ struct RailActionButton: View {
     }
 }
 
+/// Toolbar icon button with a required accessible label.
 struct RailToolbarIconButton: View {
     let symbol: String
     let accessibilityLabel: LocalizedStringKey
@@ -370,6 +388,7 @@ struct RailToolbarIconButton: View {
     }
 }
 
+/// Toolbar share link with a stable rider-facing accessibility label.
 struct RailToolbarShareLink: View {
     let item: String
     var symbol = "square.and.arrow.up"
@@ -385,6 +404,7 @@ struct RailToolbarShareLink: View {
 
 // MARK: - Selection
 
+/// Accessible segmented control with a shared animated selection indicator.
 struct RailSegmentedControl<Option: Identifiable & Hashable>: View {
     let options: [Option]
     @Binding var selection: Option
@@ -393,6 +413,7 @@ struct RailSegmentedControl<Option: Identifiable & Hashable>: View {
     @Namespace private var namespace
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
+    /// Creates a segmented control over identifiable, hashable options.
     init(
         options: [Option],
         selection: Binding<Option>,
@@ -424,7 +445,7 @@ struct RailSegmentedControl<Option: Identifiable & Hashable>: View {
                                     style: .continuous
                                 )
                                 .fill(RailDesign.Palette.accent.opacity(0.12))
-                                .matchedGeometryEffect(id: option.id, in: namespace)
+                                .matchedGeometryEffect(id: "railSegmentedSelection", in: namespace)
                             }
                         }
                 }
@@ -448,6 +469,7 @@ struct RailSegmentedControl<Option: Identifiable & Hashable>: View {
 // MARK: - Screen and list policies
 
 extension View {
+    /// Applies a semantic rail surface without adding content padding.
     func railSurfaceStyle(
         role: RailSurfaceRole = .panel,
         cornerRadius: CGFloat = RailDesign.Radius.card,
@@ -462,6 +484,7 @@ extension View {
         )
     }
 
+    /// Applies the canonical insets and transparent background for list cards.
     func railListCardRow() -> some View {
         listRowInsets(
             EdgeInsets(

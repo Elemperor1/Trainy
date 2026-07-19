@@ -38,7 +38,7 @@ container itself and one floating map status overlay. Glass stays as a
 
 | Token | iOS font | Use |
 | --- | --- | --- |
-| `display` | 40 pt bold rounded, monospaced digit | Hero times (active trip origin/destination, train detail hero) |
+| `display` | 36 pt bold rounded, monospaced digit | Hero times (active trip origin/destination, train detail hero) |
 | `h1` | 28 pt semibold rounded | `Trips` title, `Welcome to Trainy` |
 | `h2` | 18 pt semibold rounded | Section headers, train name in detail hero |
 | `h3` | 15 pt semibold rounded | Card titles, train name in trip card, stop name |
@@ -74,11 +74,11 @@ xcrun -sdk iphonesimulator swiftc -typecheck -target arm64-apple-ios26.0-simulat
 
 ## Outstanding
 
-- `RailDesign.Palette` still exposes the decorative `marine`, `violet`,
-  `copper`, `amber` colors. They're only used inside the `ProviderStatusPill`
-  status chip (where each region gets its own color). I left them in
-  because they make the Supported regions screen legible at a glance.
-  Recommend migrating them to semantic "active / muted / coming soon"
-  tokens in a future pass if you don't need regional color coding.
+- `RailDesign.Palette` retains a transitional decorative-color exception for
+  provider-status, source-state, and rail-map cues. A Phase 17 semantic-palette
+  cleanup, required before another rider-facing provider is marked active, will
+  route the remaining `marine`, `violet`, `copper`, `amber`, `mint`, `red`, and
+  `blue` call sites through semantic status roles and remove the decorative
+  names. Until then, these colors must not expand into unrelated UI.
 - iOS Simulator screenshots still need to be captured locally. The
   typecheck is the strongest verification I can produce in this sandbox.
