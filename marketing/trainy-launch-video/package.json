@@ -1,0 +1,45 @@
+{
+  "name": "trainy-launch-video",
+  "version": "1.0.0",
+  "description": "Editable 90-second Trainy launch film for OpenAI Build Week",
+  "repository": {},
+  "license": "UNLICENSED",
+  "private": true,
+  "dependencies": {
+    "@remotion/cli": "4.0.496",
+    "@remotion/layout-utils": "4.0.496",
+    "@remotion/media": "4.0.496",
+    "@remotion/transitions": "4.0.496",
+    "@remotion/zod-types": "4.0.496",
+    "react": "19.2.3",
+    "react-dom": "19.2.3",
+    "remotion": "4.0.496",
+    "zod": "4.3.6"
+  },
+  "devDependencies": {
+    "@remotion/eslint-config-flat": "4.0.496",
+    "@types/react": "19.2.7",
+    "@types/web": "0.0.166",
+    "eslint": "9.19.0",
+    "prettier": "3.8.1",
+    "typescript": "5.9.3"
+  },
+  "scripts": {
+    "dev": "remotion studio --no-open",
+    "build": "remotion bundle",
+    "upgrade": "remotion upgrade",
+    "lint": "eslint src scripts && tsc --noEmit",
+    "typecheck": "tsc --noEmit",
+    "assets": "node scripts/prepare-score.mjs",
+    "capture": "bash scripts/capture-simulator.sh",
+    "stills": "bash scripts/render-stills.sh",
+    "stills:shots": "bash scripts/render-shot-audit.sh",
+    "render:review": "remotion render TrainyLaunch out/trainy-launch-review-1080p.mp4 --scale=0.5 --codec=h264 --audio-codec=aac --audio-bitrate=320k --crf=16 --pixel-format=yuv420p",
+    "render:master": "remotion render TrainyLaunch out/trainy-launch-master-4k.mp4 --codec=h264 --audio-codec=aac --audio-bitrate=320k --crf=14 --pixel-format=yuv420p",
+    "render:poster": "remotion still TrainyPoster out/trainy-launch-poster.png",
+    "validate:media": "bash scripts/validate-media.sh"
+  },
+  "sideEffects": [
+    "*.css"
+  ]
+}

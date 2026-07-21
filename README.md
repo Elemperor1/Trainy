@@ -1,22 +1,89 @@
-# Trainy
+<p align="center">
+  <img src="TrainyIOS/Trainy/Assets.xcassets/AppIcon.appiconset/TrainyAppIcon.png" width="128" alt="Trainy app icon">
+</p>
 
-Trainy is a Flighty-style train tracking app, scoped first to Shinkansen trips in Japan.
+<h1 align="center">Trainy</h1>
 
-This workspace now contains three development surfaces:
+<p align="center"><strong>Know what comes next—from platform to destination.</strong></p>
 
-- `Package.swift`: Swift Package Manager workspace for reusable Trainy code.
-- `TrainyIOS/`: thin native SwiftUI iOS app wrapper for signing, app resources, and packaging.
-- Root `index.html`: self-contained browser prototype with no external dependencies.
+Trainy is a native iOS rail companion for the moments when a timetable alone is
+not enough. It brings trip progress, station boards, platforms, connections,
+service alerts, and source freshness into one place so riders can understand
+what is happening and what to do next.
 
-## OpenAI Build Week judge quick start
+The current rider-ready experiences cover Japan's Shinkansen network and
+Netherlands NS stations. Trainy labels starter, scheduled, and realtime data
+separately instead of presenting every source as live.
 
-Trainy is an iOS rail companion built with Codex and GPT-5.6. The Build Week
-work focused on trustworthy provider status, deterministic simulator coverage,
-accessible first-run guidance, and a repeatable privacy and distribution audit.
+> **Project status:** Trainy is a working Build Week project and simulator-ready
+> beta. Its shipped contents have passed a Release archive audit, but it is not
+> yet distributed through the App Store or TestFlight.
 
-The fastest credential-neutral review path is the iPhone 17 simulator. It uses
-the production NS proxy URL and leaves the optional ODPT developer credential
-empty:
+## What Trainy does
+
+- Finds and tracks Shinkansen services across Japan's major high-speed lines.
+- Shows route progress, the next stop, platforms, station timelines, maps, car
+  positioning, alerts, and connection guidance.
+- Searches Netherlands NS stations and displays current departure boards and
+  disruptions through a credential-safe production proxy.
+- Preserves tracked trips, pins, notification choices, provider selection, and
+  display preferences on-device.
+- Explains where each result came from, how fresh it is, and whether it is
+  starter, scheduled, stale, or realtime data.
+- Supports first-run guidance, Light and Dark Mode, VoiceOver semantics, and
+  accessibility layouts through AX2XL Dynamic Type.
+
+## Rider-ready data
+
+| Region | Status | Current experience | Data path |
+| --- | --- | --- | --- |
+| Japan | Rider-active | Shinkansen search, tracked trips, route details, maps, and source-aware schedules | Credential-free starter catalog; optional ODPT timetable and alert data; official JR timetable fallback when applicable |
+| Netherlands | Rider-active when the public proxy URL is configured | NS station search, departures, disruptions, freshness, and recovery states | Trainy iOS → fixed Cloudflare Worker contract → NS Reisinformatie API |
+| Other regions | Planned or research-ready | Visible in the provider directory but unavailable for rider selection | Provider access does not count as an implemented Trainy experience |
+
+The full provider-access record is in
+[`docs/Provider_Status.md`](docs/Provider_Status.md). The app's provider registry
+is the authority for what riders can use now.
+
+## Quick start
+
+### Requirements
+
+- macOS with Xcode and an iOS Simulator runtime.
+- Xcode 26.5 and iOS 26.5 are the verified configuration.
+- Internet access for the first Swift package resolution.
+
+You do **not** need an Apple Developer account or a provider credential to run
+Trainy in the simulator.
+
+### Build and run with Xcode
+
+```bash
+git clone https://github.com/Elemperor1/Trainy.git
+cd Trainy
+open TrainyIOS/Trainy.xcodeproj
+```
+
+In Xcode:
+
+1. Select the **Trainy** scheme.
+2. Choose an iPhone 17 simulator.
+3. Press **Run** (`Command-R`).
+
+The default credential-free launch presents onboarding and the Shinkansen
+starter catalog.
+
+To enable the production-backed NS station experience from Xcode, add this
+non-secret environment variable to the scheme's **Run → Arguments** settings:
+
+```text
+TRAINY_PROVIDER_PROXY_BASE_URL=https://trainy-ns-provider-proxy.trainy-jacob.workers.dev
+```
+
+### Canonical command-line build
+
+The repository-owned wrapper builds the same app without code signing or an
+ODPT key:
 
 ```bash
 ODPT_ENV_FILE=/dev/null \
@@ -25,123 +92,13 @@ CODE_SIGNING_ALLOWED=NO \
 scripts/build-ios.sh
 ```
 
-Open `TrainyIOS/Trainy.xcodeproj`, select the `Trainy` scheme and an iPhone 17
-simulator, then run. First launch presents onboarding that explains Trainy's
-starter, scheduled, and realtime labels. No provider credential is required to
-review the Shinkansen starter experience or the production-backed Netherlands
-station-board path.
+The app bundle is written under
+`/private/tmp/trainy-derived/Build/Products/Debug-iphonesimulator/Trainy.app`.
+If Xcode is installed at `/Applications/Xcode.app`, prefix the command with
+`XCODE_APP=/Applications/Xcode.app`. The script otherwise uses the verified
+non-App-Store installation at `/Applications/Xcode-26.5.0.app`.
 
-For deterministic review of onboarding, search, provider truth, NS departures,
-failure recovery, Light/Dark Mode, and AX2XL behavior, run the `TrainyUITests`
-group documented in
-[`docs/simulator-ui-automation.md`](docs/simulator-ui-automation.md). The
-release archive, privacy manifests, secret boundary, and signing evidence are
-owned by
-[`docs/distribution-readiness-2026-07-21.md`](docs/distribution-readiness-2026-07-21.md).
-
-## What it does
-
-- Tracks multiple Shinkansen journeys with live-style status, route progress, platforms, next stop, ETA, and speed.
-- Shows a station timeline, platform/car positioning, alerts, connection risk, and signal confidence.
-- Supports search, trip filters, pinned trains, notification toggles, compact mode, refresh, and share-copy behavior.
-
-## Japan-first data scope
-
-The current native app is scoped to Shinkansen service instead of the previous US live-feed prototype. It includes representative Tokaido, Sanyo-Kyushu, Tohoku, Hokuriku, Joetsu, Hokkaido, Akita, and Yamagata Shinkansen trips with station coordinates, route search, persisted tracked trips, and a data-scope migration that resets stale non-Japan saved trips.
-
-The native app now attempts ODPT first when an ODPT consumer key is configured. If ODPT exposes route metadata but no `odpt:TrainTimetable` rows for a Shinkansen railway, Trainy falls back to official JR timetable pages for real schedule/platform data. With no key, it uses the curated Shinkansen starter catalog. Timetable data is treated as schedule data, not guaranteed live vehicle position.
-
-To configure ODPT locally:
-
-```bash
-cp TrainyIOS/Config/odpt.env.example TrainyIOS/Config/odpt.env
-chmod 600 TrainyIOS/Config/odpt.env
-```
-
-Then register at `https://developer.odpt.org/`, paste the issued key into `TrainyIOS/Config/odpt.env`, and build with `scripts/build-ios.sh`. The build script parses only `ODPT_CONSUMER_KEY=...` from that file, so the local secret file is not executed as shell code. The key is passed to Xcode through the process environment rather than as an echoed command-line build setting. The secret env file is ignored by git.
-
-Run the ODPT smoke check after setting the key:
-
-```bash
-scripts/smoke-odpt.sh
-```
-
-The smoke compiles Trainy's provider code and verifies that `Tokyo to Shin-Osaka` and `JR East` searches return real ODPT-backed or official timetable trips instead of starter data.
-
-Other credentialed-provider env files, including `ns.env`, are developer smoke inputs only. `scripts/build-ios.sh` does not load or pass those keys to Xcode. Netherlands NS station search, departure boards, service alerts, and recovery states are implemented through Trainy's narrow provider proxy. The authenticated NS quota/product-page review, production Worker rollout, public contract checks, credential boundary, and iPhone 17 rider path are verified at `https://trainy-ns-provider-proxy.trainy-jacob.workers.dev`; NS is now rider-active in provider metadata. The URL remains an explicit release build setting rather than a source-controlled default. Production receives the NS credential only through the Worker secret binding; the authorized local smoke copy remains ignored and never enters Xcode.
-
-## Provider Proxy
-
-Cloudflare Workers is the selected production proxy path for credentialed or heavy providers. The app reads only the proxy base URL from `TRAINY_PROVIDER_PROXY_BASE_URL` or `TrainyProviderProxyBaseURL` in the app `Info.plist`; production provider keys stay in Worker secrets or equivalent backend secret storage.
-
-Settings > Providers shows the proxy state and, when configured, can fetch compact health from `GET /v1/health/providers`. That response is intentionally app-safe provider status and cache metadata, not rider trip details or raw upstream/provider debug output.
-
-The implemented NS contract is deliberately small: `GET /v1/ns/stations`, `GET /v1/ns/departures`, and `GET /v1/ns/disruptions`. Inputs, upstream operations, timeouts, response sizes, caches, rate limits, and normalized fields are fixed by the Worker; it is not a general NS relay. For credential-neutral checks and the authorized local path:
-
-```bash
-npm ci --prefix provider-proxy
-npm run check --prefix provider-proxy
-scripts/smoke-ns-proxy.sh
-```
-
-Run `scripts/dev-ns-proxy.sh`, then build with `TRAINY_PROVIDER_PROXY_BASE_URL=http://127.0.0.1:8787` to exercise the simulator-only development path locally. URL validation accepts only loopback HTTP and requires HTTPS for every non-loopback proxy. The shipped Release plist contains no ATS exception and pins only the public HTTPS production Worker. Production configuration, rotation, failure behavior, and the approval-gated rollout are documented in `provider-proxy/README.md`.
-
-## Swift Package and VS Code
-
-The native app code is package-first now:
-
-- `Sources/TrainyCore/`: reusable models, provider logic, store, SwiftUI views, and utilities.
-- `Tests/TrainyCoreTests/`: offline provider-safety unit tests.
-- `TrainyIOS/Trainy/`: Xcode-only app wrapper with `TrainyApp.swift`, `Info.plist`, asset catalogs, app icon, launch-screen settings, and preview assets.
-
-Open the repository root in VS Code so the official Swift extension can read `Package.swift`. The package defines the `TrainyCore` library target and `TrainyCoreTests` test target, with iOS 26.0 as the supported app platform. The app wrapper pins Firebase iOS SDK 12.15.0 for `FirebaseCore` and `FirebaseCrashlytics`; TrainyCore also links the Apple platform frameworks used by the app UI (`MapKit`, `SwiftUI`, and `UIKit`).
-
-Useful commands:
-
-```bash
-swift package describe
-scripts/build-ios.sh
-```
-
-VS Code tasks are available under `.vscode/tasks.json` for package describe and the Xcode app-wrapper build/test loop. Because Trainy is an iOS-only app that uses UIKit and iOS MapKit, `scripts/build-ios.sh` and the Xcode wrapper tasks are the reliable compile gates. Plain host `swift build` / `swift test` target macOS by default and are expected to fail with `No such module 'UIKit'`; they are not app validation commands for this repo.
-
-## Run it
-
-Open `index.html` in a browser, or serve the folder with any static file server.
-
-```bash
-python3 -m http.server 4173
-```
-
-Then visit `http://localhost:4173`.
-
-## Run on iOS Simulator
-
-If the goal is to launch Trainy in the iPhone Simulator, the path is Xcode + `scripts/build-ios.sh`. Plain host `swift build` / `swift test` target macOS and fail with `No such module 'UIKit'`, so they are not a way to run the iOS app.
-
-Before the first build, the non-App-Store Xcode install at `/Applications/Xcode-26.5.0.app` needs the iOS 26.5 Simulator runtime and an accepted license:
-
-```bash
-sudo xcode-select -s /Applications/Xcode-26.5.0.app/Contents/Developer
-sudo xcodebuild -license accept
-sudo xcodebuild -runFirstLaunch
-xcodebuild -downloadPlatform iOS
-```
-
-Then open the Xcode project, pick an iPhone simulator, and run the `Trainy` scheme:
-
-```bash
-open TrainyIOS/Trainy.xcodeproj
-# In Xcode: Product > Run (⌘R) with an iPhone simulator destination
-```
-
-From the command line, the wrapper script builds the `Trainy` scheme against the generic iOS Simulator destination and produces an app bundle under `/private/tmp/trainy-derived`:
-
-```bash
-scripts/build-ios.sh
-```
-
-To boot a specific simulator, install the freshly built `Trainy.app`, and launch it headlessly with `simctl`:
+To install the command-line build:
 
 ```bash
 DEVICE='iPhone 17'
@@ -152,123 +109,205 @@ xcrun simctl install "$UDID" /private/tmp/trainy-derived/Build/Products/Debug-ip
 xcrun simctl launch "$UDID" com.jacobcyber.Trainy
 ```
 
-`xcodebuild -downloadPlatform iOS` is only required once per Xcode install. After that, `scripts/build-ios.sh` plus the optional `simctl install`/`launch` pair above is enough to get Trainy running on a simulator.
+Plain `swift build` and `swift test` target the macOS host by default and are not
+valid app gates for this iOS-only project. Use the Xcode wrapper and simulator
+schemes instead.
 
-If `xcrun simctl` errors with `CoreSimulatorService connection became invalid`, restart Simulator.app or run `xcrun simctl shutdown all` and then `open -a Simulator` to revive the service.
+## Optional ODPT development setup
 
-## Distribution archive audit
-
-Trainy's production-equivalent, non-uploading archive workflow is owned by
-`scripts/archive-ios.sh`. It forces Release, the generic iOS destination, the
-approved public NS proxy, an empty ODPT value, isolated temporary outputs, and
-Crashlytics validation-only mode. It defaults to unsigned operation so a local
-audit cannot silently upload symbols or impersonate distribution signing.
-
-Use fresh output paths, then audit the complete archive and build outputs:
+Trainy works without ODPT. To exercise the optional authenticated Japan path,
+create the ignored local file and keep it private:
 
 ```bash
-ARCHIVE_PATH=/private/tmp/trainy-distribution/Trainy.xcarchive \
-RESULT_BUNDLE_PATH=/private/tmp/trainy-distribution/Trainy.xcresult \
-DERIVED_DATA_PATH=/private/tmp/trainy-distribution/DerivedData \
-CODE_SIGNING_ALLOWED=NO \
-scripts/archive-ios.sh
-
-scripts/audit-ios-archive.py \
-  /private/tmp/trainy-distribution/Trainy.xcarchive \
-  --result-bundle /private/tmp/trainy-distribution/Trainy.xcresult \
-  --scan-root /private/tmp/trainy-distribution/Trainy.xcresult \
-  --scan-root /private/tmp/trainy-distribution/DerivedData \
-  --json-output /private/tmp/trainy-distribution/audit.json
+cp TrainyIOS/Config/odpt.env.example TrainyIOS/Config/odpt.env
+chmod 600 TrainyIOS/Config/odpt.env
 ```
 
-If the ignored fillable credential form is present, add
-`--credential-pdf docs/trainy_api_credentials_fillable_form.pdf`; the scanner
-requires `pdftotext` and never prints a value. The full 2026-07-21 archive
-identity, commands, privacy/SDK manifest inventory, finding dispositions, and
-signing limitation are recorded in
-[`docs/distribution-readiness-2026-07-21.md`](docs/distribution-readiness-2026-07-21.md).
+Add the key issued by the [ODPT developer portal](https://developer.odpt.org/),
+then run `scripts/build-ios.sh` and `scripts/smoke-odpt.sh`. The parser accepts
+only the expected key assignment and never executes the env file as shell code.
+Do not commit local provider env files.
 
-## Tests
+## Architecture
 
-Trainy's package tests live in `Tests/TrainyCoreTests`. The Xcode `TrainyTests` scheme points at the same test source so the iOS app wrapper and package code are tested together:
+Trainy is package-first with a thin Xcode application wrapper:
+
+```mermaid
+flowchart LR
+    UI["SwiftUI app"] --> Registry["Provider registry"]
+    Registry --> Japan["Japan Shinkansen provider"]
+    Japan --> Starter["Curated starter catalog"]
+    Japan --> ODPT["ODPT and JR schedules"]
+    Registry --> NS["Netherlands NS adapter"]
+    NS --> Worker["Fixed Cloudflare Worker API"]
+    Worker --> Upstream["NS Reisinformatie API"]
+```
+
+- `TrainyIOS/Trainy/` owns the app lifecycle, resources, privacy manifest, and
+  packaging.
+- `Sources/TrainyCore/` owns models, provider adapters, persistence, SwiftUI
+  screens, maps, and the design system.
+- `Tests/TrainyCoreTests/` contains deterministic model, provider, provenance,
+  persistence, security-boundary, and design-system coverage.
+- `provider-proxy/` is the TypeScript Cloudflare Worker that protects the NS
+  subscription key and returns bounded normalized responses.
+
+The NS Worker is not a general relay. It exposes only health, station search,
+departures, and disruptions. Inputs, upstream operations, response fields,
+timeouts, cache behavior, rate limits, and error shapes are fixed by the
+Worker. See [`provider-proxy/README.md`](provider-proxy/README.md) for the full
+contract.
+
+## How Codex and GPT-5.6 were used
+
+I used **GPT-5.6 through Codex** as an engineering collaborator throughout
+OpenAI Build Week. Trainy does not call GPT-5.6 at runtime; the model was used
+to help build and verify the product.
+
+- **Architecture:** Codex traced the existing SwiftUI, persistence, provider,
+  and build paths before proposing changes. GPT-5.6 helped shape the provider
+  registry and the narrow app → proxy → NS trust boundary.
+- **Implementation:** Codex helped implement the NS Worker and adapter,
+  source-aware provider states, station search and departures, accessible
+  onboarding, and release/privacy controls.
+- **Testing:** GPT-5.6 helped create production dependency-injection seams,
+  credential-neutral fixtures, unit tests, and XCUITests for onboarding, search,
+  no-match recovery, loading/failure recovery, provider truth, NS departures,
+  Light/Dark Mode, and AX2XL.
+- **Debugging and review:** Codex ran focused checks, interpreted concrete Xcode
+  and simulator failures, addressed review feedback, and expanded to the
+  canonical build and full test suite once each change was stable.
+- **Release readiness:** GPT-5.6 helped inspect the final `.xcarchive`, privacy
+  manifests, dSYM, generated plists, Crashlytics behavior, build metadata, and
+  credential fingerprints. Verified findings were fixed and re-audited with
+  repository-owned scripts.
+
+I supplied the product direction, provider access, visual decisions, release
+choices, and final review. Credentials, deployments, signing, and the hackathon
+submission remained human-controlled.
+
+## Testing and verification
+
+### iOS suite
+
+Run the same shared scheme used by CI:
 
 ```bash
+DEVELOPER_DIR="$(xcode-select -p)" \
+ODPT_CONSUMER_KEY='' \
 xcodebuild test \
+  -quiet \
   -project TrainyIOS/Trainy.xcodeproj \
   -scheme TrainyTests \
-  -destination 'platform=iOS Simulator,name=iPhone 17' \
+  -destination 'platform=iOS Simulator,name=iPhone 17,OS=latest' \
   -derivedDataPath /private/tmp/trainy-derived \
   -clonedSourcePackagesDirPath /private/tmp/trainy-source-packages \
   -packageCachePath /private/tmp/trainy-swiftpm-cache \
+  -parallel-testing-enabled NO \
   CODE_SIGNING_ALLOWED=NO \
   TRAINY_SOURCE_PACKAGES_DIR=/private/tmp/trainy-source-packages
 ```
 
-`TrainyTests` does not require provider credentials or live network access. It covers source provenance mapping, fallback behavior, route matching, station normalization, time parsing across midnight, persistence migration by `dataScope`, proxy health/config wiring, NS proxy adapter and view-model states, provider response-contract validation, native response size/deadline enforcement, provider error-to-message mapping, NS fixtures, and design-system contracts. The Workerd suite separately covers the public contract, input rejection, normalization, stale fallback, upstream failures, whole-response deadlines, field/body bounds, same-key request coalescing, rate limiting, health isolation, and credential-safe output. Keep `TRAINY_SOURCE_PACKAGES_DIR` equal to `-clonedSourcePackagesDirPath` so the Crashlytics build phase resolves the same Swift package checkout.
+The suite uses in-memory fixtures and ordinary production screens. It requires
+no provider credential and makes no live provider request. Focused UI execution
+and stability instructions live in
+[`docs/simulator-ui-automation.md`](docs/simulator-ui-automation.md).
 
-The same scheme also contains the deterministic `TrainyUITests` simulator group
-for critical search, provider-status, NS, appearance, and AX2XL behavior. See
-[`docs/simulator-ui-automation.md`](docs/simulator-ui-automation.md) for the
-focused no-retry command, the three-run stability check, fixture contract, and
-the CI-equivalent full-suite command.
-
-After a credential-neutral build, `scripts/check-provider-secret-boundary.py` scans versionable files, Trainy-generated artifacts, temporary proxy logs, simulator logs, test products, and the app bundle for any authorized local provider credential value. It also rejects NS upstream-only host/header/secret markers in shipping app files; Xcode-injected `.xctest` plug-ins remain in the exact-value scan but are excluded from that public-marker check because the tests intentionally contain the forbidden strings they assert against.
-
-Current 2026-07-20 verification: 58/58 credential-neutral iOS tests and 35/35 Workerd contract tests passed. The authorized loopback proxy smoke returned 5 Utrecht station matches and 20 fresh departures without printing or persisting the credential. The canonical build also succeeded with ODPT empty and only the public HTTPS proxy base URL configured. The four-case secret-boundary regression suite, provider-smoke parser/host/port suite, 25-case design-system guard self-test, 28-file repository design-system scan, and final boundary scan passed. The expanded final scan checked 58,811 repository/generated/log files plus 122 shipping app files. It found and removed one earlier Xcode DerivedData cache whose private build-command attachments retained an authorized local credential; the clean rerun found neither authorized local provider value nor an NS upstream-only marker in the shipping app.
-
-The 2026-07-21 distribution pass produced a fresh Release xcarchive and passed
-66/66 Xcode tests, 35/35 Workerd contract tests, 27 design-system guard
-fixtures, the 29-file design-system repository scan, and a 44-check final
-archive audit with zero failures. The audit is content-complete but explicitly
-unsigned. A separate Release-configured iPhoneOS app passed strict signature
-verification with the installed one-device Personal Team development profile;
-that is device-demo proof, not App Store or TestFlight distribution. See the
-owning distribution-readiness record above.
-
-The iPhone 17 / iOS 26.5 runtime pass exercised live Utrecht search and departure results, source-backed no-match, automatic stale copy, forced offline fallback, and recovery after the loopback Worker restarted. Light and Dark Mode and AX2XL reflow were inspected separately. With VoiceOver actually enabled, the simulator accessibility tree exposed headings, the labelled station field and 44-by-44-point submit action, station-name/code buttons, source/freshness text, and 54-point tabs in logical order. The simulator was restored to standard Large text, Dark Mode, VoiceOver off, and normal contrast afterward.
-
-The owner approved the free Cloudflare hostname and one-time migration bridge on 2026-07-20. The byte-identical bridge version `65f469e7-ef2b-4acf-8503-e6f3793be5a2` applied the SQLite Durable Object lifecycle migration without changing the public contract. After its public checks passed, hardened version `0ece40b0-b27a-43aa-a865-55445909a2a1` was inspected and promoted to 100%; final deployment `46a26a6a-8abe-4091-9b19-3c32b20ccefa` serves only `https://trainy-ns-provider-proxy.trainy-jacob.workers.dev`. Repeated edge checks returned exact station code `UT` first, a fresh Amsterdam cache miss proved the global quota path can reach NS, and a persistent-client probe received normalized `429` then recovered. Rejected `POST` and unknown routes remained `405` and `404`. A canonical simulator candidate opened a fresh Utrecht board with current departures, a current alert, and separate truthful source disclosures. Preview URLs remain disabled, no custom domain or schedule exists, and the free hostname still lacks an owner-controlled zone WAF layer.
-
-The standalone smoke harnesses remain useful for focused script checks:
+### Repository gates
 
 ```bash
-scripts/smoke-source-provenance.sh
-scripts/smoke-provider-registry.sh
-scripts/smoke-shinkansen-provider.sh
-```
-
-`scripts/smoke-odpt.sh` is the credentialed live-data smoke and should only be run after configuring `ODPT_CONSUMER_KEY`.
-
-## Design System
-
-The native UI has one component library under
-`Sources/TrainyCore/DesignSystem/`. Tokens, interface preferences, primitives,
-patterns, domain UI, loading/empty/error states, and interaction behavior are
-owned there; screens only compose them.
-
-Architecture and contribution rules are documented in
-`docs/design-system-architecture.md`.
-
-Run both policy checks before submitting UI work:
-
-```bash
+npm ci --prefix provider-proxy
+npm run check --prefix provider-proxy
 bash scripts/check-design-system-bypass.sh --self-test
 bash scripts/check-design-system-bypass.sh
+python3 scripts/test-provider-secret-boundary.py
+bash scripts/test-provider-smoke-pattern.sh
+bash scripts/smoke-source-provenance.sh
+bash scripts/smoke-provider-registry.sh
+bash scripts/smoke-shinkansen-provider.sh
 ```
 
-The first command proves the guardrail catches deliberate bypass fixtures. The
-second checks the real iOS and web sources. The repository review workflow is
-available at `.agents/skills/review-design-system/SKILL.md`.
+### Most recent audited baseline
 
-Additional credentialed provider smokes are documented in `TrainyIOS/README.md`. They use provider-specific ignored env files with strict key whitelists; do not create or use a combined provider env file unless its parser keeps the same reject-by-default behavior.
+The dated baseline below describes the verified Release candidate from July 21,
+2026; it does not silently claim that later working-tree changes have passed.
 
-## Xcode Without Mac App Store
+| Gate | Result |
+| --- | ---: |
+| Canonical credential-neutral iOS build | Passed |
+| Xcode `TrainyTests` scheme | 66/66 passed |
+| Cloudflare Worker contract tests | 35/35 passed |
+| Design-system guard fixtures | 27/27 passed |
+| Repository design-system scan | 29 files passed |
+| Release archive audit | 44 checks, 0 failures |
 
-The helper script at `scripts/install-xcode-non-appstore.sh` uses Apple Developer Downloads through the prebuilt `xcodes` CLI instead of the Mac App Store. Apple still requires Developer web authentication for the Xcode `.xip`.
+See
+[`docs/distribution-readiness-2026-07-21.md`](docs/distribution-readiness-2026-07-21.md)
+for the archive identity, commands, findings, and limitations.
 
-Xcode 26.5 is currently installed at `/Applications/Xcode-26.5.0.app`. Accept the Xcode license once, then run the native build helper:
+## Privacy and security
 
-```bash
-sudo DEVELOPER_DIR="/Applications/Xcode-26.5.0.app/Contents/Developer" xcodebuild -license accept
-scripts/build-ios.sh
-```
+- Provider credentials do not ship in the iOS app. The NS key exists only as a
+  Worker secret; local smoke credentials remain in ignored mode-`0600` files.
+- Release builds contain no ATS exception and accept only the approved public
+  HTTPS proxy. Loopback HTTP is limited to the simulator development path.
+- Trainy's first-party privacy manifest declares no tracking, no tracking
+  domains, no collected data, and only the required UserDefaults API reason.
+- Firebase Analytics and Ads are disabled. Crashlytics collection is off by
+  default and requires an explicit rider opt-in in Settings.
+- Trainy adds no trip details, searches, user identifier, custom key, or custom
+  log to Crashlytics.
+- Release archives can be created in validation-only mode so an audit does not
+  upload symbols or distribute an artifact.
+
+## Release status
+
+The current Release archive is **content-audited but unsigned**. A separate
+Release-configured device build passed strict verification with a Personal Team
+Apple Development profile for one registered iPhone. That build is suitable for
+the device demo only; it is not an App Store or TestFlight distribution build.
+
+A distribution release still requires an active paid Apple Developer Program
+team, a new distribution-signed export, and a repeat of the signature,
+entitlement, privacy, provenance, and secret audit. Do not treat the Personal
+Team build or unsigned archive as distribution proof.
+
+## Other repository surfaces
+
+The native iOS app is the product. The repository also contains supporting
+surfaces:
+
+- `index.html`, `app.js`, `components.js`, and `styles.css`: a dependency-free
+  browser prototype. Run it with `python3 -m http.server 4173`.
+- `marketing/trainy-coming-soon/`: a Next.js coming-soon site.
+- `marketing/trainy-launch-video/`: editable Remotion source and production
+  notes for Trainy's Build Week launch film.
+- `animation-plans/`: motion and launch-film review notes.
+
+## Repository map
+
+| Path | Purpose |
+| --- | --- |
+| `TrainyIOS/` | Xcode project, app wrapper, resources, UI tests, and iOS-specific documentation |
+| `Sources/TrainyCore/` | Reusable app models, providers, views, persistence, and design system |
+| `Tests/TrainyCoreTests/` | Unit, fixture, provider-contract, and design-system tests |
+| `provider-proxy/` | Credential-safe Netherlands NS Cloudflare Worker |
+| `scripts/` | Canonical build, smoke, audit, archive, and policy gates |
+| `docs/` | Provider, design, automation, release, and distribution evidence |
+| `marketing/` | Coming-soon site and launch-film production source |
+
+## Further documentation
+
+- [iOS implementation and provider setup](TrainyIOS/README.md)
+- [Deterministic simulator UI automation](docs/simulator-ui-automation.md)
+- [NS provider proxy contract and operations](provider-proxy/README.md)
+- [Distribution-readiness audit](docs/distribution-readiness-2026-07-21.md)
+- [Release-readiness history](docs/release-readiness-2026-07-19.md)
+- [Design-system architecture](docs/design-system-architecture.md)
+- [Build Week submission readiness](docs/devpost-build-week-2026-07-21.md)
+
+## License
+
+No open-source license has been added yet. Until a `LICENSE` file is published,
+the repository is available for review but does not grant permission to copy,
+modify, or redistribute the source.

@@ -31,6 +31,29 @@ final class TrainyCriticalUITests: XCTestCase {
         XCTAssertTrue(element("onboarding.screen").waitForExistence(timeout: 5))
     }
 
+    func testLaunchFilmStandardOnboardingAndTrackedTripSurface() throws {
+        defer { app.terminate() }
+        launch(
+            "onboarding",
+            additionalArguments: [
+                "-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryL"
+            ]
+        )
+
+        let onboarding = element("onboarding.screen")
+        XCTAssertTrue(onboarding.waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Welcome to Trainy"].exists)
+        sleep(2)
+
+        let start = element("onboarding.start")
+        XCTAssertTrue(start.isHittable)
+        start.tap()
+        XCTAssertTrue(onboarding.waitForNonExistence(timeout: 5))
+        XCTAssertTrue(app.tabBars.buttons["Trips"].isSelected)
+        XCTAssertTrue(app.staticTexts["Nozomi 231"].waitForExistence(timeout: 5))
+        sleep(2)
+    }
+
     func testTrackedServiceSearchThenNoMatchRecovery() throws {
         defer { app.terminate() }
         launch("fixture")
@@ -53,6 +76,41 @@ final class TrainyCriticalUITests: XCTestCase {
         clear(searchField)
         searchField.typeText("Tokyo to Shin-Osaka")
         XCTAssertTrue(trackedService.waitForExistence(timeout: 5))
+    }
+
+    func testLaunchFilmJapanJourneyAtStandardSize() throws {
+        defer { app.terminate() }
+        launch(
+            "fixture",
+            additionalArguments: [
+                "-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryL"
+            ]
+        )
+
+        XCTAssertTrue(app.staticTexts["Nozomi 231"].waitForExistence(timeout: 5))
+        sleep(1)
+
+        app.tabBars.buttons["Search"].tap()
+        let searchField = app.searchFields.firstMatch
+        XCTAssertTrue(searchField.waitForExistence(timeout: 5))
+        sleep(1)
+
+        searchField.tap()
+        searchField.typeText("Tokyo to Shin-Osaka")
+        let trackedService = element("search.result.nozomi-231")
+        XCTAssertTrue(trackedService.waitForExistence(timeout: 5))
+        sleep(2)
+
+        let keyboard = app.keyboards.firstMatch
+        let keyboardSearch = keyboard.buttons["Search"]
+        XCTAssertTrue(keyboardSearch.waitForExistence(timeout: 5))
+        keyboardSearch.tap()
+        XCTAssertTrue(keyboard.waitForNonExistence(timeout: 5))
+
+        app.tabBars.buttons["Trips"].tap()
+        XCTAssertTrue(app.navigationBars["Trips"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Nozomi 231"].exists)
+        sleep(3)
     }
 
     func testCredentialNeutralFallbackAndProviderStatusAreExplicit() throws {
@@ -116,6 +174,36 @@ final class TrainyCriticalUITests: XCTestCase {
         XCTAssertTrue(element("ns.departure.fixture-sprinter-7400").waitForExistence(timeout: 5))
         XCTAssertTrue(app.staticTexts["Sprinter 7400"].exists)
         XCTAssertTrue(app.staticTexts["Data from Nederlandse Spoorwegen (NS)"].exists)
+    }
+
+    func testLaunchFilmUtrechtJourneyAtStandardSize() throws {
+        defer { app.terminate() }
+        launch(
+            "fixture",
+            additionalArguments: [
+                "-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryL"
+            ]
+        )
+
+        XCTAssertTrue(app.staticTexts["Nozomi 231"].waitForExistence(timeout: 5))
+        sleep(1)
+        openNSStationSearch()
+
+        let stationField = element("ns.stationSearch.field")
+        XCTAssertTrue(stationField.waitForExistence(timeout: 5))
+        sleep(1)
+        stationField.tap()
+        stationField.typeText("Utrecht")
+        element("ns.stationSearch.submit").tap()
+
+        let station = element("ns.station.UT")
+        XCTAssertTrue(station.waitForExistence(timeout: 5))
+        sleep(2)
+        station.tap()
+
+        XCTAssertTrue(element("ns.departures.screen").waitForExistence(timeout: 5))
+        XCTAssertTrue(element("ns.departure.fixture-sprinter-7400").waitForExistence(timeout: 5))
+        sleep(3)
     }
 
     func testNSFailureRecoversThroughTheVisibleRetryAction() throws {
@@ -203,7 +291,7 @@ final class TrainyCriticalUITests: XCTestCase {
         clearText.tap()
     }
 
-    private func scrollUntilHittable(_ element: XCUIElement, attempts: Int = 5) {
+    private func scrollUntilHittable(_ element: XCUIElement, attempts: Int = 12) {
         for _ in 0..<attempts where !element.isHittable {
             app.swipeUp()
         }
