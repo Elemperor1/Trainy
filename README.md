@@ -53,7 +53,7 @@ npm run check --prefix provider-proxy
 scripts/smoke-ns-proxy.sh
 ```
 
-Run `scripts/dev-ns-proxy.sh`, then build with `TRAINY_PROVIDER_PROXY_BASE_URL=http://127.0.0.1:8787` to exercise the iOS flow locally. The app's ATS policy permits local networking only, while URL validation continues to require HTTPS for every non-loopback proxy. Production configuration, rotation, failure behavior, and the approval-gated rollout are documented in `provider-proxy/README.md`.
+Run `scripts/dev-ns-proxy.sh`, then build with `TRAINY_PROVIDER_PROXY_BASE_URL=http://127.0.0.1:8787` to exercise the simulator-only development path locally. URL validation accepts only loopback HTTP and requires HTTPS for every non-loopback proxy. The shipped Release plist contains no ATS exception and pins only the public HTTPS production Worker. Production configuration, rotation, failure behavior, and the approval-gated rollout are documented in `provider-proxy/README.md`.
 
 ## Swift Package and VS Code
 
@@ -63,7 +63,7 @@ The native app code is package-first now:
 - `Tests/TrainyCoreTests/`: offline provider-safety unit tests.
 - `TrainyIOS/Trainy/`: Xcode-only app wrapper with `TrainyApp.swift`, `Info.plist`, asset catalogs, app icon, launch-screen settings, and preview assets.
 
-Open the repository root in VS Code so the official Swift extension can read `Package.swift`. The package defines the `TrainyCore` library target and `TrainyCoreTests` test target, with iOS 26.0 as the supported app platform. No external Swift package dependencies were present in the Xcode project; the package links Apple platform frameworks used by the app UI (`MapKit`, `SwiftUI`, and `UIKit`).
+Open the repository root in VS Code so the official Swift extension can read `Package.swift`. The package defines the `TrainyCore` library target and `TrainyCoreTests` test target, with iOS 26.0 as the supported app platform. The app wrapper pins Firebase iOS SDK 12.15.0 for `FirebaseCore` and `FirebaseCrashlytics`; TrainyCore also links the Apple platform frameworks used by the app UI (`MapKit`, `SwiftUI`, and `UIKit`).
 
 Useful commands:
 
@@ -125,6 +125,38 @@ xcrun simctl launch "$UDID" com.jacobcyber.Trainy
 
 If `xcrun simctl` errors with `CoreSimulatorService connection became invalid`, restart Simulator.app or run `xcrun simctl shutdown all` and then `open -a Simulator` to revive the service.
 
+## Distribution archive audit
+
+Trainy's production-equivalent, non-uploading archive workflow is owned by
+`scripts/archive-ios.sh`. It forces Release, the generic iOS destination, the
+approved public NS proxy, an empty ODPT value, isolated temporary outputs, and
+Crashlytics validation-only mode. It defaults to unsigned operation so a local
+audit cannot silently upload symbols or impersonate distribution signing.
+
+Use fresh output paths, then audit the complete archive and build outputs:
+
+```bash
+ARCHIVE_PATH=/private/tmp/trainy-distribution/Trainy.xcarchive \
+RESULT_BUNDLE_PATH=/private/tmp/trainy-distribution/Trainy.xcresult \
+DERIVED_DATA_PATH=/private/tmp/trainy-distribution/DerivedData \
+CODE_SIGNING_ALLOWED=NO \
+scripts/archive-ios.sh
+
+scripts/audit-ios-archive.py \
+  /private/tmp/trainy-distribution/Trainy.xcarchive \
+  --result-bundle /private/tmp/trainy-distribution/Trainy.xcresult \
+  --scan-root /private/tmp/trainy-distribution/Trainy.xcresult \
+  --scan-root /private/tmp/trainy-distribution/DerivedData \
+  --json-output /private/tmp/trainy-distribution/audit.json
+```
+
+If the ignored fillable credential form is present, add
+`--credential-pdf docs/trainy_api_credentials_fillable_form.pdf`; the scanner
+requires `pdftotext` and never prints a value. The full 2026-07-21 archive
+identity, commands, privacy/SDK manifest inventory, finding dispositions, and
+signing limitation are recorded in
+[`docs/distribution-readiness-2026-07-21.md`](docs/distribution-readiness-2026-07-21.md).
+
 ## Tests
 
 Trainy's package tests live in `Tests/TrainyCoreTests`. The Xcode `TrainyTests` scheme points at the same test source so the iOS app wrapper and package code are tested together:
@@ -152,6 +184,13 @@ the CI-equivalent full-suite command.
 After a credential-neutral build, `scripts/check-provider-secret-boundary.py` scans versionable files, Trainy-generated artifacts, temporary proxy logs, simulator logs, test products, and the app bundle for any authorized local provider credential value. It also rejects NS upstream-only host/header/secret markers in shipping app files; Xcode-injected `.xctest` plug-ins remain in the exact-value scan but are excluded from that public-marker check because the tests intentionally contain the forbidden strings they assert against.
 
 Current 2026-07-20 verification: 58/58 credential-neutral iOS tests and 35/35 Workerd contract tests passed. The authorized loopback proxy smoke returned 5 Utrecht station matches and 20 fresh departures without printing or persisting the credential. The canonical build also succeeded with ODPT empty and only the public HTTPS proxy base URL configured. The four-case secret-boundary regression suite, provider-smoke parser/host/port suite, 25-case design-system guard self-test, 28-file repository design-system scan, and final boundary scan passed. The expanded final scan checked 58,811 repository/generated/log files plus 122 shipping app files. It found and removed one earlier Xcode DerivedData cache whose private build-command attachments retained an authorized local credential; the clean rerun found neither authorized local provider value nor an NS upstream-only marker in the shipping app.
+
+The 2026-07-21 distribution pass produced a fresh Release xcarchive and passed
+65/65 Xcode tests, 35/35 Workerd contract tests, 27 design-system guard
+fixtures, the 29-file design-system repository scan, and a 44-check final
+archive audit with zero failures. The audit is content-complete but explicitly
+unsigned because this Mac has no Apple signing identity or provisioning
+profile; see the owning distribution-readiness record above.
 
 The iPhone 17 / iOS 26.5 runtime pass exercised live Utrecht search and departure results, source-backed no-match, automatic stale copy, forced offline fallback, and recovery after the loopback Worker restarted. Light and Dark Mode and AX2XL reflow were inspected separately. With VoiceOver actually enabled, the simulator accessibility tree exposed headings, the labelled station field and 44-by-44-point submit action, station-name/code buttons, source/freshness text, and 54-point tabs in logical order. The simulator was restored to standard Large text, Dark Mode, VoiceOver off, and normal contrast afterward.
 

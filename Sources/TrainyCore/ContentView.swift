@@ -10,6 +10,7 @@ public struct ContentView: View {
     @AppStorage("trainy.timeFormat") private var timeFormatRaw = UserPreferences.TimeFormat.hour12.rawValue
     @AppStorage("trainy.unitSystem") private var unitSystemRaw = UserPreferences.UnitSystem.metric.rawValue
     @AppStorage("trainy.sourceLabelVerbosity") private var sourceLabelVerbosityRaw = UserPreferences.SourceLabelVerbosity.compact.rawValue
+    @AppStorage("trainy.diagnosticsConsent") private var diagnosticsConsent = false
 
     public init(rootDependencies: TrainyRootDependencies) {
         _rootDependencies = ObservedObject(wrappedValue: rootDependencies)
@@ -61,7 +62,7 @@ public struct ContentView: View {
             .tag(RailTab.history)
 
             NavigationStack {
-                SettingsScreen(store: store)
+                SettingsScreen(store: store, diagnosticsConsent: $diagnosticsConsent)
             }
             .tabItem { Label(RailTab.settings.title, systemImage: RailTab.settings.symbolName) }
             .tag(RailTab.settings)
@@ -117,7 +118,8 @@ public struct ContentView: View {
         RailInterfacePreferences(
             timeFormat: UserPreferences.TimeFormat(rawValue: timeFormatRaw) ?? .hour12,
             unitSystem: UserPreferences.UnitSystem(rawValue: unitSystemRaw) ?? .metric,
-            sourceLabelVerbosity: UserPreferences.SourceLabelVerbosity(rawValue: sourceLabelVerbosityRaw) ?? .compact
+            sourceLabelVerbosity: UserPreferences.SourceLabelVerbosity(rawValue: sourceLabelVerbosityRaw) ?? .compact,
+            diagnosticsConsent: diagnosticsConsent
         )
     }
 }
@@ -1544,6 +1546,7 @@ private struct HistoryTripRow: View {
 
 private struct SettingsScreen: View {
     @ObservedObject var store: TrainStore
+    @Binding var diagnosticsConsent: Bool
     @AppStorage("trainy.timeFormat") private var timeFormatRaw = UserPreferences.TimeFormat.hour12.rawValue
     @AppStorage("trainy.unitSystem") private var unitSystemRaw = UserPreferences.UnitSystem.metric.rawValue
 
@@ -1590,6 +1593,22 @@ private struct SettingsScreen: View {
                             .background(RailDesign.Palette.hairline)
                         ProviderProxyStatusSummary(store: store)
                     }
+                }
+
+                SettingsGroup(title: "Privacy") {
+                    SettingsInfoRow(
+                        symbol: "internaldrive",
+                        title: "On-device data",
+                        detail: "Saved trips, pins, notification choices, provider and region choices, and display settings stay in Trainy's on-device storage."
+                    )
+                    Divider()
+                        .background(RailDesign.Palette.hairline)
+                    SettingsToggleRow(
+                        symbol: "stethoscope",
+                        title: "Share crash diagnostics",
+                        detail: "Opt in to Firebase Crashlytics crash reports. Trainy adds no trip details, searches, or user identifier. Changes take effect on the next launch.",
+                        isOn: $diagnosticsConsent
+                    )
                 }
 
                 SettingsGroup(title: "About") {

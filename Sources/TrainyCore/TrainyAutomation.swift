@@ -1,6 +1,7 @@
 import Combine
 import Foundation
 
+#if DEBUG
 /// Deterministic launch configurations used to exercise the app's normal UI
 /// against injected provider implementations instead of network services.
 public enum TrainyAutomationScenario: String, CaseIterable, Sendable {
@@ -26,16 +27,7 @@ struct TrainyAutomationDependencies {
     let nsProvider: any NSRiderDataProviding
     let nsStartsLoading: Bool
 
-    static func make(for scenario: TrainyAutomationScenario?) -> Self {
-        guard let scenario else {
-            let store = TrainStore()
-            return Self(
-                store: store,
-                nsProvider: NSTrainProvider(proxyBaseURL: store.providerProxyConfiguration.baseURL),
-                nsStartsLoading: false
-            )
-        }
-
+    static func make(for scenario: TrainyAutomationScenario) -> Self {
         let defaults = UserDefaults(suiteName: "TrainyAutomation-\(scenario.rawValue)")!
         defaults.removePersistentDomain(forName: "TrainyAutomation-\(scenario.rawValue)")
         defaults.set(true, forKey: "trainy.firstRunCompleted")
@@ -79,6 +71,7 @@ struct TrainyAutomationDependencies {
         )
     }
 }
+#endif
 
 /// Owns the app's root dependencies for one SwiftUI app lifecycle.
 ///
@@ -90,14 +83,44 @@ public final class TrainyRootDependencies: ObservableObject {
     let nsProvider: any NSRiderDataProviding
     let nsStartsLoading: Bool
 
-    public init(automationScenario: TrainyAutomationScenario? = nil) {
-        let dependencies = TrainyAutomationDependencies.make(for: automationScenario)
-        store = dependencies.store
-        nsProvider = dependencies.nsProvider
-        nsStartsLoading = dependencies.nsStartsLoading
+    private init(
+        store: TrainStore,
+        nsProvider: any NSRiderDataProviding,
+        nsStartsLoading: Bool
+    ) {
+        self.store = store
+        self.nsProvider = nsProvider
+        self.nsStartsLoading = nsStartsLoading
     }
+
+    /// Creates the production dependency graph without automation fixtures.
+    public convenience init() {
+        let store = TrainStore()
+        self.init(
+            store: store,
+            nsProvider: NSTrainProvider(proxyBaseURL: store.providerProxyConfiguration.baseURL),
+            nsStartsLoading: false
+        )
+    }
+
+    #if DEBUG
+    /// Creates a deterministic dependency graph for Debug-only UI automation.
+    public convenience init(automationScenario: TrainyAutomationScenario?) {
+        guard let automationScenario else {
+            self.init()
+            return
+        }
+        let dependencies = TrainyAutomationDependencies.make(for: automationScenario)
+        self.init(
+            store: dependencies.store,
+            nsProvider: dependencies.nsProvider,
+            nsStartsLoading: dependencies.nsStartsLoading
+        )
+    }
+    #endif
 }
 
+#if DEBUG
 private struct AutomationProxyHealthFetcher: ProviderProxyHealthFetching {
     func fetchProviderHealth(from baseURL: URL) async throws -> ProviderProxyHealthResponse {
         ProviderProxyHealthResponse(
@@ -227,3 +250,4 @@ private actor AutomationSearchAttempts {
         return attempts == 0
     }
 }
+#endif

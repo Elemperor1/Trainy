@@ -44,6 +44,30 @@ final class TrainyCriticalUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["Configure Trainy's provider proxy base URL to use NS station search and departures."].exists)
     }
 
+    func testCrashDiagnosticsAreOffByDefaultAndRequireOptIn() throws {
+        defer { app.terminate() }
+        launch(
+            "credential-neutral",
+            additionalArguments: ["--trainy-reset-diagnostics-consent"]
+        )
+        app.tabBars.buttons["Settings"].tap()
+
+        let diagnostics = app.switches["Share crash diagnostics"]
+        XCTAssertTrue(diagnostics.waitForExistence(timeout: 5))
+        if !diagnostics.isHittable {
+            app.swipeUp()
+        }
+        XCTAssertTrue(diagnostics.isHittable)
+        XCTAssertEqual(diagnostics.value as? String, "0")
+
+        diagnostics.coordinate(withNormalizedOffset: CGVector(dx: 0.9, dy: 0.5)).tap()
+        let optInApplied = XCTNSPredicateExpectation(
+            predicate: NSPredicate(format: "value == '1'"),
+            object: diagnostics
+        )
+        XCTAssertEqual(XCTWaiter.wait(for: [optInApplied], timeout: 2), .completed)
+    }
+
     func testNSStationSearchAndDepartureResultsUseFixtureData() throws {
         defer { app.terminate() }
         launch("fixture")

@@ -234,11 +234,14 @@ final class RailDesignSystemTests: XCTestCase {
         XCTAssertEqual(RailInterfacePreferences.defaults.timeFormat, .hour12)
         XCTAssertEqual(RailInterfacePreferences.defaults.unitSystem, .metric)
         XCTAssertEqual(RailInterfacePreferences.defaults.sourceLabelVerbosity, .compact)
+        XCTAssertFalse(RailInterfacePreferences.defaults.diagnosticsConsent)
         XCTAssertTrue(RailInterfacePreferences.defaults.usesMetricUnits)
 
         var preferences = RailInterfacePreferences.defaults
         preferences.unitSystem = .imperial
+        preferences.diagnosticsConsent = true
         XCTAssertFalse(preferences.usesMetricUnits)
+        XCTAssertTrue(preferences.diagnosticsConsent)
     }
 
     /// Verifies rail time formatting honors an explicit clock preference.

@@ -185,6 +185,7 @@ is_comment_line() {
 PREFERENCE_TIME_FORMAT=0
 PREFERENCE_UNIT_SYSTEM=0
 PREFERENCE_SOURCE_VERBOSITY=0
+PREFERENCE_DIAGNOSTICS_CONSENT=0
 
 consume_owned_app_storage() {
   local rel="$1"
@@ -203,6 +204,10 @@ consume_owned_app_storage() {
   fi
   if [[ "$content" == '@AppStorage("trainy.sourceLabelVerbosity")'* ]] && [ "$PREFERENCE_SOURCE_VERBOSITY" -lt 1 ]; then
     PREFERENCE_SOURCE_VERBOSITY=$((PREFERENCE_SOURCE_VERBOSITY + 1))
+    return 0
+  fi
+  if [[ "$content" == '@AppStorage("trainy.diagnosticsConsent")'* ]] && [ "$PREFERENCE_DIAGNOSTICS_CONSENT" -lt 1 ]; then
+    PREFERENCE_DIAGNOSTICS_CONSENT=$((PREFERENCE_DIAGNOSTICS_CONSENT + 1))
     return 0
   fi
 

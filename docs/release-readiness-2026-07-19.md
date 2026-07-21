@@ -291,3 +291,13 @@ only if the owner later approves a custom-domain migration.
 3. The critical simulator journeys are hands-on evidence, not an automated UI
    suite. Automating search empty/recovery and provider-status assertions is the
    highest-value follow-up after the production proxy boundary.
+
+### 2026-07-21 distribution follow-up
+
+Items 2 and 3 above are now closed by
+[`distribution-readiness-2026-07-21.md`](distribution-readiness-2026-07-21.md):
+the repository owns a Release archive/audit workflow, the complete archive
+passed its privacy/secret/provenance audit, and the Xcode scheme now includes a
+deterministic simulator UI suite. The remaining external distribution blocker
+is Apple signing: the audited host has no signing identity, profile, or selected
+team, so the content-audited archive is intentionally unsigned.

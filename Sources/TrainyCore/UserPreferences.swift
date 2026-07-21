@@ -98,6 +98,17 @@ struct UserPreferences: @unchecked Sendable {
         }
     }
 
+    /// Whether the rider opted in to Firebase Crashlytics reports.
+    /// The preference defaults to false and never contains trip data.
+    var diagnosticsConsent: Bool {
+        get {
+            defaults.bool(forKey: "trainy.diagnosticsConsent")
+        }
+        set {
+            defaults.set(newValue, forKey: "trainy.diagnosticsConsent")
+        }
+    }
+
     /// Formats a time string (HH:MM format) using the provider's time zone and user's time format preference
     func formatTimeString(_ timeString: String, in timeZone: TimeZone) -> String {
         let pieces = timeString.split(separator: ":").compactMap { Int($0) }

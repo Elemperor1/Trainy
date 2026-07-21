@@ -5,11 +5,13 @@ struct RailInterfacePreferences: Equatable {
     var timeFormat: UserPreferences.TimeFormat
     var unitSystem: UserPreferences.UnitSystem
     var sourceLabelVerbosity: UserPreferences.SourceLabelVerbosity
+    var diagnosticsConsent: Bool
 
     static let defaults = RailInterfacePreferences(
         timeFormat: .hour12,
         unitSystem: .metric,
-        sourceLabelVerbosity: .compact
+        sourceLabelVerbosity: .compact,
+        diagnosticsConsent: false
     )
 
     var usesMetricUnits: Bool {

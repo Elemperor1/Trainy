@@ -1,0 +1,11 @@
+import SwiftUI
+
+struct ContentView: View {
+    @AppStorage("trainy.diagnosticsConsent") private var diagnosticsConsent = false
+
+    var body: some View {
+        Text(diagnosticsConsent ? "On" : "Off")
+            .font(RailDesign.Typography.body)
+            .foregroundStyle(RailDesign.Palette.ink)
+    }
+}

@@ -478,13 +478,14 @@ final class TrainyTests: XCTestCase {
         XCTAssertEqual(preferences.timeFormat, .hour12)
         XCTAssertEqual(preferences.unitSystem, .metric)
         XCTAssertEqual(preferences.sourceLabelVerbosity, .compact)
+        XCTAssertFalse(preferences.diagnosticsConsent)
 
         preferences.timeFormat = .hour24
         preferences.unitSystem = .imperial
         preferences.sourceLabelVerbosity = .detailed
         defaults.set(true, forKey: "trainy.localDelayNoticesEnabled")
         defaults.set(true, forKey: "trainy.localPlatformNoticesEnabled")
-        defaults.set(true, forKey: "trainy.diagnosticsConsent")
+        preferences.diagnosticsConsent = true
 
         let returningPreferences = UserPreferences(defaults: defaults)
         XCTAssertEqual(returningPreferences.timeFormat, .hour24)
@@ -492,7 +493,7 @@ final class TrainyTests: XCTestCase {
         XCTAssertEqual(returningPreferences.sourceLabelVerbosity, .detailed)
         XCTAssertTrue(defaults.bool(forKey: "trainy.localDelayNoticesEnabled"))
         XCTAssertTrue(defaults.bool(forKey: "trainy.localPlatformNoticesEnabled"))
-        XCTAssertTrue(defaults.bool(forKey: "trainy.diagnosticsConsent"))
+        XCTAssertTrue(returningPreferences.diagnosticsConsent)
 
         let tokyo = TimeZone(identifier: "Asia/Tokyo")!
         XCTAssertEqual("09:21".formattedAsTime(in: tokyo, format: .hour12), "9:21 AM")
@@ -785,7 +786,7 @@ final class TrainyTests: XCTestCase {
         XCTAssertEqual(switchDefaults.string(forKey: "trainy.dataScope"), "live-only-provider")
     }
 
-    func testProviderProxyConfigurationUsesOnlyBaseURLInputsAndScopesLoopbackATS() throws {
+    func testProviderProxyConfigurationUsesOnlyBaseURLInputsAndShipsWithoutATSExceptions() throws {
         let environmentConfig = ProviderProxyConfiguration.current(
             infoDictionary: [
                 ProviderProxyConfiguration.infoPlistKey: "https://plist-proxy.example.com"
@@ -838,9 +839,7 @@ final class TrainyTests: XCTestCase {
             PropertyListSerialization.propertyList(from: infoPlistData, options: [], format: &format)
                 as? [String: Any]
         )
-        let transportSecurity = try XCTUnwrap(infoPlist["NSAppTransportSecurity"] as? [String: Any])
-        XCTAssertEqual(transportSecurity["NSAllowsLocalNetworking"] as? Bool, true)
-        XCTAssertNil(transportSecurity["NSAllowsArbitraryLoads"])
+        XCTAssertNil(infoPlist["NSAppTransportSecurity"])
     }
 
     func testProviderProxyHealthDecodesCompactJSONAndBuildsEndpointURL() throws {

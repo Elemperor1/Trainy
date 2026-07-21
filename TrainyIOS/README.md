@@ -57,7 +57,7 @@ scripts/dev-ns-proxy.sh
 TRAINY_PROVIDER_PROXY_BASE_URL=http://127.0.0.1:8787 ODPT_ENV_FILE=/dev/null scripts/build-ios.sh
 ```
 
-Loopback HTTP is accepted for local development through the app's narrowly scoped ATS local-network permission; all other proxy URLs must be HTTPS. Do not point the app at the NS API directly.
+Loopback HTTP is accepted by URL validation only for the simulator development path; all non-loopback proxy URLs must be HTTPS. The shipped Release plist contains no ATS exception and uses only the approved public HTTPS Worker. Do not point the app at the NS API directly.
 
 Both proxy health and NS data clients stream responses under an absolute
 eight-second deadline. Health is capped at 64 KiB and NS data at 1 MiB before
@@ -160,6 +160,17 @@ npx -y firebase-tools@latest apps:sdkconfig IOS 1:421696672177:ios:9a998e2c26068
 ```
 
 The app target initializes Firebase in `TrainyApp.init()` before SwiftUI content is created. The Xcode project links `FirebaseCore` and `FirebaseCrashlytics`, includes the config plist in the app resources, sets `DWARF with dSYM File`, and has a Crashlytics dSYM upload run script. The Firebase plist is app configuration, not a production provider secret; provider API credentials still belong only in the Cloudflare Worker or local ignored smoke env files.
+
+Automatic Crashlytics collection is disabled in `Info.plist`. Settings >
+Privacy exposes a default-off rider opt-in; Trainy applies that preference on
+the next launch and deletes unsent reports while it is disabled. Trainy does
+not add trip details, searches, user identifiers, custom keys, or custom logs
+to Crashlytics. Unsigned builds and `scripts/archive-ios.sh` run the
+Crashlytics tool in validation-only mode; a signed release-owner archive may
+upload dSYMs only after separate signing/distribution authorization.
+
+The repeatable Release archive and complete-content audit are documented in
+[`../docs/distribution-readiness-2026-07-21.md`](../docs/distribution-readiness-2026-07-21.md).
 
 ## Local tooling note
 
