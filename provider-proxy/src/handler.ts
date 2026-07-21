@@ -250,6 +250,16 @@ async function guardedUpstream<T>(
   runtime: RuntimeDependencies,
   load: () => Promise<T>
 ): Promise<T> {
+  const credential = env.NS_SUBSCRIPTION_KEY?.trim();
+  if (!credential || credential.startsWith("$(") || /[\r\n]/u.test(credential)) {
+    throw new ProxyFault(
+      "missing_credential",
+      "missingCredential",
+      503,
+      "NS data is not configured on the provider proxy."
+    );
+  }
+
   const allowance = await env.UPSTREAM_RATE_LIMITER.limit({ key: `${PROVIDER_ID}:shared` });
   if (!allowance.success) {
     throw new ProxyFault("provider_budget_exhausted", "rateLimited", 429, "NS is busy. Try again shortly.", 60);

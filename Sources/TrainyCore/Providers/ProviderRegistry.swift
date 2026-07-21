@@ -56,6 +56,10 @@ struct ProviderMetadata: Hashable, Identifiable, Sendable {
         implementationStatus == .active && capabilities.contains(.schedule) && availability.canSearch
     }
 
+    var isRiderAvailable: Bool {
+        implementationStatus == .active && availability.canSearch
+    }
+
     var capabilitySummary: String {
         capabilities.sorted { lhs, rhs in
             lhs.displayName.localizedStandardCompare(rhs.displayName) == .orderedAscending

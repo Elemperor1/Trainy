@@ -22,12 +22,10 @@ ENV_SOURCES = (
     (Path(os.environ.get("NS_ENV_FILE") or ROOT / "TrainyIOS/Config/ns.env"), "NS_SUBSCRIPTION_KEY"),
     (Path(os.environ.get("ODPT_ENV_FILE") or ROOT / "TrainyIOS/Config/odpt.env"), "ODPT_CONSUMER_KEY"),
 )
-APP_PRODUCTS = Path(
-    os.environ.get(
-        "TRAINY_BUILD_PRODUCTS_DIR",
-        "/private/tmp/trainy-derived/Build/Products/Debug-iphonesimulator",
-    )
-)
+# The canonical iOS build wrapper owns this fixed output location. Keeping the
+# scan root repository-defined prevents an environment value from expanding the
+# credential audit to arbitrary filesystem paths.
+APP_PRODUCTS = Path("/private/tmp/trainy-derived/Build/Products/Debug-iphonesimulator")
 APP_ONLY_MARKERS = (
     b"gateway.apiportal.ns.nl",
     b"ocp-apim-subscription-key",

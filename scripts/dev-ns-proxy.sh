@@ -29,4 +29,4 @@ export WRANGLER_REGISTRY_PATH="${WRANGLER_REGISTRY_PATH:-$WRANGLER_RUNTIME_DIR/r
 export WRANGLER_SEND_METRICS=false
 
 cd "$ROOT_DIR/provider-proxy"
-npm exec -- wrangler dev --local --ip "$NS_PROXY_HOST" --port "$NS_PROXY_PORT"
+npm exec -- wrangler dev --ip "$NS_PROXY_HOST" --port "$NS_PROXY_PORT"

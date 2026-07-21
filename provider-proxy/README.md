@@ -64,7 +64,8 @@ Reisinformatie API page was reviewed on 2026-07-20 and publishes a limit of 300
 requests per five minutes for external non-paying users, so the global budget
 keeps 20% (60 requests) as operational headroom. Reservations happen before the
 fetch and are not refunded on failure. Cache hits consume neither upstream
-guard.
+guard. A missing, blank, or unresolved credential fails before either upstream
+guard, so configuration failures cannot consume the shared provider allowance.
 
 Cloudflare documents its Rate Limiting binding as location-local, permissive,
 and unsuitable for accurate accounting. It is therefore only a fast abuse
@@ -168,7 +169,7 @@ unsupported keys, substitution syntax, non-loopback hosts, and ports outside
 scripts never replay raw Wrangler output, create `.dev.vars`, or place the
 credential on the command line.
 
-Verification record (2026-07-20): the credential-neutral gate passed 34/34
+Verification record (2026-07-20): the credential-neutral gate passed 35/35
 Workerd tests. Coverage includes same-key coalescing, the whole-response
 deadline, per-field bounds, unknown-station health isolation, strict collection
 shapes, all-invalid versus explicit-empty responses, calendar-valid timestamp

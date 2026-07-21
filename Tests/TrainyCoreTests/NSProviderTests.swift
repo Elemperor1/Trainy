@@ -30,6 +30,7 @@ final class NSProviderTests: XCTestCase {
         XCTAssertEqual(metadata.capabilities, [.stationBoard, .serviceAlerts])
         XCTAssertEqual(metadata.availability.status, .requiresProxy)
         XCTAssertFalse(metadata.availability.canSearch)
+        XCTAssertFalse(metadata.isRiderAvailable)
         XCTAssertTrue(metadata.requirements.contains(.proxy))
         XCTAssertFalse(metadata.requirements.contains { requirement in
             if case .localKey = requirement { return true }
@@ -38,9 +39,15 @@ final class NSProviderTests: XCTestCase {
         XCTAssertTrue(metadata.requirements.contains(.attribution("Data from Nederlandse Spoorwegen (NS)")))
 
         let configured = NSTrainProvider(proxyBaseURL: URL(string: "https://proxy.example")!)
+        let configuredRegistry = ProviderRegistry(
+            providers: [configured],
+            defaultProviderID: configured.providerID
+        )
+        let configuredMetadata = try XCTUnwrap(configuredRegistry.metadata(id: configured.providerID))
         XCTAssertTrue(configured.isConfigured)
-        XCTAssertEqual(configured.implementationStatus, .active)
-        XCTAssertEqual(configured.availability.status, .available)
+        XCTAssertEqual(configuredMetadata.implementationStatus, .active)
+        XCTAssertEqual(configuredMetadata.availability.status, .available)
+        XCTAssertTrue(configuredMetadata.isRiderAvailable)
         XCTAssertTrue(configured.authStrategy.requiresProxy)
     }
 

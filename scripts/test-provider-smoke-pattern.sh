@@ -7,8 +7,10 @@ BAD_ENV="$(mktemp "${TMPDIR:-/tmp}/trainy-bad-provider-env.XXXXXX")"
 DUPLICATE_ENV="$(mktemp "${TMPDIR:-/tmp}/trainy-duplicate-provider-env.XXXXXX")"
 DUPLICATE_ODPT_ENV="$(mktemp "${TMPDIR:-/tmp}/trainy-duplicate-odpt-env.XXXXXX")"
 MALFORMED_QUOTE_ENV="$(mktemp "${TMPDIR:-/tmp}/trainy-malformed-provider-env.XXXXXX")"
+SMOKE_OUT="$(mktemp "${TMPDIR:-/tmp}/trainy-smoke-pattern-out.XXXXXX")"
+SMOKE_ERR="$(mktemp "${TMPDIR:-/tmp}/trainy-smoke-pattern-err.XXXXXX")"
 CURL_CONFIG=""
-trap 'rm -f "$EMPTY_ENV" "$BAD_ENV" "$DUPLICATE_ENV" "$DUPLICATE_ODPT_ENV" "$MALFORMED_QUOTE_ENV" "$CURL_CONFIG"' EXIT
+trap 'rm -f "$EMPTY_ENV" "$BAD_ENV" "$DUPLICATE_ENV" "$DUPLICATE_ODPT_ENV" "$MALFORMED_QUOTE_ENV" "$SMOKE_OUT" "$SMOKE_ERR" "$CURL_CONFIG"' EXIT
 
 # shellcheck source=scripts/lib/provider-smoke-env.sh
 source "$ROOT_DIR/scripts/lib/provider-smoke-env.sh"
@@ -26,14 +28,14 @@ assert_exit_code() {
   shift 2
 
   set +e
-  "$@" >/tmp/trainy-smoke-pattern.out 2>/tmp/trainy-smoke-pattern.err
+  "$@" >"$SMOKE_OUT" 2>"$SMOKE_ERR"
   local actual=$?
   set -e
 
   if [[ "$actual" -ne "$expected" ]]; then
     printf '%s expected exit %s, got %s.\n' "$label" "$expected" "$actual" >&2
     printf 'stderr:\n' >&2
-    sed -n '1,20p' /tmp/trainy-smoke-pattern.err >&2
+    sed -n '1,20p' "$SMOKE_ERR" >&2
     return 1
   fi
 }
@@ -73,17 +75,16 @@ if rg -n -- '-H ".*\$(NS_SUBSCRIPTION_KEY|TFNSW_API_KEY|SWISS_GTFS_RT_API_KEY|AC
   "$ROOT_DIR/scripts/smoke-tdx.sh" \
   "$ROOT_DIR/scripts/smoke-tfnsw.sh" \
   "$ROOT_DIR/scripts/smoke-swiss-gtfs-rt.sh" \
-  "$ROOT_DIR/scripts/capture-swiss-gtfs-rt-fixture.sh" >/tmp/trainy-smoke-pattern.out
+  "$ROOT_DIR/scripts/capture-swiss-gtfs-rt-fixture.sh" >"$SMOKE_OUT"
 then
   printf 'Provider smoke scripts must not pass credentials directly in external curl arguments.\n' >&2
-  sed -n '1,20p' /tmp/trainy-smoke-pattern.out >&2
+  sed -n '1,20p' "$SMOKE_OUT" >&2
   exit 1
 fi
 
-if rg -n -- 'sed .*\$PROXY_LOG|cat .*\$PROXY_LOG' "$ROOT_DIR/scripts/smoke-ns-proxy.sh" >/tmp/trainy-smoke-pattern.out; then
+if rg -n -- 'sed .*\$PROXY_LOG|cat .*\$PROXY_LOG' "$ROOT_DIR/scripts/smoke-ns-proxy.sh" >/dev/null; then
   printf 'NS proxy readiness failures must not replay raw Wrangler output.\n' >&2
   exit 1
 fi
 
-rm -f /tmp/trainy-smoke-pattern.out /tmp/trainy-smoke-pattern.err
 printf 'Provider smoke pattern passed: credentials and local proxy inputs fail closed, and provider values stay out of external argv and console replay.\n'

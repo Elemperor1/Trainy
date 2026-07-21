@@ -57,7 +57,7 @@ scripts/dev-ns-proxy.sh
 TRAINY_PROVIDER_PROXY_BASE_URL=http://127.0.0.1:8787 ODPT_ENV_FILE=/dev/null scripts/build-ios.sh
 ```
 
-Loopback HTTP is accepted for local development; all other proxy URLs must be HTTPS. Do not point the app at the NS API directly.
+Loopback HTTP is accepted for local development through the app's narrowly scoped ATS local-network permission; all other proxy URLs must be HTTPS. Do not point the app at the NS API directly.
 
 Both proxy health and NS data clients stream responses under an absolute
 eight-second deadline. Health is capped at 64 KiB and NS data at 1 MiB before
@@ -121,7 +121,7 @@ Production credentials belong only in the dedicated Cloudflare Worker `trainy-ns
 `scripts/build-ios.sh` intentionally loads only the existing ODPT app-development key. It never loads `ns.env` or passes `NS_SUBSCRIPTION_KEY` to Xcode. The NS proxy-backed UI and production path are verified at the approved free HTTPS endpoint `https://trainy-ns-provider-proxy.trainy-jacob.workers.dev`, and NS is rider-active in provider metadata. The endpoint was explicitly injected into the canonical simulator candidate and verified in that app's `Info.plist`; it is still not a source-controlled default release setting. A build without the endpoint remains honestly unavailable and never falls back to a client-side NS credential.
 
 Verification on 2026-07-20 used iPhone 17 / iOS 26.5: the canonical
-credential-neutral build succeeded, 58/58 iOS tests and 34/34 Workerd contract
+credential-neutral build succeeded, 58/58 iOS tests and 35/35 Workerd contract
 tests passed, and the authorized loopback smoke returned 5 Utrecht station
 matches and 20 fresh departures without exposing the credential. The runtime
 path covered station results, departures, no-match, automatic stale copy,

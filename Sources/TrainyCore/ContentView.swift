@@ -1789,9 +1789,15 @@ private struct ProviderProxyHealthProviderRow: View {
 private struct SupportedRegionsScreen: View {
     @ObservedObject var store: TrainStore
 
-    private var activeProviders: [ProviderMetadata] {
+    private var riderAvailableProviders: [ProviderMetadata] {
         store.providerDirectory
-            .filter { $0.implementationStatus == .active }
+            .filter(\.isRiderAvailable)
+            .sorted { $0.region.displayName.localizedStandardCompare($1.region.displayName) == .orderedAscending }
+    }
+
+    private var configurationRequiredProviders: [ProviderMetadata] {
+        store.providerDirectory
+            .filter { $0.implementationStatus == .active && !$0.availability.canSearch }
             .sorted { $0.region.displayName.localizedStandardCompare($1.region.displayName) == .orderedAscending }
     }
 
@@ -1806,7 +1812,9 @@ private struct SupportedRegionsScreen: View {
     }
 
     private var plannedRegionNames: [String] {
-        let implementedRegionIDs = Set((activeProviders + adapterReadyProviders).map(\.region.id))
+        let implementedRegionIDs = Set(
+            (riderAvailableProviders + configurationRequiredProviders + adapterReadyProviders).map(\.region.id)
+        )
         return store.providerRegions
             .filter { $0.id != ProviderRegion.all.id && !implementedRegionIDs.contains($0.id) }
             .map(\.displayName)
@@ -1840,19 +1848,34 @@ private struct SupportedRegionsScreen: View {
 
                 VStack(alignment: .leading, spacing: RailDesign.Spacing.s) {
                     SectionHeader(title: "Coverage", subtitle: "Bright markers are rider-available now. Adapter-ready and planned regions remain muted.")
-                    SupportedRegionsGlobe(activeRegions: activeProviders.map(\.region.displayName))
+                    SupportedRegionsGlobe(activeRegions: riderAvailableProviders.map(\.region.displayName))
                 }
 
                 SettingsGroup(title: "Available now") {
-                    ForEach(activeProviders) { provider in
+                    ForEach(riderAvailableProviders) { provider in
                         SupportedRegionProviderRow(
                             provider: provider,
                             isActive: provider.id == store.activeProviderID
                         )
-                        if provider.id != activeProviders.last?.id {
+                        if provider.id != riderAvailableProviders.last?.id {
                             Divider()
                                 .background(RailDesign.Palette.hairline)
                         }
+                    }
+                }
+
+                if !configurationRequiredProviders.isEmpty {
+                    SettingsGroup(title: "Needs setup") {
+                        VStack(alignment: .leading, spacing: RailDesign.Spacing.s) {
+                            Text("These rider-ready providers need their required proxy or local configuration before they can be used in this build.")
+                                .font(RailDesign.Typography.small)
+                                .foregroundStyle(RailDesign.Palette.secondaryText)
+                                .fixedSize(horizontal: false, vertical: true)
+                            ForEach(configurationRequiredProviders) { provider in
+                                SupportedRegionProviderRow(provider: provider, isActive: false)
+                            }
+                        }
+                        .padding(.vertical, RailDesign.Spacing.s)
                     }
                 }
 
@@ -1989,12 +2012,17 @@ private struct SupportedRegionsGlobe: View {
 
 /// One provider's region, readiness, and honest availability explanation.
 private struct SupportedRegionProviderRow: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
     let provider: ProviderMetadata
     let isActive: Bool
 
     private var tint: Color {
         if isActive {
             return RailDesign.Palette.success
+        }
+        if !provider.availability.canSearch {
+            return provider.availability.status.tint
         }
         return provider.implementationStatus == .adapterReady
             ? RailDesign.Palette.info
@@ -2005,6 +2033,9 @@ private struct SupportedRegionProviderRow: View {
         if isActive {
             return "Selected"
         }
+        if !provider.availability.canSearch {
+            return provider.availability.status.displayName
+        }
         return provider.implementationStatus.displayName
     }
 
@@ -2013,10 +2044,10 @@ private struct SupportedRegionProviderRow: View {
             return "Starter catalog is active. Add an ODPT consumer key in the developer configuration for official timetable and alert feeds."
         }
         if provider.id == "netherlands-ns" {
-            if provider.implementationStatus == .active {
+            if provider.availability.canSearch {
                 return "Proxy-backed NS station search, departures, and service alerts are rider-available in this configured build."
             }
-            return "The NS adapter and rider surface are complete. A deployed and verified provider proxy is still required before production availability."
+            return provider.availability.message
         }
         return provider.availability.message
     }
@@ -2030,11 +2061,21 @@ private struct SupportedRegionProviderRow: View {
                 .frame(width: 30)
 
             VStack(alignment: .leading, spacing: RailDesign.Spacing.xs) {
-                HStack(alignment: .firstTextBaseline, spacing: RailDesign.Spacing.xs) {
-                    Text(provider.region.displayName)
-                        .font(RailDesign.Typography.h3.weight(.bold))
-                        .foregroundStyle(RailDesign.Palette.ink)
-                    ProviderStatusPill(text: statusText, tint: tint)
+                if dynamicTypeSize.isAccessibilitySize {
+                    VStack(alignment: .leading, spacing: RailDesign.Spacing.xs) {
+                        Text(provider.region.displayName)
+                            .font(RailDesign.Typography.h3.weight(.bold))
+                            .foregroundStyle(RailDesign.Palette.ink)
+                            .fixedSize(horizontal: false, vertical: true)
+                        ProviderStatusPill(text: statusText, tint: tint)
+                    }
+                } else {
+                    HStack(alignment: .firstTextBaseline, spacing: RailDesign.Spacing.xs) {
+                        Text(provider.region.displayName)
+                            .font(RailDesign.Typography.h3.weight(.bold))
+                            .foregroundStyle(RailDesign.Palette.ink)
+                        ProviderStatusPill(text: statusText, tint: tint)
+                    }
                 }
 
                 Text(provider.displayName)

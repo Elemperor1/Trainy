@@ -360,7 +360,7 @@ struct RailGradientBackground: View {
                     RailDesign.Palette.backgroundLift.opacity(0.92),
                     RailDesign.Palette.background.opacity(0.76),
                     RailDesign.Palette.accent.opacity(0.10),
-                    RailDesign.Palette.warningSoft.opacity(0.58)
+                    RailDesign.Palette.warningSoft
                 ],
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing

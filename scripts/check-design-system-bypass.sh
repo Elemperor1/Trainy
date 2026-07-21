@@ -365,7 +365,7 @@ fi
 # alias cannot silently reintroduce them inside the Design System itself.
 if [ -d "$ROOT_DIR/Sources/TrainyCore" ]; then
   while IFS= read -r -d '' palette_file; do
-    rel="${palette_file#$ROOT_DIR/}"
+    rel="${palette_file#"$ROOT_DIR"/}"
     while IFS= read -r line; do
       lineno="${line%%:*}"
       content="${line#*:}"

@@ -641,6 +641,24 @@ describe("Trainy NS provider proxy contract", () => {
     expect(fetcher).not.toHaveBeenCalled();
   });
 
+  it("rejects blank and unresolved credentials before either upstream budget guard", async () => {
+    for (const credential of [" ", "$(NS_SUBSCRIPTION_KEY)"]) {
+      const fetcher = vi.fn() as unknown as typeof fetch;
+      const h = harness({ fetcher, credential });
+      const response = await handleRequest(
+        new Request("https://proxy.example/v1/ns/departures?station=UT"), h.env, h.context, h.dependencies
+      );
+      const body = await response.json() as { error: { code: string } };
+
+      expect(response.status).toBe(503);
+      expect(body.error.code).toBe("missing_credential");
+      expect(h.env.CLIENT_RATE_LIMITER.limit).toHaveBeenCalledTimes(1);
+      expect(h.env.UPSTREAM_RATE_LIMITER.limit).not.toHaveBeenCalled();
+      expect(h.reserveProviderBudget).not.toHaveBeenCalled();
+      expect(fetcher).not.toHaveBeenCalled();
+    }
+  });
+
   it("uses a shared fast limiter before reserving the global provider budget", async () => {
     const fetcher = vi.fn() as unknown as typeof fetch;
     const h = harness({ fetcher, upstreamAllowed: false });
