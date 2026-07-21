@@ -155,11 +155,13 @@ bash -n scripts/lib/odpt-env.sh
 GitHub Actions workflow at `.github/workflows/swift.yml`:
 
 - Runs on push to main/master and pull requests
-- Uses macos-latest runner
-- Runs xcodebuild with `CODE_SIGNING_ALLOWED=NO`
-- Pins checkout and setup-node to reviewed immutable commit SHAs with read-only contents permission and checkout credential persistence disabled
+- Uses the macOS 26 runner and repository-pinned Xcode 26.5 toolchain with `CODE_SIGNING_ALLOWED=NO`
+- Cancels superseded runs on the same branch or pull request
+- Pins the Node 24 checkout action and setup-node to reviewed immutable commit SHAs, configures Node 24 for proxy gates, and keeps read-only contents permission with checkout credential persistence disabled
 - Runs the credential-neutral Workerd contract/type/bundle gate
 - Scans the built app for provider-secret values and NS upstream-only markers
+
+The CodeQL workflow keeps full Swift analysis on main/master pushes and the weekly schedule. On pull requests, its expensive manual Xcode trace runs only when Swift, Xcode-project, package, workflow, or canonical build inputs changed; the stable `Analyze (swift)` check still reports success when the trace is intentionally skipped.
 
 ## Key Concepts
 
