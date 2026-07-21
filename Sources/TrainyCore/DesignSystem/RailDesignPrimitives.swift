@@ -375,6 +375,7 @@ struct RailSearchField: View {
     let prompt: LocalizedStringKey
     @Binding var text: String
     let action: () -> Void
+    var accessibilityIdentifierPrefix: String? = nil
 
     var body: some View {
         RailSurface {
@@ -397,6 +398,7 @@ struct RailSearchField: View {
                         .submitLabel(.search)
                         .onSubmit(action)
                         .accessibilityLabel(title)
+                        .accessibilityIdentifier(identifier("field"))
 
                     Button(action: action) {
                         Image(systemName: "arrow.right")
@@ -411,6 +413,7 @@ struct RailSearchField: View {
                     .buttonStyle(PressableButtonStyle())
                     .disabled(text.trimmingCharacters(in: .whitespacesAndNewlines).count < 2)
                     .accessibilityLabel("Search NS stations")
+                    .accessibilityIdentifier(identifier("submit"))
                 }
                 .padding(.leading, RailDesign.Spacing.s)
                 .background(
@@ -423,6 +426,11 @@ struct RailSearchField: View {
                 )
             }
         }
+    }
+
+    private func identifier(_ suffix: String) -> String {
+        guard let accessibilityIdentifierPrefix else { return "" }
+        return "\(accessibilityIdentifierPrefix).\(suffix)"
     }
 }
 

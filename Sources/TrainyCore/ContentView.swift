@@ -3,14 +3,17 @@ import SwiftUI
 import UIKit
 
 public struct ContentView: View {
-    @StateObject private var store = TrainStore()
+    @ObservedObject private var rootDependencies: TrainyRootDependencies
+    @ObservedObject private var store: TrainStore
     @State private var selectedTab: RailTab = .trips
     @State private var presentedSheet: RailSheet?
     @AppStorage("trainy.timeFormat") private var timeFormatRaw = UserPreferences.TimeFormat.hour12.rawValue
     @AppStorage("trainy.unitSystem") private var unitSystemRaw = UserPreferences.UnitSystem.metric.rawValue
     @AppStorage("trainy.sourceLabelVerbosity") private var sourceLabelVerbosityRaw = UserPreferences.SourceLabelVerbosity.compact.rawValue
 
-    public init() {
+    public init(rootDependencies: TrainyRootDependencies) {
+        _rootDependencies = ObservedObject(wrappedValue: rootDependencies)
+        _store = ObservedObject(wrappedValue: rootDependencies.store)
         let appearance = UITabBarAppearance()
         appearance.configureWithDefaultBackground()
         appearance.backgroundEffect = UIBlurEffect(style: .systemUltraThinMaterial)
@@ -42,7 +45,11 @@ public struct ContentView: View {
             .tag(RailTab.search)
 
             NavigationStack {
-                StationsScreen(store: store)
+                StationsScreen(
+                    store: store,
+                    nsProvider: rootDependencies.nsProvider,
+                    nsStartsLoading: rootDependencies.nsStartsLoading
+                )
             }
             .tabItem { Label(RailTab.stations.title, systemImage: RailTab.stations.symbolName) }
             .tag(RailTab.stations)
@@ -1110,6 +1117,7 @@ private struct SearchResultCard: View {
                 .buttonStyle(.borderedProminent)
                 .controlSize(.small)
                 .tint(RailDesign.Palette.accent)
+                .accessibilityIdentifier("search.track.\(trip.id)")
             }
         }
         .padding(RailDesign.Spacing.m)
@@ -1121,12 +1129,15 @@ private struct SearchResultCard: View {
         .sheet(item: $sourceDetailTrip) { trip in
             SourceDetailSheet(trip: trip)
         }
+        .accessibilityIdentifier("search.result.\(trip.id)")
     }
 }
 
 
 private struct StationsScreen: View {
     @ObservedObject var store: TrainStore
+    let nsProvider: any NSRiderDataProviding
+    let nsStartsLoading: Bool
     @State private var stationQuery = ""
 
     private var stations: [StationSnapshot] {
@@ -1164,7 +1175,7 @@ private struct StationsScreen: View {
         ScrollView {
             VStack(alignment: .leading, spacing: RailDesign.Spacing.l) {
                 NavigationLink {
-                    NSStationSearchView(proxyBaseURL: store.providerProxyConfiguration.baseURL)
+                    NSStationSearchView(provider: nsProvider, startsLoading: nsStartsLoading)
                 } label: {
                     RailSurface(role: .accent(RailDesign.Palette.accent)) {
                         RailNavigationCard(
@@ -1179,6 +1190,7 @@ private struct StationsScreen: View {
                 }
                 .buttonStyle(.plain)
                 .accessibilityHint("Opens NS station search and freshness-labelled departure boards")
+                .accessibilityIdentifier("stations.nsDepartures")
                 .padding(.horizontal, RailDesign.Spacing.m)
                 .padding(.top, RailDesign.Spacing.s)
 
