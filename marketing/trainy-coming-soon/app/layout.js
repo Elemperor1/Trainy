@@ -17,6 +17,7 @@ export const viewport = {
   colorScheme: "dark",
 };
 
+/** Provides the document shell and shared metadata for the launch site. */
 export default function RootLayout({ children }) {
   return (
     <html lang="en">

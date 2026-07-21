@@ -7,7 +7,7 @@ mkdir -p "$OUTPUT"
 cd "$ROOT"
 
 frames=(
-  52 120 183 245 360 441 520
+  52 120 183 245 360 445 520
   630 780 900 1033 1130 1210 1320
   1440 1535 1660 1670 1710 1798 1838
   1885 1930 1945 2010 2081 2143 2257
@@ -32,10 +32,10 @@ if command -v ffmpeg >/dev/null 2>&1; then
 elif command -v magick >/dev/null 2>&1; then
   magick montage "$OUTPUT"/shot-*.png \
     -thumbnail 384x216 \
-    -tile 7x4 \
+    -tile 6x5 \
     -geometry +3+3 \
     -background '#080B0D' \
-    "$OUTPUT/contact-sheet.jpg" || true
+    "$OUTPUT/contact-sheet.jpg"
 fi
 
 echo "Rendered ${#frames[@]} internal-shot midpoint stills."

@@ -1,3 +1,4 @@
+/** Renders the directional icon used by launch-site links. */
 const Arrow = ({ external = false }) => (
   <svg viewBox="0 0 24 24" aria-hidden="true">
     {external ? (
@@ -15,6 +16,7 @@ const Arrow = ({ external = false }) => (
   </svg>
 );
 
+/** Selects the line icon associated with a rider-journey feature. */
 const FeatureIcon = ({ type }) => {
   const paths = {
     train: <><path d="M7 16h10l2-3V6c0-3-3-4-7-4S5 3 5 6v7l2 3Z"/><path d="M8 7h8M9 12h.01M15 12h.01M8 19l2-3M16 19l-2-3"/></>,
@@ -39,6 +41,7 @@ const sources = [
   ["realtime", "signal", "Realtime provider status", "Live updates only when a provider supports them.", "Live"],
 ];
 
+/** Renders the complete Trainy coming-soon landing page. */
 export default function Home() {
   return (
     <main>
@@ -127,8 +130,8 @@ export default function Home() {
       <footer className="page-shell">
         <span>© 2026 Trainy</span>
         <div>
-          <a href="#principles">Privacy</a>
-          <a href="#product">Accessibility</a>
+          <a href="#principles">Data principles</a>
+          <a href="#product">Product journey</a>
           <span>Built with Codex</span>
         </div>
       </footer>

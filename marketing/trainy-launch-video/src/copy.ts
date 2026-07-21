@@ -14,8 +14,9 @@ export const copy = {
     unavailable: "Clear when it isn’t.",
   },
   build: {
-    line: "Built with Codex.",
-    detail: "Verified in Simulator.",
+    line: "Built with Codex + GPT‑5.6",
   },
+  brand: "Trainy",
   tagline: "Know before you go.",
+  credit: "Created with GPT‑5.6 Sol + Skills",
 } as const;

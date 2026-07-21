@@ -1,6 +1,6 @@
 # 003 — Remove presentation scaffolding and let the product speak
 
-- **Status**: TODO
+- **Status**: DONE
 - **Commit**: a2b6633
 - **Severity**: HIGH
 - **Category**: typographic motion and information hierarchy
@@ -100,7 +100,9 @@ letterSpacing: "-0.052em",
 
 ## Verification
 
-- **Mechanical**: run `rg -n 'CONTEXT FIRST|PROVIDER TRUTH|SECURE PATH|GRACEFUL FALLBACK|AVAILABLE|ADAPTS|APPEARANCE|PRIVACY|Contract|Credential boundaries|Simulator|Audit|01|02|03|04' marketing/trainy-launch-video/src`; there must be no on-screen marketing-copy hits. Run `npm run lint` and `npm run build`; both must exit 0.
+- **Mechanical**: run `npm run copy:check`; it must verify the exact ordered
+  `src/copy.ts` values, the seven-word main-line limit, and the required final
+  credit. Then run `rg -n 'CONTEXT FIRST|PROVIDER TRUTH|SECURE PATH|GRACEFUL FALLBACK|AVAILABLE|ADAPTS|APPEARANCE|PRIVACY|Contract|Credential boundaries|Simulator|Audit|01|02|03|04' marketing/trainy-launch-video/src`; there must be no on-screen marketing-copy hits. Run `npm run lint` and `npm run build`; both must exit 0.
 - **Feel check**: watch the review muted and confirm:
   - every line sounds natural when spoken aloud;
   - the copy speaks to a traveler, not a judge or engineering reviewer;

@@ -15,6 +15,7 @@ export const TrainyLaunchSchema = z.object({
 
 export type TrainyLaunchProps = z.infer<typeof TrainyLaunchSchema>;
 
+/** Composes the product journey, licensed score, and final creation credit. */
 export const TrainyLaunch: React.FC<TrainyLaunchProps> = ({
   brandName,
   tagline,
@@ -38,6 +39,7 @@ export const TrainyLaunch: React.FC<TrainyLaunchProps> = ({
   </AbsoluteFill>
 );
 
+/** Registers the editable launch-film composition and poster with Remotion. */
 export const RemotionRoot: React.FC = () => (
   <Folder name="Marketing">
     <Composition
@@ -49,9 +51,9 @@ export const RemotionRoot: React.FC = () => (
       height={2160}
       schema={TrainyLaunchSchema}
       defaultProps={{
-        brandName: "Trainy",
+        brandName: copy.brand,
         tagline: copy.tagline,
-        credit: "Created with GPT‑5.6 Sol + Skills",
+        credit: copy.credit,
         accent: "#45C2A6",
       }}
     />
@@ -62,7 +64,7 @@ export const RemotionRoot: React.FC = () => (
       height={2160}
       schema={z.object({ brandName: z.string(), tagline: z.string() })}
       defaultProps={{
-        brandName: "Trainy",
+        brandName: copy.brand,
         tagline: copy.tagline,
       }}
     />

@@ -16,6 +16,7 @@ type PhoneFootageProps = {
   readonly animateIn?: boolean;
 };
 
+/** Renders simulator footage inside Trainy's animated phone treatment. */
 export const PhoneFootage: React.FC<PhoneFootageProps> = ({
   name,
   file,
@@ -30,8 +31,22 @@ export const PhoneFootage: React.FC<PhoneFootageProps> = ({
   animateIn = true,
 }) => {
   const frame = useCurrentFrame();
-  const translateFrom =
-    enterFrom === "left" ? "-120px 0px" : enterFrom === "bottom" ? "0px 120px" : "120px 0px";
+  const translateFromX = enterFrom === "left" ? -120 : enterFrom === "right" ? 120 : 0;
+  const translateFromY = enterFrom === "bottom" ? 120 : 0;
+  const translateX = animateIn
+    ? interpolate(frame, [0, 36], [translateFromX, 0], {
+        extrapolateLeft: "clamp",
+        extrapolateRight: "clamp",
+        easing: Easing.bezier(0.16, 1, 0.3, 1),
+      })
+    : 0;
+  const translateY = animateIn
+    ? interpolate(frame, [0, 36], [translateFromY, 0], {
+        extrapolateLeft: "clamp",
+        extrapolateRight: "clamp",
+        easing: Easing.bezier(0.16, 1, 0.3, 1),
+      })
+    : 0;
 
   return (
     <Interactive.Div
@@ -52,13 +67,7 @@ export const PhoneFootage: React.FC<PhoneFootageProps> = ({
               easing: Easing.bezier(0.16, 1, 0.3, 1),
             })
           : 1,
-        translate: animateIn
-          ? interpolate(frame, [0, 36], [translateFrom, "0px 0px"], {
-              extrapolateLeft: "clamp",
-              extrapolateRight: "clamp",
-              easing: Easing.bezier(0.16, 1, 0.3, 1),
-            })
-          : "0px 0px",
+        translate: `${translateX}px ${translateY}px`,
         scale: animateIn
           ? interpolate(frame, [0, 44], [0.965, 1], {
               extrapolateLeft: "clamp",

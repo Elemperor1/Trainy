@@ -1,12 +1,17 @@
 # 001 — Replace alternating wipes with one continuous journey
 
-- **Status**: TODO
+- **Status**: DONE
 - **Commit**: a2b6633
 - **Severity**: HIGH
 - **Category**: continuity and choreography
 - **Estimated scope**: 3 files, approximately 500 lines replaced or removed
 
 ## Problem
+
+> Historical snapshot: the `SceneShell.tsx`, `ShotLayer`, and nine-section
+> `Root.tsx` excerpts below describe commit `a2b6633`, before the completed
+> continuous-journey refactor. They are retained as the rationale for the work,
+> not as a description of the current tree.
 
 The film resets its visual grammar at both the scene level and the shot level. `SceneShell` reveals every major section with the same diagonal rail wipe:
 

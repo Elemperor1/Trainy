@@ -20,7 +20,7 @@ is recorded below after the delivery renders complete.
   visible, and disappears completely for the product and identity resolves.
 - Main-story copy is traveler-first. Audit counts, architecture, implementation
   details, capability taxonomies, and generic Build Week language were removed.
-  One factual line—`Built with Codex.` / `Verified in Simulator.`—satisfies the
+  One factual line—`Built with Codex + GPT‑5.6`—satisfies the
   Build Week contribution beat without interrupting the product journey.
 - The simulator clock is locked to `9:21` in every final capture. Japan and
   Utrecht each use one uninterrupted recording; no recording is restarted at a

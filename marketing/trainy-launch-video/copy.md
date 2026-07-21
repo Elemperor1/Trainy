@@ -13,8 +13,8 @@ film; every other readable product label comes from captured Trainy UI.
 6. `What leaves next?`
 7. `Live when it’s live.`
 8. `Clear when it isn’t.`
-9. `Built with Codex.`
-10. `Verified in Simulator.`
+9. `Built with Codex + GPT‑5.6`
+10. `Trainy`
 11. `Know before you go.`
 
 The required post-film credit is `Created with GPT‑5.6 Sol + Skills`.

@@ -1,6 +1,6 @@
 # 002 — Cut to the approved score's musical phrases
 
-- **Status**: TODO
+- **Status**: DONE
 - **Commit**: a2b6633
 - **Severity**: HIGH
 - **Category**: timing and rhythm
@@ -8,10 +8,14 @@
 
 ## Problem
 
+> Historical snapshot: the evenly spaced Build Week sequences below describe
+> commit `a2b6633`. The current `Scenes.tsx` has been retimed to the approved cue
+> map, so the obsolete line-number reference has intentionally been removed.
+
 Most internal cuts are evenly spaced at 82–112 frames, independent of the score. The Build Week section is the clearest example:
 
 ```tsx
-// marketing/trainy-launch-video/src/scenes/Scenes.tsx:958 — current
+// marketing/trainy-launch-video/src/scenes/Scenes.tsx — prior commit a2b6633
 <Sequence durationInFrames={96} layout="none">
 // ...
 <Sequence from={82} durationInFrames={96} layout="none">

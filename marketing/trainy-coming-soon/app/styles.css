@@ -54,7 +54,7 @@ h1 { max-width: 660px; font-size: clamp(58px, 6.2vw, 92px); line-height: .98; fo
 .button { min-height: 56px; display: inline-flex; align-items: center; justify-content: center; gap: 34px; padding: 0 26px; border-radius: var(--radius); text-decoration: none; font-size: 16px; font-weight: 660; transition: transform 160ms ease, background 160ms ease; }
 .button:hover { transform: translateY(-2px); }
 .button:focus-visible, .text-link:focus-visible { outline: 3px solid var(--cyan); outline-offset: 4px; }
-.button svg, .text-link svg { width: 20px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.button svg, .text-link svg { width: 20px; fill: none; stroke: currentcolor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 .button-light { background: #f7fafc; color: #07121f; }
 .button-light:hover { background: var(--cyan); }
 .text-link { display: inline-flex; gap: 8px; align-items: center; color: #dce5ef; font-size: 14px; text-underline-offset: 5px; }
@@ -72,7 +72,7 @@ h1 { max-width: 660px; font-size: clamp(58px, 6.2vw, 92px); line-height: .98; fo
 .journey li::before { content: ""; position: absolute; left: -86px; top: 50%; width: 13px; height: 13px; transform: translateY(-50%); background: var(--cyan); border: 5px solid var(--navy-deep); box-shadow: 0 0 0 2px #8295a9; border-radius: 50%; }
 .number { color: var(--cyan); font-size: 22px; font-variant-numeric: tabular-nums; }
 .icon-circle { width: 68px; height: 68px; display: inline-grid; place-items: center; border: 1px solid #66778a; border-radius: 50%; }
-.icon-circle svg { width: 31px; height: 31px; fill: none; stroke: currentColor; stroke-width: 1.65; stroke-linecap: round; stroke-linejoin: round; }
+.icon-circle svg { width: 31px; height: 31px; fill: none; stroke: currentcolor; stroke-width: 1.65; stroke-linecap: round; stroke-linejoin: round; }
 .feature-copy, .source-copy { display: flex; flex-direction: column; gap: 8px; }
 .feature-copy strong, .source-copy strong { font-size: 22px; letter-spacing: -0.025em; }
 .feature-copy span, .source-copy span { color: var(--muted); font-size: 15px; line-height: 1.55; }
@@ -150,7 +150,7 @@ footer a, footer div span { color: #aab6c5; font-size: 13px; }
   .coverage .globe { width: 48px; height: 48px; }
   .coverage strong { flex-basis: calc(100% - 70px); align-self: center; }
   .coverage i { display: none; }
-  .coverage > span:not(.globe) { margin-left: 66px; flex-basis: 100%; }
+  .coverage > span:not(.globe) { margin-left: 66px; flex-basis: calc(100% - 66px); }
   .closing { min-height: 560px; }
   .closing-inner { min-height: 560px; grid-template-columns: 1fr; padding-block: 64px 0; }
   .track-art { min-height: 170px; }

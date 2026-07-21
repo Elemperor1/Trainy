@@ -19,6 +19,7 @@ const symmetricEase = Easing.bezier(0.45, 0, 0.55, 1);
 const captureWidth = 1206;
 const captureHeight = 2622;
 
+/** Interpolates a clamped motion value with the shared cinematic easing. */
 const move = (
   frame: number,
   input: readonly number[],
@@ -31,6 +32,7 @@ const move = (
     easing,
   });
 
+/** Fades a layer in and out within its local sequence window. */
 const windowOpacity = (frame: number, duration: number, edge = 24) =>
   Math.min(move(frame, [0, edge], [0, 1]), move(frame, [duration - edge, duration], [1, 0]));
 
@@ -49,17 +51,19 @@ const cameraPoses: Record<CameraPoseName, CameraPose> = {
   detail: { centerX: 1920, centerY: 1080, scale: 0.82 },
 };
 
+/** Resolves a normalized camera pose into 4K translation coordinates. */
 const resolvePose = (pose: CameraPose) => ({
   x: pose.centerX - (captureWidth * pose.scale) / 2,
   y: pose.centerY - (captureHeight * pose.scale) / 2,
   scale: pose.scale,
 });
 
+/** Keeps the persistent rail and signal field mounted across the journey. */
 const JourneyField: React.FC<{ readonly accent: string }> = ({ accent }) => {
   const frame = useCurrentFrame();
   const progress = frame / 2519;
   const finalRelease = move(frame, [2241, 2330], [1, 0], symmetricEase);
-  const railPresence = move(frame, [0, 199, 441, 846, 2241], [1, 0.72, 0.2, 0.12, 0], symmetricEase);
+  const railPresence = move(frame, [0, 199, 445, 846, 2241], [1, 0.72, 0.2, 0.12, 0], symmetricEase);
   const fieldColor = interpolateColors(
     frame,
     [0, 457, 862, 1518, 1698, 2241],
@@ -144,6 +148,7 @@ type FilmLineProps = {
   readonly dark?: boolean;
 };
 
+/** Presents one short traveler-facing line with an optional factual subline. */
 const FilmLine: React.FC<FilmLineProps> = ({
   name,
   line,
@@ -158,7 +163,7 @@ const FilmLine: React.FC<FilmLineProps> = ({
 }) => {
   const frame = useCurrentFrame();
   const arrival = move(frame, [0, 16], [0, 1]);
-  const opacity = windowOpacity(frame, duration, 18);
+  const opacity = windowOpacity(frame, duration, 16);
   return (
     <Interactive.Div
       name={name}
@@ -216,6 +221,7 @@ type ProductClipProps = {
   readonly accent?: string;
 };
 
+/** Places a simulator capture in the shared crop-safe film camera. */
 const ProductClip: React.FC<ProductClipProps> = ({
   name,
   file,
@@ -280,6 +286,7 @@ const ProductClip: React.FC<ProductClipProps> = ({
   );
 };
 
+/** Introduces the Trainy mark and opening traveler question. */
 const OpeningBeat: React.FC<{ readonly duration: number }> = ({ duration }) => {
   const frame = useCurrentFrame();
   const fade = move(frame, [duration - 28, duration], [1, 0]);
@@ -306,6 +313,7 @@ const OpeningBeat: React.FC<{ readonly duration: number }> = ({ duration }) => {
   );
 };
 
+/** Resolves the product journey into Trainy's final brand identity. */
 const EndIdentity: React.FC<{
   readonly brandName: string;
   readonly tagline: string;
@@ -373,6 +381,7 @@ const EndIdentity: React.FC<{
   );
 };
 
+/** Runs the continuous rider journey through all product and identity beats. */
 export const LaunchJourney: React.FC<{
   readonly brandName: string;
   readonly tagline: string;
@@ -409,8 +418,8 @@ export const LaunchJourney: React.FC<{
 
     <Sequence
       name="Tokyo to Shin-Osaka continuous search journey"
-      from={441}
-      durationInFrames={600}
+      from={445}
+      durationInFrames={596}
       layout="none"
     >
       <ProductClip
@@ -562,9 +571,8 @@ export const LaunchJourney: React.FC<{
     </Sequence>
     <Sequence name="OpenAI Build Week contribution" from={1845} durationInFrames={90} layout="none">
       <FilmLine
-        name="Built with Codex and verified in Simulator"
+        name="Built with Codex and GPT-5.6"
         line={copy.build.line}
-        subline={copy.build.detail}
         duration={90}
         x={250}
         y={650}
@@ -596,6 +604,7 @@ export const LaunchJourney: React.FC<{
   </AbsoluteFill>
 );
 
+/** Holds the required creation credit over the score's silent tail. */
 export const CreditScene: React.FC<{ readonly credit: string; readonly duration: number }> = ({
   credit,
   duration,
@@ -632,6 +641,7 @@ export const CreditScene: React.FC<{ readonly credit: string; readonly duration:
   );
 };
 
+/** Renders the static launch poster from the same identity system. */
 export const TrainyPoster: React.FC<{
   readonly brandName: string;
   readonly tagline: string;

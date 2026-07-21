@@ -46,7 +46,7 @@ final class TrainyCriticalUITests: XCTestCase {
         sleep(2)
 
         let start = element("onboarding.start")
-        XCTAssertTrue(start.isHittable)
+        scrollUntilHittable(start)
         start.tap()
         XCTAssertTrue(onboarding.waitForNonExistence(timeout: 5))
         XCTAssertTrue(app.tabBars.buttons["Trips"].isSelected)
@@ -109,8 +109,7 @@ final class TrainyCriticalUITests: XCTestCase {
 
         app.tabBars.buttons["Trips"].tap()
         XCTAssertTrue(app.navigationBars["Trips"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.staticTexts["Nozomi 231"].exists)
-        sleep(3)
+        XCTAssertTrue(app.staticTexts["Nozomi 231"].waitForExistence(timeout: 5))
     }
 
     func testCredentialNeutralFallbackAndProviderStatusAreExplicit() throws {
@@ -228,7 +227,11 @@ final class TrainyCriticalUITests: XCTestCase {
 
         let loading = element("ns.stationSearch.loading")
         XCTAssertTrue(loading.waitForExistence(timeout: 5))
-        XCTAssertEqual(loading.label, "Loading rail updates")
+        let accessibleLabel = XCTNSPredicateExpectation(
+            predicate: NSPredicate(format: "label == 'Loading rail updates'"),
+            object: loading
+        )
+        XCTAssertEqual(XCTWaiter.wait(for: [accessibleLabel], timeout: 5), .completed)
     }
 
     func testNSJourneyInLightDarkAndAX2XL() throws {
@@ -277,9 +280,13 @@ final class TrainyCriticalUITests: XCTestCase {
     }
 
     private func openNSStationSearch() {
-        app.tabBars.buttons["Stations"].tap()
+        let stationsTab = app.tabBars.buttons["Stations"]
+        XCTAssertTrue(stationsTab.waitForExistence(timeout: 5))
+        XCTAssertTrue(stationsTab.isHittable)
+        stationsTab.tap()
         let link = element("stations.nsDepartures")
         XCTAssertTrue(link.waitForExistence(timeout: 5))
+        scrollUntilHittable(link)
         link.tap()
         XCTAssertTrue(element("ns.stationSearch.screen").waitForExistence(timeout: 5))
     }

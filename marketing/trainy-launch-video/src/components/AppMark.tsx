@@ -5,6 +5,7 @@ type AppMarkProps = {
   readonly size?: number;
 };
 
+/** Renders the repository-owned Trainy app icon at a requested film size. */
 export const AppMark: React.FC<AppMarkProps> = ({ name = "Trainy app mark", size = 420 }) => {
   const frame = useCurrentFrame();
 
