@@ -802,7 +802,7 @@ def audit_archive(args: argparse.Namespace) -> Audit:
     else:
         audit.warn(
             "code signing",
-            "archive is intentionally unsigned because this host has no signing identity or provisioning profile; distribution signing remains external",
+            "archive is intentionally unsigned by the non-uploading audit workflow; a separately authorized signed export still requires signature, profile, and entitlement validation",
         )
 
     dynamic_dependencies = run(["otool", "-L", str(executable)]) if executable.is_file() else None

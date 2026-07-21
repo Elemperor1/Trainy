@@ -7,6 +7,8 @@ both execute it.
 
 ## Coverage
 
+- First-launch data-scope onboarding, AX2XL layout, completion, and Settings
+  replay.
 - Shinkansen tracked-service search, no-match copy, and recovery.
 - Credential-neutral starter-catalog fallback and truthful provider-status
   grouping.
@@ -23,7 +25,8 @@ network request, and contain no credentials. They are not an alternate UI or a
 test-only screen branch.
 
 Stable identifiers are reserved for automation seams such as
-`stations.nsDepartures`, `ns.stationSearch.field`, `ns.station.UT`, and
+`onboarding.screen`, `onboarding.start`, `stations.nsDepartures`,
+`ns.stationSearch.field`, `ns.station.UT`, and
 `ns.departure.fixture-sprinter-7400`. The suite uses semantic labels only for
 native controls whose identifier is owned by the system search field or where
 the rider-facing accessibility text itself is the contract.

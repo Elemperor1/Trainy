@@ -8,6 +8,37 @@ This workspace now contains three development surfaces:
 - `TrainyIOS/`: thin native SwiftUI iOS app wrapper for signing, app resources, and packaging.
 - Root `index.html`: self-contained browser prototype with no external dependencies.
 
+## OpenAI Build Week judge quick start
+
+Trainy is an iOS rail companion built with Codex and GPT-5.6. The Build Week
+work focused on trustworthy provider status, deterministic simulator coverage,
+accessible first-run guidance, and a repeatable privacy and distribution audit.
+
+The fastest credential-neutral review path is the iPhone 17 simulator. It uses
+the production NS proxy URL and leaves the optional ODPT developer credential
+empty:
+
+```bash
+ODPT_ENV_FILE=/dev/null \
+TRAINY_PROVIDER_PROXY_BASE_URL='https://trainy-ns-provider-proxy.trainy-jacob.workers.dev' \
+CODE_SIGNING_ALLOWED=NO \
+scripts/build-ios.sh
+```
+
+Open `TrainyIOS/Trainy.xcodeproj`, select the `Trainy` scheme and an iPhone 17
+simulator, then run. First launch presents onboarding that explains Trainy's
+starter, scheduled, and realtime labels. No provider credential is required to
+review the Shinkansen starter experience or the production-backed Netherlands
+station-board path.
+
+For deterministic review of onboarding, search, provider truth, NS departures,
+failure recovery, Light/Dark Mode, and AX2XL behavior, run the `TrainyUITests`
+group documented in
+[`docs/simulator-ui-automation.md`](docs/simulator-ui-automation.md). The
+release archive, privacy manifests, secret boundary, and signing evidence are
+owned by
+[`docs/distribution-readiness-2026-07-21.md`](docs/distribution-readiness-2026-07-21.md).
+
 ## What it does
 
 - Tracks multiple Shinkansen journeys with live-style status, route progress, platforms, next stop, ETA, and speed.
@@ -186,11 +217,13 @@ After a credential-neutral build, `scripts/check-provider-secret-boundary.py` sc
 Current 2026-07-20 verification: 58/58 credential-neutral iOS tests and 35/35 Workerd contract tests passed. The authorized loopback proxy smoke returned 5 Utrecht station matches and 20 fresh departures without printing or persisting the credential. The canonical build also succeeded with ODPT empty and only the public HTTPS proxy base URL configured. The four-case secret-boundary regression suite, provider-smoke parser/host/port suite, 25-case design-system guard self-test, 28-file repository design-system scan, and final boundary scan passed. The expanded final scan checked 58,811 repository/generated/log files plus 122 shipping app files. It found and removed one earlier Xcode DerivedData cache whose private build-command attachments retained an authorized local credential; the clean rerun found neither authorized local provider value nor an NS upstream-only marker in the shipping app.
 
 The 2026-07-21 distribution pass produced a fresh Release xcarchive and passed
-65/65 Xcode tests, 35/35 Workerd contract tests, 27 design-system guard
+66/66 Xcode tests, 35/35 Workerd contract tests, 27 design-system guard
 fixtures, the 29-file design-system repository scan, and a 44-check final
 archive audit with zero failures. The audit is content-complete but explicitly
-unsigned because this Mac has no Apple signing identity or provisioning
-profile; see the owning distribution-readiness record above.
+unsigned. A separate Release-configured iPhoneOS app passed strict signature
+verification with the installed one-device Personal Team development profile;
+that is device-demo proof, not App Store or TestFlight distribution. See the
+owning distribution-readiness record above.
 
 The iPhone 17 / iOS 26.5 runtime pass exercised live Utrecht search and departure results, source-backed no-match, automatic stale copy, forced offline fallback, and recovery after the loopback Worker restarted. Light and Dark Mode and AX2XL reflow were inspected separately. With VoiceOver actually enabled, the simulator accessibility tree exposed headings, the labelled station field and 44-by-44-point submit action, station-name/code buttons, source/freshness text, and 54-point tabs in logical order. The simulator was restored to standard Large text, Dark Mode, VoiceOver off, and normal contrast afterward.
 

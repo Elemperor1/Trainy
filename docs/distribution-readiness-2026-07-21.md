@@ -7,18 +7,20 @@ audit with **0 failures across 44 checks**. The shipped app contains no known
 credential value, private endpoint, local path, debug/test payload, embedded
 third-party framework, extension, or undeclared privacy behavior.
 
-The result is **content-ready but not distribution-signed**. This Mac has no
-valid Apple signing identity or provisioning profile, and the project does not
-set a development team. The archive was therefore created with
-`CODE_SIGNING_ALLOWED=NO`. Signing, export, and installation on a physical
-device remain an external release-owner prerequisite. Nothing was uploaded,
-notarized, exported, distributed, deployed, committed, pushed, merged, or sent
-to a pull request during this audit.
+The result is **content-ready but not distribution-signed**. The archive was
+created with `CODE_SIGNING_ALLOWED=NO` so the complete shipped-content audit
+cannot upload or be mistaken for distribution proof. A later signing follow-up
+created and verified a Release-configured iPhoneOS app with the installed
+Personal Team Apple Development identity and one-device profile. That artifact
+is suitable for the registered-device demo only: `get-task-allow=true`, and the
+profile cannot produce an App Store or TestFlight distribution. Nothing was
+uploaded, notarized, exported, distributed, deployed, committed, pushed,
+merged, or sent to a pull request during this audit.
 
 ## Scope and source state
 
 - Repository HEAD at audit start:
-  `5895bcdf413c1dbd89ed1cf233c6086e2d1600d4`.
+  `cd7c5f466bce34c5fec175467028eabfc45ade85`.
 - Xcode: 26.5 (`17F42`); SDK: `iphoneos26.5`; macOS: 26.5.2
   (`25F84`).
 - Scheme/configuration/destination: shared `Trainy` / `Release` /
@@ -32,15 +34,36 @@ to a pull request during this audit.
 
 | Item | Identity |
 | --- | --- |
-| Archive | `/private/tmp/trainy-distribution/2026-07-21-final/Trainy.xcarchive` |
-| Result bundle | `/private/tmp/trainy-distribution/2026-07-21-final/Trainy.xcresult` |
-| Machine-readable audit | `/private/tmp/trainy-distribution/2026-07-21-final/audit.json` |
-| Archive tree SHA-256 | `155f9cb9b91a8a581766172f91b0af606823caa167cae39c77c9704acf1ff6ea` |
-| App binary SHA-256 | `ba8488cc27cda22223fba4a2a1cd471c2dd1c435e7154a04b1a7bf315d072bf3` |
-| App arm64 UUID | `71FAB2F1-936D-303C-A7FB-AC88453D57DF` |
-| dSYM DWARF SHA-256 | `e67e555782a5629662d13133edc959614503992c86ae70060b67551c5e967821` |
+| Archive | `/private/tmp/trainy-distribution/2026-07-21-devpost/Trainy.xcarchive` |
+| Result bundle | `/private/tmp/trainy-distribution/2026-07-21-devpost/Trainy.xcresult` |
+| Machine-readable audit | `/private/tmp/trainy-distribution/2026-07-21-devpost/audit.json` |
+| Archive tree SHA-256 | `dc7ea5f07cd86ea65303d765927b342abf529ed4dacde6ee1ef098ba3cf67aea` |
+| App binary SHA-256 | `454432f7b3e02f1b52302dec776d31fb0dd7b543f5124d489a51682638b7f9b1` |
+| App arm64 UUID | `A76EA5F1-C540-33F3-A696-666B29498645` |
+| dSYM DWARF SHA-256 | `149efcc84d9caffd0b9993c17e273ee5d5394237ab5fd5e93a5eb6064a39f147` |
 | App / dSYM UUID match | Yes |
 | Signing | Unsigned; no embedded profile or entitlement file |
+
+## Development-signed demo proof
+
+The same source also produced
+`/private/tmp/trainy-device-derived-20260721/Build/Products/Release-iphoneos/Trainy.app`.
+Strict code-signature verification passed with these non-secret properties:
+
+| Property | Result |
+| --- | --- |
+| Signature authority | Apple Development |
+| Bundle / team match | `com.jacobcyber.Trainy` / `KR4JDRB59R` |
+| Provisioning | One registered device; expires `2026-07-28T16:53:12Z` |
+| Entitlements | `application-identifier`, `com.apple.developer.team-identifier`, `get-task-allow` |
+| Debug entitlement | `get-task-allow=true` |
+| Binary SHA-256 | `05960a986e903fba998462831948f73011821a558ed3325c423a92a088d3bd06` |
+| Product defaults | Crashlytics off; production HTTPS NS proxy pinned |
+
+The phone was paired and in Developer Mode but offline when installation was
+attempted (`tunnelState=unavailable`, developer services unavailable). Reconnect
+and unlock that registered iPhone to install this exact app. This artifact is
+not a substitute for a distribution-signed export.
 
 The archive contains one app and one matching dSYM. The app contains 34
 regular files, 14 privacy manifests, no app extensions, no embedded dynamic
@@ -119,7 +142,7 @@ Analytics/Ads behavior.
 | F-06 | Release retained preview/development settings and incomplete stripping controls. | Disabled previews/development assets and enabled dead-code/installed-product stripping while suppressing serialized Swift debug options. |
 | F-07 | One ignored local env file was group/world-readable. | Corrected all supplied credential inputs to mode `0600`; the audit enforces the mode before scanning. |
 | F-08 | Initial dSYM metadata exposed workstation paths. | Added compiler prefix mapping and normalized the dSYM relocation map. No user-home path remains. One developer-only symbol file intentionally retains temporary module/source paths needed for complete symbolication; no credential fingerprint matched it. |
-| F-09 | No signing identity, profile, or team is available. | Documented external blocker; archive remains unsigned. No fake/ad-hoc signature was presented as distribution proof. |
+| F-09 | Distribution signing was initially unavailable. | A valid Personal Team Apple Development identity/profile now signs the registered-device demo. App Store/TestFlight remains blocked on a paid Developer Program distribution team; no development signature is presented as distribution proof. |
 | F-10 | The new diagnostics preference initially bypassed Trainy's owned preference contract. | Moved persistence ownership to `ContentView`, injected the binding/environment contract, and added positive and duplicate-owner guard fixtures. |
 | F-11 | One unit test still expected the removed ATS exception. | Updated it to require the stricter no-ATS policy; the complete Xcode suite passes. |
 
@@ -132,11 +155,12 @@ Run from the repository root. These commands intentionally keep outputs under
 
 ```bash
 security find-identity -v -p codesigning
-find "$HOME/Library/MobileDevice/Provisioning Profiles" -type f 2>/dev/null
+find "$HOME/Library/Developer/Xcode/UserData/Provisioning Profiles" -type f 2>/dev/null
 ```
 
-The audited host returned zero valid code-signing identities and no
-provisioning profiles.
+The current host has one Apple Development identity and one Personal Team
+one-device profile. It has no Apple Distribution identity or distribution
+profile.
 
 ### Canonical credential-neutral build and tests
 
@@ -167,9 +191,9 @@ Choose fresh paths; the wrapper refuses to overwrite an existing archive or
 result bundle.
 
 ```bash
-ARCHIVE_PATH=/private/tmp/trainy-distribution/2026-07-21-final/Trainy.xcarchive \
-RESULT_BUNDLE_PATH=/private/tmp/trainy-distribution/2026-07-21-final/Trainy.xcresult \
-DERIVED_DATA_PATH=/private/tmp/trainy-distribution/DerivedData-2026-07-21-final \
+ARCHIVE_PATH=/private/tmp/trainy-distribution/2026-07-21-devpost/Trainy.xcarchive \
+RESULT_BUNDLE_PATH=/private/tmp/trainy-distribution/2026-07-21-devpost/Trainy.xcresult \
+DERIVED_DATA_PATH=/private/tmp/trainy-distribution/DerivedData-2026-07-21-devpost \
 CODE_SIGNING_ALLOWED=NO \
 scripts/archive-ios.sh
 ```
@@ -182,12 +206,12 @@ fingerprints on a failure; it never prints a value.
 
 ```bash
 scripts/audit-ios-archive.py \
-  /private/tmp/trainy-distribution/2026-07-21-final/Trainy.xcarchive \
-  --result-bundle /private/tmp/trainy-distribution/2026-07-21-final/Trainy.xcresult \
-  --scan-root /private/tmp/trainy-distribution/2026-07-21-final/Trainy.xcresult \
-  --scan-root /private/tmp/trainy-distribution/DerivedData-2026-07-21-final \
+  /private/tmp/trainy-distribution/2026-07-21-devpost/Trainy.xcarchive \
+  --result-bundle /private/tmp/trainy-distribution/2026-07-21-devpost/Trainy.xcresult \
+  --scan-root /private/tmp/trainy-distribution/2026-07-21-devpost/Trainy.xcresult \
+  --scan-root /private/tmp/trainy-distribution/DerivedData-2026-07-21-devpost \
   --credential-pdf docs/trainy_api_credentials_fillable_form.pdf \
-  --json-output /private/tmp/trainy-distribution/2026-07-21-final/audit.json
+  --json-output /private/tmp/trainy-distribution/2026-07-21-devpost/audit.json
 ```
 
 ### Repository gates
@@ -216,8 +240,8 @@ git diff --check
 - Release archive: succeeded; metadata normalization reported zero machine
   paths in shipped products and zero user-home paths.
 - Archive audit: 44 checks, 0 failures, 3 documented warnings.
-- Xcode `TrainyTests`: 65/65 passed with no failures or skips on iPhone 17 /
-  iOS 26.5, including the diagnostics-consent UI interaction.
+- Xcode `TrainyTests`: 66/66 passed with no failures or skips on iPhone 17 /
+  iOS 26.5, including onboarding at AX2XL and Settings replay.
 - Provider proxy: 35/35 Workerd contract tests passed.
 - Design-system boundary: 27/27 guard fixtures and the 29-file repository scan
   passed.
@@ -233,8 +257,8 @@ can preserve complete symbols. The relocation map is normalized, the dSYM has
 no user-home path, and no credential fingerprint matched any symbol content.
 
 To turn this content-audited archive into a distribution-signed candidate, the
-release owner must install/select the correct Apple Distribution identity and
-profile/team, recreate the archive with signing enabled, and repeat this audit
-plus entitlement extraction. That future action must not reuse the unsigned
-archive as proof of signing and requires separate authorization for any export
-or upload.
+release owner must enroll in or select an active paid Apple Developer Program
+team, create the App Store distribution assets, export a newly signed payload,
+and repeat this audit plus signature/profile/entitlement extraction over that
+payload. The Personal Team development build and unsigned archive must not be
+reused as distribution proof. Export or upload requires separate authorization.

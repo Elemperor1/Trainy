@@ -92,7 +92,7 @@ public struct ContentView: View {
                         selectedTab = .trips
                         presentedSheet = nil
                     },
-                    explorePlannedRegions: {
+                    browseProviders: {
                         store.explorePlannedRegionsFromFirstRun()
                         selectedTab = .settings
                         presentedSheet = nil
@@ -176,7 +176,7 @@ private enum RailSheet: Identifiable {
 private struct FirstRunExperienceSheet: View {
     @ObservedObject var store: TrainStore
     let startWithShinkansen: () -> Void
-    let explorePlannedRegions: () -> Void
+    let browseProviders: () -> Void
     let skip: () -> Void
 
     var body: some View {
@@ -190,7 +190,7 @@ private struct FirstRunExperienceSheet: View {
                                 .font(RailDesign.Typography.h1)
                                 .foregroundStyle(RailDesign.Palette.ink)
                                 .fixedSize(horizontal: false, vertical: true)
-                            Text("Japan Shinkansen is ready. We'll always show the source of every fact.")
+                            Text("Japan Shinkansen and Netherlands station boards are ready. Every status includes its source and freshness context.")
                                 .font(RailDesign.Typography.body)
                                 .foregroundStyle(RailDesign.Palette.secondaryText)
                                 .fixedSize(horizontal: false, vertical: true)
@@ -225,10 +225,11 @@ private struct FirstRunExperienceSheet: View {
             .safeAreaInset(edge: .bottom) {
                 FirstRunActionBar(
                     startWithShinkansen: startWithShinkansen,
-                    explorePlannedRegions: explorePlannedRegions
+                    browseProviders: browseProviders
                 )
             }
         }
+        .accessibilityIdentifier("onboarding.screen")
     }
 }
 
@@ -2718,10 +2719,10 @@ private struct FirstRunScopeRow: View {
     }
 }
 
-/// First-run actions for starting with supported data or browsing planned regions.
+/// First-run actions for starting with the flagship service or browsing providers.
 private struct FirstRunActionBar: View {
     let startWithShinkansen: () -> Void
-    let explorePlannedRegions: () -> Void
+    let browseProviders: () -> Void
 
     var body: some View {
         VStack(spacing: RailDesign.Spacing.s) {
@@ -2731,16 +2732,18 @@ private struct FirstRunActionBar: View {
                 role: .primary,
                 action: startWithShinkansen
             )
+            .accessibilityIdentifier("onboarding.start")
             .accessibilityLabel("Start with Shinkansen")
             .accessibilityHint("Use Japan Shinkansen as the active rail scope")
 
             RailActionButton(
-                title: "Explore planned regions",
+                title: "Browse providers",
                 symbol: "globe.asia.australia",
-                action: explorePlannedRegions
+                action: browseProviders
             )
-            .accessibilityLabel("Explore planned regions")
-            .accessibilityHint("Browse the provider registry; planned regions are not selectable in this build")
+            .accessibilityIdentifier("onboarding.providers")
+            .accessibilityLabel("Browse providers")
+            .accessibilityHint("Review supported, setup-required, and planned rail providers")
         }
         .padding(.horizontal, RailDesign.Spacing.m)
         .padding(.top, RailDesign.Spacing.s)

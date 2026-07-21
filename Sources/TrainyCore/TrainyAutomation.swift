@@ -6,6 +6,7 @@ import Foundation
 /// against injected provider implementations instead of network services.
 public enum TrainyAutomationScenario: String, CaseIterable, Sendable {
     case fixture = "fixture"
+    case onboarding = "onboarding"
     case searchFailureRecovery = "search-failure-recovery"
     case loading = "loading"
     case credentialNeutral = "credential-neutral"
@@ -30,7 +31,9 @@ struct TrainyAutomationDependencies {
     static func make(for scenario: TrainyAutomationScenario) -> Self {
         let defaults = UserDefaults(suiteName: "TrainyAutomation-\(scenario.rawValue)")!
         defaults.removePersistentDomain(forName: "TrainyAutomation-\(scenario.rawValue)")
-        defaults.set(true, forKey: "trainy.firstRunCompleted")
+        if scenario != .onboarding {
+            defaults.set(true, forKey: "trainy.firstRunCompleted")
+        }
 
         if scenario == .credentialNeutral {
             let registry = ProviderRegistry(

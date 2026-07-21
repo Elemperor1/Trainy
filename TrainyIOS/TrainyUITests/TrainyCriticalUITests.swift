@@ -4,6 +4,33 @@ import XCTest
 final class TrainyCriticalUITests: XCTestCase {
     private lazy var app = XCUIApplication()
 
+    func testOnboardingExplainsDataScopeCompletesAndCanBeReopened() throws {
+        defer { app.terminate() }
+        launch(
+            "onboarding",
+            additionalArguments: [
+                "-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXL"
+            ]
+        )
+
+        let onboarding = element("onboarding.screen")
+        XCTAssertTrue(onboarding.waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Welcome to Trainy"].exists)
+        XCTAssertTrue(app.staticTexts["Japan Shinkansen and Netherlands station boards are ready. Every status includes its source and freshness context."].exists)
+
+        let start = element("onboarding.start")
+        scrollUntilHittable(start)
+        start.tap()
+        XCTAssertTrue(onboarding.waitForNonExistence(timeout: 5))
+        XCTAssertTrue(app.tabBars.buttons["Trips"].isSelected)
+
+        app.tabBars.buttons["Settings"].tap()
+        let guide = app.buttons["Onboarding guide"]
+        scrollUntilHittable(guide)
+        guide.tap()
+        XCTAssertTrue(element("onboarding.screen").waitForExistence(timeout: 5))
+    }
+
     func testTrackedServiceSearchThenNoMatchRecovery() throws {
         defer { app.terminate() }
         launch("fixture")
@@ -174,6 +201,13 @@ final class TrainyCriticalUITests: XCTestCase {
         let clearText = app.buttons["Clear text"]
         XCTAssertTrue(clearText.waitForExistence(timeout: 2), "Expected the system search field to expose its Clear text action.")
         clearText.tap()
+    }
+
+    private func scrollUntilHittable(_ element: XCUIElement, attempts: Int = 5) {
+        for _ in 0..<attempts where !element.isHittable {
+            app.swipeUp()
+        }
+        XCTAssertTrue(element.isHittable, "Expected \(element) to become hittable after scrolling.")
     }
 
     private func element(_ identifier: String) -> XCUIElement {
