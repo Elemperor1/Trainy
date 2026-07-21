@@ -14,6 +14,7 @@
 		9D0A10462C10000100A00001 /* ../Tests/TrainyCoreTests/TrainyCoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D0A10432C10000100A00001 /* ../Tests/TrainyCoreTests/TrainyCoreTests.swift */; };
 		9D0A10502C10000100A00001 /* ../Tests/TrainyCoreTests/NSProviderTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D0A10522C10000100A00001 /* ../Tests/TrainyCoreTests/NSProviderTests.swift */; };
 		9D0A10512C10000100A00001 /* ../Tests/TrainyCoreTests/RailDesignSystemTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D0A10532C10000100A00001 /* ../Tests/TrainyCoreTests/RailDesignSystemTests.swift */; };
+		9D0A106A2C10000100A00001 /* TrainyCriticalUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D0A10612C10000100A00001 /* TrainyCriticalUITests.swift */; };
 		9D0A20002C10000100A00001 /* TrainyCore in Frameworks */ = {isa = PBXBuildFile; productRef = 9D0A20032C10000100A00001 /* TrainyCore */; };
 		9D0A20012C10000100A00001 /* TrainyCore in Frameworks */ = {isa = PBXBuildFile; productRef = 9D0A20032C10000100A00001 /* TrainyCore */; };
 		B6EEB5DDDD71F3C63D510D4C /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = 74E4105AC9E5411577F4B5F3 /* GoogleService-Info.plist */; };
@@ -21,6 +22,13 @@
 
 /* Begin PBXContainerItemProxy section */
 		9D0A104A2C10000100A00001 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 9D0A10132C10000100A00001 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 9D0A10102C10000100A00001;
+			remoteInfo = Trainy;
+		};
+		9D0A10692C10000100A00001 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 9D0A10132C10000100A00001 /* Project object */;
 			proxyType = 1;
@@ -38,6 +46,9 @@
 		9D0A10432C10000100A00001 /* ../Tests/TrainyCoreTests/TrainyCoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ../Tests/TrainyCoreTests/TrainyCoreTests.swift; sourceTree = SOURCE_ROOT; };
 		9D0A10522C10000100A00001 /* ../Tests/TrainyCoreTests/NSProviderTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ../Tests/TrainyCoreTests/NSProviderTests.swift; sourceTree = SOURCE_ROOT; };
 		9D0A10532C10000100A00001 /* ../Tests/TrainyCoreTests/RailDesignSystemTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ../Tests/TrainyCoreTests/RailDesignSystemTests.swift; sourceTree = SOURCE_ROOT; };
+		9D0A10612C10000100A00001 /* TrainyCriticalUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrainyCriticalUITests.swift; sourceTree = "<group>"; };
+		9D0A10622C10000100A00001 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		9D0A10632C10000100A00001 /* TrainyUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = TrainyUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		9D0A10442C10000100A00001 /* TrainyTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = TrainyTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		9D0A10452C10000100A00001 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -61,6 +72,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		9D0A10642C10000100A00001 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -69,6 +87,7 @@
 			children = (
 				9D0A100E2C10000100A00001 /* Trainy */,
 				9D0A10432C10000100A00002 /* TrainyTests */,
+				9D0A10652C10000100A00001 /* TrainyUITests */,
 				9D0A100F2C10000100A00001 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -89,6 +108,7 @@
 			children = (
 				9D0A100B2C10000100A00001 /* Trainy.app */,
 				9D0A10442C10000100A00001 /* TrainyTests.xctest */,
+				9D0A10632C10000100A00001 /* TrainyUITests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -102,6 +122,15 @@
 				9D0A10452C10000100A00001 /* Info.plist */,
 			);
 			path = TrainyTests;
+			sourceTree = "<group>";
+		};
+		9D0A10652C10000100A00001 /* TrainyUITests */ = {
+			isa = PBXGroup;
+			children = (
+				9D0A10612C10000100A00001 /* TrainyCriticalUITests.swift */,
+				9D0A10622C10000100A00001 /* Info.plist */,
+			);
+			path = TrainyUITests;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -151,6 +180,24 @@
 			productReference = 9D0A10442C10000100A00001 /* TrainyTests.xctest */;
 			productType = "com.apple.product-type.bundle.unit-test";
 		};
+		9D0A10682C10000100A00001 /* TrainyUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 9D0A106D2C10000100A00001 /* Build configuration list for PBXNativeTarget "TrainyUITests" */;
+			buildPhases = (
+				9D0A10662C10000100A00001 /* Sources */,
+				9D0A10642C10000100A00001 /* Frameworks */,
+				9D0A10672C10000100A00001 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				9D0A106B2C10000100A00001 /* PBXTargetDependency */,
+			);
+			name = TrainyUITests;
+			productName = TrainyUITests;
+			productReference = 9D0A10632C10000100A00001 /* TrainyUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -165,6 +212,10 @@
 						CreatedOnToolsVersion = 26.0;
 					};
 					9D0A104D2C10000100A00001 = {
+						CreatedOnToolsVersion = 26.0;
+						TestTargetID = 9D0A10102C10000100A00001;
+					};
+					9D0A10682C10000100A00001 = {
 						CreatedOnToolsVersion = 26.0;
 						TestTargetID = 9D0A10102C10000100A00001;
 					};
@@ -189,6 +240,7 @@
 			targets = (
 				9D0A10102C10000100A00001 /* Trainy */,
 				9D0A104D2C10000100A00001 /* TrainyTests */,
+				9D0A10682C10000100A00001 /* TrainyUITests */,
 			);
 		};
 /* End PBXProject section */
@@ -204,6 +256,13 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 		9D0A10492C10000100A00001 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		9D0A10672C10000100A00001 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -254,6 +313,14 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		9D0A10662C10000100A00001 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				9D0A106A2C10000100A00001 /* TrainyCriticalUITests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
@@ -261,6 +328,11 @@
 			isa = PBXTargetDependency;
 			target = 9D0A10102C10000100A00001 /* Trainy */;
 			targetProxy = 9D0A104A2C10000100A00001 /* PBXContainerItemProxy */;
+		};
+		9D0A106B2C10000100A00001 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 9D0A10102C10000100A00001 /* Trainy */;
+			targetProxy = 9D0A10692C10000100A00001 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -507,6 +579,62 @@
 			};
 			name = Release;
 		};
+		9D0A106C2C10000100A00001 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "";
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = TrainyUITests/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.jacobcyber.TrainyUITests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = Trainy;
+			};
+			name = Debug;
+		};
+		9D0A106E2C10000100A00001 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "";
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = TrainyUITests/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.jacobcyber.TrainyUITests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = Trainy;
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -533,6 +661,15 @@
 			buildConfigurations = (
 				9D0A104E2C10000100A00001 /* Debug */,
 				9D0A104F2C10000100A00001 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		9D0A106D2C10000100A00001 /* Build configuration list for PBXNativeTarget "TrainyUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				9D0A106C2C10000100A00001 /* Debug */,
+				9D0A106E2C10000100A00001 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

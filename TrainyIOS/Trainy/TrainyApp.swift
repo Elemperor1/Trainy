@@ -10,7 +10,7 @@ struct TrainyApp: App {
 
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            ContentView(automationScenario: TrainyAutomationScenario.fromLaunchArguments())
         }
     }
 }

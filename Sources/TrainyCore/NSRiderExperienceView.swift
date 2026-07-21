@@ -11,6 +11,13 @@ struct NSStationSearchView: View {
         _viewModel = StateObject(wrappedValue: NSStationSearchViewModel(provider: provider))
     }
 
+    init(provider: any NSRiderDataProviding, startsLoading: Bool) {
+        self.provider = provider
+        _viewModel = StateObject(
+            wrappedValue: NSStationSearchViewModel(provider: provider, initialPhase: startsLoading ? .loading : .idle)
+        )
+    }
+
     init(provider: any NSRiderDataProviding, viewModel: NSStationSearchViewModel) {
         self.provider = provider
         _viewModel = StateObject(wrappedValue: viewModel)
@@ -35,7 +42,8 @@ struct NSStationSearchView: View {
                     title: "Find a station",
                     prompt: "Dutch station name or code",
                     text: $viewModel.query,
-                    action: viewModel.submitSearch
+                    action: viewModel.submitSearch,
+                    accessibilityIdentifierPrefix: "ns.stationSearch"
                 )
 
                 if case .idle = viewModel.phase {
@@ -63,6 +71,7 @@ struct NSStationSearchView: View {
         .onChange(of: viewModel.accessibilityAnnouncement) { _, announcement in
             announce(announcement)
         }
+        .accessibilityIdentifier("ns.stationSearch.screen")
         .railScreenChrome()
     }
 
@@ -119,6 +128,7 @@ struct NSStationSearchView: View {
             )
         case .loading:
             LoadingSkeletonView(rows: 4)
+                .accessibilityIdentifier("ns.stationSearch.loading")
         case .results:
             VStack(alignment: .leading, spacing: RailDesign.Spacing.s) {
                 SectionHeader(
@@ -142,6 +152,7 @@ struct NSStationSearchView: View {
                     .accessibilityElement(children: .combine)
                     .accessibilityLabel("\(station.name), station code \(station.code)")
                     .accessibilityHint("Opens the NS departure board")
+                    .accessibilityIdentifier("ns.station.\(station.code)")
                 }
             }
         case .noMatches:
@@ -150,6 +161,7 @@ struct NSStationSearchView: View {
                 message: "Check the spelling or try a station code such as UT or ASD.",
                 symbolName: "magnifyingglass"
             )
+            .accessibilityIdentifier("ns.stationSearch.noMatches")
         case .failed(let failure):
             failureView(failure)
         }
@@ -164,10 +176,13 @@ struct NSStationSearchView: View {
                 message: "This build has no provider proxy base URL. No NS credential belongs in the app.",
                 symbolName: "lock.shield"
             )
+            .accessibilityIdentifier("ns.stationSearch.notConfigured")
         case .offline:
             OfflineBanner(message: failure.message, retry: viewModel.retry)
+                .accessibilityIdentifier("ns.stationSearch.offline")
         case .rateLimited(let retryAfterSeconds):
             RateLimitBanner(message: rateLimitMessage(retryAfterSeconds), retry: viewModel.retry)
+                .accessibilityIdentifier("ns.stationSearch.rateLimited")
         case .unavailable:
             ErrorBanner(
                 symbol: "exclamationmark.triangle",
@@ -175,6 +190,7 @@ struct NSStationSearchView: View {
                 detail: "Try again. Your tracked Trainy journeys are unchanged.",
                 retry: viewModel.retry
             )
+            .accessibilityIdentifier("ns.stationSearch.unavailable")
         }
     }
 
@@ -249,6 +265,7 @@ struct NSDepartureBoardView: View {
         .onChange(of: viewModel.accessibilityAnnouncement) { _, announcement in
             announce(announcement)
         }
+        .accessibilityIdentifier("ns.departures.screen")
         .railScreenChrome()
     }
 
@@ -293,6 +310,7 @@ struct NSDepartureBoardView: View {
                     )
                     ForEach(board.departures) { departure in
                         NSDepartureRow(departure: departure)
+                            .accessibilityIdentifier("ns.departure.\(departure.tripID ?? departure.id)")
                     }
                 }
             }

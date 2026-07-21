@@ -86,10 +86,12 @@ final class NSStationSearchViewModel: ObservableObject {
 
     init(
         provider: any NSRiderDataProviding,
-        now: @escaping @Sendable () -> Date = Date.init
+        now: @escaping @Sendable () -> Date = Date.init,
+        initialPhase: Phase = .idle
     ) {
         self.provider = provider
         self.now = now
+        phase = initialPhase
     }
 
     deinit {
