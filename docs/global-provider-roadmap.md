@@ -4,6 +4,21 @@ Status: implementation-ready planning draft
 Date: 2026-06-12  
 Scope: polish the current Japan/Shinkansen-first app, then expand Trainy to the top 10 implementable global rail provider integrations without breaking ODPT or the curated Shinkansen starter catalog.
 
+## Implementation checkpoint — 2026-07-19
+
+This document began as a planning snapshot. Current repository truth now includes the provider protocols/registry, normalized rail models, structured provenance, credential-neutral XCTest/CI, and the first end-to-end non-Japan slice:
+
+- `NSTrainProvider` uses a credential-free app client for station search, station departure boards, and service alerts.
+- `provider-proxy/` is a Cloudflare Worker with only four fixed `GET` routes: provider health plus NS station search, departures, and disruptions. It owns the fixed NS upstream operations, input and provider-field validation, a 5.5-second whole-response deadline, 2 MiB streamed ceiling, same-key miss coalescing, normalized errors, bounded fresh/stale caches, client limits, one subscription-wide rolling quota, and credential-safe structured logs.
+- Rider UI includes loading, empty, no-match, stale, offline, rate-limit, unavailable, and recovery states with exact NS attribution/freshness disclosure. Board and alert responses keep independent provenance and automatically expire at `validUntil`. Existing Shinkansen tracking remains the app's primary journey experience; NS boards do not fabricate trackable journeys or vehicle positions.
+- CI remains credential-neutral through synthetic normalized fixtures and Workerd mocks. Authorized local proof uses the ignored mode-600 NS env file only in the Worker process; the iOS target receives only a loopback proxy URL.
+- Final proof on 2026-07-20 passed 58/58 iOS tests and 35/35 Worker contract tests; the authorized loopback smoke returned 5 Utrecht station results and 20 fresh departures. The expanded secret scan found one authorized credential retained only in an older Xcode DerivedData build-command attachment, removed that generated cache, then passed across 58,811 repository/generated/log files and 122 shipping app files with no provider value or NS upstream-only app marker remaining.
+- The rider path is simulator-verified, including real VoiceOver AX-tree inspection, Light/Dark Mode, AX2XL, stale/offline recovery, source-backed no-match, rate-limit UI recovery, and truthful provenance. A canonical public-URL candidate recovered from unavailable to current data before promotion; the final production pass rendered one `UT` station, two current departures, one current alert, and separate fresh board/alert disclosures. Authenticated review confirmed the NS external non-paying limit of 300 requests per five minutes and no separate product-page cache/attribution clause.
+- Cloudflare rollout used only the dedicated `trainy-ns-provider-proxy` target. Approved bridge version `65f469e7-ef2b-4acf-8503-e6f3793be5a2` applied the SQLite Durable Object migration without changing the serving contract. Hardened version `0ece40b0-b27a-43aa-a865-55445909a2a1` is now the sole 100% version in deployment `46a26a6a-8abe-4091-9b19-3c32b20ccefa` at `https://trainy-ns-provider-proxy.trainy-jacob.workers.dev`; previews remain disabled and no custom domain or schedule exists.
+- Final public checks passed exact-code ranking after edge propagation, a fresh Amsterdam cache miss through the global 240/5-minute quota path, normalized client `429` plus recovery, disruption, health, method/route rejection, no-store/security headers, and credential-safe output. The verified migration bridge is the rollback baseline because the original pre-migration version cannot cross the Durable Object lifecycle boundary. The account is on Workers Free with zero zones, so the documented lack of a selected-zone WAF remains. The temporary Wrangler OAuth session and local plaintext fallback were removed after verification. NS is rider-active in provider metadata.
+
+The older assessment sections below are retained as historical rationale; this checkpoint and `docs/global-provider-implementation-checklist.md` own current implementation status.
+
 ## Executive Decision
 
 Keep Trainy Shinkansen-first while turning the current single-provider app into a provider-capability platform. The current app should not try to add 10 providers by copy-pasting 10 `ShinkansenTrainProvider` variants. It should first split provider contracts, normalized rail models, credentials, provenance, and fixture tests, then add providers in ranked slices.
@@ -731,6 +746,8 @@ Capabilities should include:
 - journeyPlanning
 - seatOrCarPosition
 
+Implemented NS specialization: `StationSearchProvider` and `ServiceAlertProvider` extend the shared provider boundary, while `StationBoard`/`StationBoardDeparture` remain normalized app models. `ServiceAlertPage` keeps alert provenance and failure state independent from the board. The adapter never receives an upstream credential and is unavailable unless `ProviderProxyConfiguration` accepts an HTTPS base URL (or loopback HTTP for development). Native clients stream under 64 KiB health / 1 MiB data ceilings and an absolute eight-second deadline, then reject responses whose provider metadata, freshness interval, counts, station codes, coordinates, or text bounds violate the public contract.
+
 Formats should include:
 
 - odpt
@@ -793,6 +810,8 @@ Production:
 - Cache static feeds server-side.
 - Expose compact Trainy JSON to the app.
 - Log provider health without storing personal journey data.
+
+Implemented NS boundary: `NS_SUBSCRIPTION_KEY` is a required Worker secret. The app bundle contains only a proxy base URL; it rejects credentials embedded in URLs and rejects non-loopback HTTP. Station search text is filtered against a cached station catalog inside the Worker and is never forwarded to NS or written to logs. The deployment and rotation runbook lives in `provider-proxy/README.md`.
 
 ### Backend Threshold
 
@@ -950,6 +969,9 @@ Keep:
 - `bash -n scripts/lib/odpt-env.sh`
 - `scripts/build-ios.sh`
 - `scripts/smoke-odpt.sh` after setting an ODPT key
+- `npm run check --prefix provider-proxy`
+- `scripts/check-provider-secret-boundary.py` after a credential-neutral app build
+- `scripts/smoke-ns-proxy.sh` only when the authorized local NS credential is configured
 
 ### Add Unit Tests
 

@@ -360,6 +360,25 @@ if [ -d "$ROOT_DIR/Sources/TrainyCore/DesignSystem" ]; then
   done < <(find "$ROOT_DIR/Sources/TrainyCore/DesignSystem" -type f -name '*.swift' -print0)
 fi
 
+# Phase 17 semantic-palette boundary: decorative color names are no longer
+# part of the library or consumer API. Scan the whole Swift tree so a future
+# alias cannot silently reintroduce them inside the Design System itself.
+if [ -d "$ROOT_DIR/Sources/TrainyCore" ]; then
+  while IFS= read -r -d '' palette_file; do
+    rel="${palette_file#"$ROOT_DIR"/}"
+    while IFS= read -r line; do
+      lineno="${line%%:*}"
+      content="${line#*:}"
+      if is_comment_line "$content"; then
+        continue
+      fi
+      add_violation "$rel:$lineno: decorative palette role; use accent, success, warning, danger, or info — $content"
+    done < <(
+      grep -nE 'RailDesign\.Palette\.(marine|violet|copper|mint|amber|red|blue)([^A-Za-z0-9_]|$)' "$palette_file" || true
+    )
+  done < <(find "$ROOT_DIR/Sources/TrainyCore" -type f -name '*.swift' -print0)
+fi
+
 printf 'Checking web: app.js inline component markup...\n'
 web_app="$ROOT_DIR/app.js"
 if [ -f "$web_app" ]; then

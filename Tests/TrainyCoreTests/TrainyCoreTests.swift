@@ -1,3 +1,4 @@
+import Foundation
 import XCTest
 @testable import TrainyCore
 
@@ -784,7 +785,7 @@ final class TrainyTests: XCTestCase {
         XCTAssertEqual(switchDefaults.string(forKey: "trainy.dataScope"), "live-only-provider")
     }
 
-    func testProviderProxyConfigurationUsesOnlyBaseURLInputs() throws {
+    func testProviderProxyConfigurationUsesOnlyBaseURLInputsAndScopesLoopbackATS() throws {
         let environmentConfig = ProviderProxyConfiguration.current(
             infoDictionary: [
                 ProviderProxyConfiguration.infoPlistKey: "https://plist-proxy.example.com"
@@ -819,6 +820,27 @@ final class TrainyTests: XCTestCase {
 
         XCTAssertFalse(invalidConfig.isConfigured)
         XCTAssertNil(invalidConfig.baseURL)
+
+        XCTAssertNil(ProviderProxyConfiguration(rawBaseURL: "http://proxy.example.com").baseURL)
+        XCTAssertEqual(
+            ProviderProxyConfiguration(rawBaseURL: "http://127.0.0.1:8787").baseURL?.absoluteString,
+            "http://127.0.0.1:8787"
+        )
+
+        let repositoryRoot = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+        let infoPlistURL = repositoryRoot.appendingPathComponent("TrainyIOS/Trainy/Info.plist")
+        let infoPlistData = try Data(contentsOf: infoPlistURL)
+        var format = PropertyListSerialization.PropertyListFormat.xml
+        let infoPlist = try XCTUnwrap(
+            PropertyListSerialization.propertyList(from: infoPlistData, options: [], format: &format)
+                as? [String: Any]
+        )
+        let transportSecurity = try XCTUnwrap(infoPlist["NSAppTransportSecurity"] as? [String: Any])
+        XCTAssertEqual(transportSecurity["NSAllowsLocalNetworking"] as? Bool, true)
+        XCTAssertNil(transportSecurity["NSAllowsArbitraryLoads"])
     }
 
     func testProviderProxyHealthDecodesCompactJSONAndBuildsEndpointURL() throws {

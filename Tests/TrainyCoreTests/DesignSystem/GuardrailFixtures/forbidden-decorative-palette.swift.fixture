@@ -1,0 +1,3 @@
+import SwiftUI
+
+let legacyProviderTint = RailDesign.Palette.copper

@@ -340,7 +340,7 @@ private struct TripsScreen: View {
                             } label: {
                                 Label(store.isPinned(trip) ? "Unfavorite" : "Favorite", systemImage: store.isPinned(trip) ? "star.slash" : "star")
                             }
-                            .tint(RailDesign.Palette.amber)
+                            .tint(RailDesign.Palette.warning)
                         }
                         .swipeActions(edge: .leading, allowsFullSwipe: false) {
                             Button {
@@ -627,12 +627,12 @@ private struct ActiveTripSummary: View {
             VStack(alignment: .leading, spacing: RailDesign.Spacing.m) {
                 HStack(spacing: RailDesign.Spacing.xs) {
                     ControlMetricTile(title: "Next", value: trip.nextStop, symbol: "location.north.line.fill", tint: RailDesign.Palette.accent)
-                    ControlMetricTile(title: "ETA", value: formattedETA, symbol: "clock", tint: RailDesign.Palette.violet)
+                    ControlMetricTile(title: "ETA", value: formattedETA, symbol: "clock", tint: RailDesign.Palette.info)
                     ControlMetricTile(
                         title: "Platform",
                         value: trip.displayPlatform,
                         symbol: "rectangle.split.3x1.fill",
-                        tint: trip.platformDisplayState.isKnown ? RailDesign.Palette.blue : RailDesign.Palette.secondaryText
+                        tint: trip.platformDisplayState.isKnown ? RailDesign.Palette.info : RailDesign.Palette.secondaryText
                     )
                 }
 
@@ -868,9 +868,9 @@ private struct SearchCapabilityNoticeView: View {
     private var tint: Color {
         switch notice.kind {
         case .realtimeUnavailable:
-            return RailDesign.Palette.marine
+            return RailDesign.Palette.info
         case .scheduleUnavailable:
-            return RailDesign.Palette.amber
+            return RailDesign.Palette.warning
         }
     }
 
@@ -1163,6 +1163,25 @@ private struct StationsScreen: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: RailDesign.Spacing.l) {
+                NavigationLink {
+                    NSStationSearchView(proxyBaseURL: store.providerProxyConfiguration.baseURL)
+                } label: {
+                    RailSurface(role: .accent(RailDesign.Palette.accent)) {
+                        RailNavigationCard(
+                            symbol: "train.side.front.car",
+                            title: "NS departures",
+                            detail: store.providerProxyConfiguration.isConfigured
+                                ? "Search Dutch stations and open proxy-backed departure boards."
+                                : "Rider surface ready; a configured provider proxy is required for NS data.",
+                            tint: RailDesign.Palette.accent
+                        )
+                    }
+                }
+                .buttonStyle(.plain)
+                .accessibilityHint("Opens NS station search and freshness-labelled departure boards")
+                .padding(.horizontal, RailDesign.Spacing.m)
+                .padding(.top, RailDesign.Spacing.s)
+
                 HStack {
                     Text(overview)
                         .font(RailDesign.Typography.small.weight(.medium))
@@ -1257,7 +1276,7 @@ private struct StationDetailView: View {
                         } label: {
                             Image(systemName: isFavorite ? "star.fill" : "star")
                                 .font(RailDesign.Typography.h3)
-                                .foregroundStyle(isFavorite ? RailDesign.Palette.amber : RailDesign.Palette.secondaryText)
+                                .foregroundStyle(isFavorite ? RailDesign.Palette.warning : RailDesign.Palette.secondaryText)
                                 .frame(width: 44, height: 44)
                         }
                         .buttonStyle(.plain)
@@ -1269,7 +1288,7 @@ private struct StationDetailView: View {
 
                     HStack(spacing: RailDesign.Spacing.s) {
                         MetricTile(title: "Departures", value: "\(station.departureTrips.count)", subtitle: "tracked", symbolName: "arrow.up.right", tint: RailDesign.Palette.accent)
-                        MetricTile(title: "Platforms", value: station.platforms.prefix(3).joined(separator: ", "), subtitle: "known", symbolName: "rectangle.split.3x1", tint: RailDesign.Palette.blue)
+                        MetricTile(title: "Platforms", value: station.platforms.prefix(3).joined(separator: ", "), subtitle: "known", symbolName: "rectangle.split.3x1", tint: RailDesign.Palette.info)
                     }
                 }
                 .padding(RailDesign.Spacing.l)
@@ -1528,8 +1547,8 @@ private struct SettingsScreen: View {
         if provider.availability.message.contains("ODPT_CONSUMER_KEY") {
             return "Starter catalog is active. Add an ODPT consumer key in the developer configuration for official timetable and alert feeds."
         }
-        if provider.availability.message.contains("NS_SUBSCRIPTION_KEY") {
-            return "Add an NS subscription key in the developer configuration for departures and disruption feeds."
+        if provider.id == "netherlands-ns" {
+            return LocalizedStringKey(provider.availability.message)
         }
         return LocalizedStringKey(provider.availability.message)
     }
@@ -1770,9 +1789,15 @@ private struct ProviderProxyHealthProviderRow: View {
 private struct SupportedRegionsScreen: View {
     @ObservedObject var store: TrainStore
 
-    private var activeProviders: [ProviderMetadata] {
+    private var riderAvailableProviders: [ProviderMetadata] {
         store.providerDirectory
-            .filter { $0.implementationStatus == .active }
+            .filter(\.isRiderAvailable)
+            .sorted { $0.region.displayName.localizedStandardCompare($1.region.displayName) == .orderedAscending }
+    }
+
+    private var configurationRequiredProviders: [ProviderMetadata] {
+        store.providerDirectory
+            .filter { $0.implementationStatus == .active && !$0.availability.canSearch }
             .sorted { $0.region.displayName.localizedStandardCompare($1.region.displayName) == .orderedAscending }
     }
 
@@ -1787,7 +1812,9 @@ private struct SupportedRegionsScreen: View {
     }
 
     private var plannedRegionNames: [String] {
-        let implementedRegionIDs = Set((activeProviders + adapterReadyProviders).map(\.region.id))
+        let implementedRegionIDs = Set(
+            (riderAvailableProviders + configurationRequiredProviders + adapterReadyProviders).map(\.region.id)
+        )
         return store.providerRegions
             .filter { $0.id != ProviderRegion.all.id && !implementedRegionIDs.contains($0.id) }
             .map(\.displayName)
@@ -1821,19 +1848,34 @@ private struct SupportedRegionsScreen: View {
 
                 VStack(alignment: .leading, spacing: RailDesign.Spacing.s) {
                     SectionHeader(title: "Coverage", subtitle: "Bright markers are rider-available now. Adapter-ready and planned regions remain muted.")
-                    SupportedRegionsGlobe(activeRegions: activeProviders.map(\.region.displayName))
+                    SupportedRegionsGlobe(activeRegions: riderAvailableProviders.map(\.region.displayName))
                 }
 
                 SettingsGroup(title: "Available now") {
-                    ForEach(activeProviders) { provider in
+                    ForEach(riderAvailableProviders) { provider in
                         SupportedRegionProviderRow(
                             provider: provider,
                             isActive: provider.id == store.activeProviderID
                         )
-                        if provider.id != activeProviders.last?.id {
+                        if provider.id != riderAvailableProviders.last?.id {
                             Divider()
                                 .background(RailDesign.Palette.hairline)
                         }
+                    }
+                }
+
+                if !configurationRequiredProviders.isEmpty {
+                    SettingsGroup(title: "Needs setup") {
+                        VStack(alignment: .leading, spacing: RailDesign.Spacing.s) {
+                            Text("These rider-ready providers need their required proxy or local configuration before they can be used in this build.")
+                                .font(RailDesign.Typography.small)
+                                .foregroundStyle(RailDesign.Palette.secondaryText)
+                                .fixedSize(horizontal: false, vertical: true)
+                            ForEach(configurationRequiredProviders) { provider in
+                                SupportedRegionProviderRow(provider: provider, isActive: false)
+                            }
+                        }
+                        .padding(.vertical, RailDesign.Spacing.s)
                     }
                 }
 
@@ -1970,6 +2012,8 @@ private struct SupportedRegionsGlobe: View {
 
 /// One provider's region, readiness, and honest availability explanation.
 private struct SupportedRegionProviderRow: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
     let provider: ProviderMetadata
     let isActive: Bool
 
@@ -1977,14 +2021,20 @@ private struct SupportedRegionProviderRow: View {
         if isActive {
             return RailDesign.Palette.success
         }
+        if !provider.availability.canSearch {
+            return provider.availability.status.tint
+        }
         return provider.implementationStatus == .adapterReady
-            ? RailDesign.Palette.copper
+            ? RailDesign.Palette.info
             : RailDesign.Palette.accent
     }
 
     private var statusText: String {
         if isActive {
             return "Selected"
+        }
+        if !provider.availability.canSearch {
+            return provider.availability.status.displayName
         }
         return provider.implementationStatus.displayName
     }
@@ -1994,7 +2044,10 @@ private struct SupportedRegionProviderRow: View {
             return "Starter catalog is active. Add an ODPT consumer key in the developer configuration for official timetable and alert feeds."
         }
         if provider.id == "netherlands-ns" {
-            return "The NS adapter and fixture mapping are implemented. A proxy-backed station-board surface is still required before riders can use NS data."
+            if provider.availability.canSearch {
+                return "Proxy-backed NS station search, departures, and service alerts are rider-available in this configured build."
+            }
+            return provider.availability.message
         }
         return provider.availability.message
     }
@@ -2008,11 +2061,21 @@ private struct SupportedRegionProviderRow: View {
                 .frame(width: 30)
 
             VStack(alignment: .leading, spacing: RailDesign.Spacing.xs) {
-                HStack(alignment: .firstTextBaseline, spacing: RailDesign.Spacing.xs) {
-                    Text(provider.region.displayName)
-                        .font(RailDesign.Typography.h3.weight(.bold))
-                        .foregroundStyle(RailDesign.Palette.ink)
-                    ProviderStatusPill(text: statusText, tint: tint)
+                if dynamicTypeSize.isAccessibilitySize {
+                    VStack(alignment: .leading, spacing: RailDesign.Spacing.xs) {
+                        Text(provider.region.displayName)
+                            .font(RailDesign.Typography.h3.weight(.bold))
+                            .foregroundStyle(RailDesign.Palette.ink)
+                            .fixedSize(horizontal: false, vertical: true)
+                        ProviderStatusPill(text: statusText, tint: tint)
+                    }
+                } else {
+                    HStack(alignment: .firstTextBaseline, spacing: RailDesign.Spacing.xs) {
+                        Text(provider.region.displayName)
+                            .font(RailDesign.Typography.h3.weight(.bold))
+                            .foregroundStyle(RailDesign.Palette.ink)
+                        ProviderStatusPill(text: statusText, tint: tint)
+                    }
                 }
 
                 Text(provider.displayName)
@@ -2216,11 +2279,11 @@ private extension ProviderAvailability.Status {
     var tint: Color {
         switch self {
         case .available:
-            return RailDesign.Palette.mint
+            return RailDesign.Palette.success
         case .degraded:
-            return RailDesign.Palette.amber
+            return RailDesign.Palette.warning
         case .requiresConfiguration, .requiresProxy:
-            return RailDesign.Palette.copper
+            return RailDesign.Palette.info
         case .unavailable:
             return RailDesign.Palette.secondaryText
         }
@@ -2231,11 +2294,11 @@ private extension ProviderProxyHealthStatus {
     var tint: Color {
         switch self {
         case .ok:
-            return RailDesign.Palette.mint
+            return RailDesign.Palette.success
         case .missingCredential, .rateLimited, .stale:
-            return RailDesign.Palette.amber
+            return RailDesign.Palette.warning
         case .offline:
-            return RailDesign.Palette.copper
+            return RailDesign.Palette.danger
         case .unsupported, .unknown:
             return RailDesign.Palette.secondaryText
         }

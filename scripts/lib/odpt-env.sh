@@ -35,22 +35,34 @@ load_trainy_odpt_env() {
 
   trainy_warn_env_permissions "$env_file"
 
-  local line trimmed key value saw_key=0
+  local line trimmed key value parsed_value='' saw_key=0
   while IFS= read -r line || [[ -n "$line" ]]; do
     line="${line%$'\r'}"
     trimmed="$(trainy_trim "$line")"
     [[ -z "$trimmed" || "$trimmed" == \#* ]] && continue
 
-    if [[ "$trimmed" != ODPT_CONSUMER_KEY=* ]]; then
+    if [[ "$trimmed" != *=* ]]; then
       printf 'Unsupported entry in %s. Only ODPT_CONSUMER_KEY=... is allowed.\n' "$env_file" >&2
       return 1
     fi
 
     key="${trimmed%%=*}"
+    key="$(trainy_trim "$key")"
+    if [[ "$key" != ODPT_CONSUMER_KEY ]]; then
+      printf 'Unsupported entry in %s. Only ODPT_CONSUMER_KEY=... is allowed.\n' "$env_file" >&2
+      return 1
+    fi
+    if (( saw_key != 0 )); then
+      printf 'Duplicate ODPT_CONSUMER_KEY entry found in %s. Keep exactly one assignment.\n' "$env_file" >&2
+      return 1
+    fi
     value="${trimmed#*=}"
     value="$(trainy_trim "$value")"
 
-    if [[ "$value" != \"*\" && "$value" != \'*\' ]]; then
+    if [[ "$value" == \"* && "$value" != *\" ]] || [[ "$value" == \'* && "$value" != *\' ]]; then
+      printf 'Malformed quoted value found in %s for %s.\n' "$env_file" "$key" >&2
+      return 1
+    elif [[ "$value" != \"*\" && "$value" != \'*\' ]]; then
       value="${value%%#*}"
       value="$(trainy_trim "$value")"
     fi
@@ -61,11 +73,13 @@ load_trainy_odpt_env() {
       return 1
     fi
 
-    export ODPT_CONSUMER_KEY="$value"
+    parsed_value="$value"
     saw_key=1
   done < "$env_file"
 
   if (( saw_key == 0 )); then
     printf 'No ODPT_CONSUMER_KEY entry found in %s.\n' "$env_file" >&2
+  else
+    export ODPT_CONSUMER_KEY="$parsed_value"
   fi
 }

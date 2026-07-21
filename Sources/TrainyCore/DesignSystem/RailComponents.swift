@@ -25,15 +25,15 @@ extension SourceKind {
     var badgeTint: Color {
         switch self {
         case .starterCatalog:
-            return RailDesign.Palette.copper
+            return RailDesign.Palette.warning
         case .officialTimetable:
             return RailDesign.Palette.accent
         case .realtimePrediction, .vehiclePosition:
-            return RailDesign.Palette.blue
+            return RailDesign.Palette.info
         case .alertFeed:
-            return RailDesign.Palette.amber
+            return RailDesign.Palette.danger
         case .inferred:
-            return RailDesign.Palette.violet
+            return RailDesign.Palette.info
         }
     }
 }
@@ -55,11 +55,11 @@ extension FreshnessState {
     var tint: Color {
         switch self {
         case .fresh:
-            return RailDesign.Palette.mint
+            return RailDesign.Palette.success
         case .stale:
-            return RailDesign.Palette.amber
+            return RailDesign.Palette.warning
         case .expired:
-            return RailDesign.Palette.red
+            return RailDesign.Palette.danger
         case .unknown:
             return RailDesign.Palette.secondaryText
         }
@@ -168,7 +168,7 @@ struct SourceBadge: View {
         }
         .foregroundStyle(source.sourceKind.badgeTint)
         .padding(.horizontal, RailDesign.Spacing.xs)
-        .frame(height: style.height, alignment: .leading)
+        .frame(minHeight: style.height, alignment: .leading)
         .fixedSize(horizontal: true, vertical: false)
         .background(source.sourceKind.badgeTint.opacity(0.10), in: Capsule())
         .overlay(Capsule().stroke(source.sourceKind.badgeTint.opacity(0.18), lineWidth: 1))
@@ -403,10 +403,10 @@ struct PlatformChip: View {
                 .fontWeight(.bold)
         }
         .font(.caption.weight(.semibold))
-        .foregroundStyle(RailDesign.Palette.marine)
+        .foregroundStyle(RailDesign.Palette.info)
         .padding(.horizontal, RailDesign.Spacing.s)
         .padding(.vertical, 7)
-        .background(RailDesign.Palette.blue.opacity(0.10), in: Capsule())
+        .background(RailDesign.Palette.infoSoft, in: Capsule())
         .accessibilityElement(children: .combine)
     }
 }
@@ -526,7 +526,7 @@ struct StopTimelineRow: View {
     private var tint: Color {
         switch stop.state {
         case .done:
-            return RailDesign.Palette.mint
+            return RailDesign.Palette.success
         case .current:
             return RailDesign.Palette.accent
         case .pending:
@@ -684,6 +684,7 @@ struct EmptyStateView: View {
                     Label(actionTitle, systemImage: "plus")
                         .font(.headline.weight(.semibold))
                         .frame(maxWidth: .infinity)
+                        .frame(minHeight: 44)
                         .padding(.vertical, RailDesign.Spacing.s)
                         .background(RailDesign.Palette.accent, in: RoundedRectangle(cornerRadius: RailDesign.Radius.control, style: .continuous))
                         .foregroundStyle(RailDesign.Palette.onAccent)
@@ -753,6 +754,7 @@ struct LoadingSkeletonView: View {
                 .clipShape(RoundedRectangle(cornerRadius: RailDesign.Radius.card, style: .continuous))
             }
         }
+        .accessibilityElement(children: .ignore)
         .accessibilityLabel("Loading rail updates")
         .task {
             guard !reduceMotion else { return }
@@ -771,9 +773,10 @@ struct OfflineBanner: View {
         HStack(alignment: .top, spacing: RailDesign.Spacing.s) {
             Image(systemName: "wifi.slash")
                 .foregroundStyle(RailDesign.Palette.warning)
-                .font(.headline)
+                .font(RailDesign.Typography.h3)
                 .frame(width: 28, height: 28)
                 .background(RailDesign.Palette.warning.opacity(0.14), in: Circle())
+                .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: RailDesign.Spacing.xxs) {
                 Text("Offline mode")
                     .font(RailDesign.Typography.small.weight(.semibold))
@@ -781,11 +784,13 @@ struct OfflineBanner: View {
                 Text(message)
                     .font(RailDesign.Typography.small)
                     .foregroundStyle(RailDesign.Palette.secondaryText)
-                    .lineLimit(3)
+                    .fixedSize(horizontal: false, vertical: true)
                 if let retry {
                     Button("Try again", action: retry)
                         .font(RailDesign.Typography.small.weight(.semibold))
                         .foregroundStyle(RailDesign.Palette.warning)
+                        .frame(minHeight: 44, alignment: .leading)
+                        .contentShape(Rectangle())
                         .padding(.top, RailDesign.Spacing.xxs)
                 }
             }
@@ -798,6 +803,151 @@ struct OfflineBanner: View {
                 .stroke(RailDesign.Palette.warning.opacity(0.20), lineWidth: 1)
         )
         .accessibilityElement(children: .contain)
+    }
+}
+
+/// Warning banner for a previously fetched provider response that is outside
+/// its fresh window but still inside the proxy's bounded fallback window.
+struct StaleDataBanner: View {
+    let message: String
+    var retry: (() -> Void)? = nil
+
+    var body: some View {
+        HStack(alignment: .top, spacing: RailDesign.Spacing.s) {
+            Image(systemName: "clock.badge.exclamationmark")
+                .foregroundStyle(RailDesign.Palette.warning)
+                .font(RailDesign.Typography.h3)
+                .frame(width: 28, height: 28)
+                .accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: RailDesign.Spacing.xxs) {
+                Text("Stale NS data")
+                    .font(RailDesign.Typography.small.weight(.semibold))
+                    .foregroundStyle(RailDesign.Palette.ink)
+                Text(message)
+                    .font(RailDesign.Typography.small)
+                    .foregroundStyle(RailDesign.Palette.secondaryText)
+                    .fixedSize(horizontal: false, vertical: true)
+                if let retry {
+                    Button("Refresh", action: retry)
+                        .font(RailDesign.Typography.small.weight(.semibold))
+                        .foregroundStyle(RailDesign.Palette.warning)
+                        .frame(minHeight: 44, alignment: .leading)
+                        .contentShape(Rectangle())
+                }
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(RailDesign.Spacing.m)
+        .background(RailDesign.Palette.warningSoft, in: RoundedRectangle(cornerRadius: RailDesign.Radius.card, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: RailDesign.Radius.card, style: .continuous)
+                .stroke(RailDesign.Palette.warning.opacity(0.20), lineWidth: 1)
+        )
+        .accessibilityElement(children: .contain)
+    }
+}
+
+/// Retryable provider-throttle state with a full-size interaction target.
+struct RateLimitBanner: View {
+    let message: String
+    let retry: () -> Void
+
+    var body: some View {
+        HStack(alignment: .top, spacing: RailDesign.Spacing.s) {
+            Image(systemName: "hourglass")
+                .foregroundStyle(RailDesign.Palette.warning)
+                .font(RailDesign.Typography.h3)
+                .frame(width: 28, height: 28)
+                .accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: RailDesign.Spacing.xxs) {
+                Text("NS is busy")
+                    .font(RailDesign.Typography.small.weight(.semibold))
+                    .foregroundStyle(RailDesign.Palette.ink)
+                Text(message)
+                    .font(RailDesign.Typography.small)
+                    .foregroundStyle(RailDesign.Palette.secondaryText)
+                    .fixedSize(horizontal: false, vertical: true)
+                Button("Try again", action: retry)
+                    .font(RailDesign.Typography.small.weight(.semibold))
+                    .foregroundStyle(RailDesign.Palette.warning)
+                    .frame(minHeight: 44, alignment: .leading)
+                    .contentShape(Rectangle())
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(RailDesign.Spacing.m)
+        .background(RailDesign.Palette.warningSoft, in: RoundedRectangle(cornerRadius: RailDesign.Radius.card, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: RailDesign.Radius.card, style: .continuous)
+                .stroke(RailDesign.Palette.warning.opacity(0.20), lineWidth: 1)
+        )
+        .accessibilityElement(children: .contain)
+    }
+}
+
+/// Plain-language source, attribution, and freshness disclosure for provider
+/// surfaces that are not modeled as tracked trips.
+struct RailSourceDisclosure: View {
+    let sourceName: String
+    let attribution: String
+    let freshness: FreshnessState
+    let fetchedAt: Date?
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
+    var body: some View {
+        RailSurface(role: .accent(RailDesign.Palette.info)) {
+            VStack(alignment: .leading, spacing: RailDesign.Spacing.s) {
+                if dynamicTypeSize.isAccessibilitySize {
+                    VStack(alignment: .leading, spacing: RailDesign.Spacing.xs) {
+                        sourceHeading
+                        freshnessBadge
+                    }
+                } else {
+                    HStack(alignment: .firstTextBaseline, spacing: RailDesign.Spacing.xs) {
+                        sourceHeading
+                        Spacer(minLength: RailDesign.Spacing.xs)
+                        freshnessBadge
+                    }
+                }
+                Text(verbatim: sourceName)
+                    .font(RailDesign.Typography.small.weight(.semibold))
+                    .foregroundStyle(RailDesign.Palette.ink)
+                    .fixedSize(horizontal: false, vertical: true)
+                Text(verbatim: attribution)
+                    .font(RailDesign.Typography.small)
+                    .foregroundStyle(RailDesign.Palette.secondaryText)
+                    .fixedSize(horizontal: false, vertical: true)
+                if let fetchedAt {
+                    Text("Fetched \(fetchedAt.formatted(date: .abbreviated, time: .shortened))")
+                        .font(RailDesign.Typography.caption)
+                        .foregroundStyle(RailDesign.Palette.secondaryText)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(accessibilitySummary)
+    }
+
+    private var sourceHeading: some View {
+        Label("Source", systemImage: "checkmark.seal")
+            .font(RailDesign.Typography.h3)
+            .foregroundStyle(RailDesign.Palette.ink)
+    }
+
+    private var freshnessBadge: some View {
+        RailBadge(
+            freshness.displayName,
+            tint: freshness == .fresh ? RailDesign.Palette.success : RailDesign.Palette.warning
+        )
+    }
+
+    private var accessibilitySummary: String {
+        var parts = ["Source \(sourceName)", attribution, freshness.displayName]
+        if let fetchedAt {
+            parts.append("Fetched \(fetchedAt.formatted(date: .abbreviated, time: .shortened))")
+        }
+        return parts.joined(separator: ". ")
     }
 }
 
@@ -874,7 +1024,7 @@ private struct AlertStrip: View {
     var body: some View {
         HStack(spacing: RailDesign.Spacing.xs) {
             Image(systemName: alert.tone == .good ? "sparkle.magnifyingglass" : "exclamationmark.triangle.fill")
-                .foregroundStyle(alert.tone == .good ? RailDesign.Palette.mint : RailDesign.Palette.amber)
+                .foregroundStyle(alert.tone == .good ? RailDesign.Palette.success : RailDesign.Palette.warning)
             Text(alert.title)
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(RailDesign.Palette.ink)
@@ -970,6 +1120,8 @@ struct ErrorBanner: View {
                     Button("Try again", action: retry)
                         .font(RailDesign.Typography.small.weight(.semibold))
                         .foregroundStyle(RailDesign.Palette.accent)
+                        .frame(minHeight: 44, alignment: .leading)
+                        .contentShape(Rectangle())
                         .padding(.top, RailDesign.Spacing.xxs)
                 }
             }

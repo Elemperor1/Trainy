@@ -7,13 +7,25 @@ on:
       - master
   pull_request:
 
+permissions:
+  contents: read
+
 jobs:
   build:
     runs-on: macos-26
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+
+      - name: Configure Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: provider-proxy/package-lock.json
 
       - name: Show Xcode version
         run: xcodebuild -version
@@ -23,30 +35,42 @@ jobs:
 
       - name: Run static and provider smoke gates
         run: |
-          export DEVELOPER_DIR="$(xcode-select -p)"
+          DEVELOPER_DIR="$(xcode-select -p)"
+          export DEVELOPER_DIR
           bash -n scripts/*.sh scripts/lib/*.sh
           node --check app.js
           node --check components.js
           bash scripts/check-design-system-bypass.sh --self-test
           bash scripts/check-design-system-bypass.sh
           scripts/test-provider-smoke-pattern.sh
+          python3 scripts/test-provider-secret-boundary.py
           scripts/smoke-source-provenance.sh
           scripts/smoke-provider-registry.sh
           scripts/smoke-shinkansen-provider.sh
+
+      - name: Check credential-neutral provider proxy
+        run: |
+          npm ci --prefix provider-proxy
+          npm run check --prefix provider-proxy
 
       - name: Build Trainy
         env:
           ODPT_ENV_FILE: /dev/null
           ODPT_CONSUMER_KEY: ""
         run: |
-          export DEVELOPER_DIR="$(xcode-select -p)"
+          DEVELOPER_DIR="$(xcode-select -p)"
+          export DEVELOPER_DIR
           scripts/build-ios.sh
+
+      - name: Check provider secret boundary
+        run: scripts/check-provider-secret-boundary.py
 
       - name: Test Trainy
         env:
           ODPT_CONSUMER_KEY: ""
         run: |
-          export DEVELOPER_DIR="$(xcode-select -p)"
+          DEVELOPER_DIR="$(xcode-select -p)"
+          export DEVELOPER_DIR
           xcodebuild test \
             -quiet \
             -project TrainyIOS/Trainy.xcodeproj \

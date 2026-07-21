@@ -49,11 +49,6 @@ enum TrainyAPIConfig {
             ?? cleanODPTKey(Bundle.main.object(forInfoDictionaryKey: "ODPTConsumerKey") as? String)
     }
 
-    static var nsSubscriptionKey: String? {
-        cleanSubscriptionKey(ProcessInfo.processInfo.environment["NS_SUBSCRIPTION_KEY"])
-            ?? cleanSubscriptionKey(Bundle.main.object(forInfoDictionaryKey: "NSSubscriptionKey") as? String)
-    }
-
     static func cleanODPTKey(_ value: String?) -> String? {
         cleanSubscriptionKey(value)
     }

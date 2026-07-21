@@ -48,7 +48,9 @@ load_trainy_provider_env() {
 
   trainy_smoke_warn_env_permissions "$env_file"
 
-  local line trimmed key value
+  local line trimmed key value seen_keys='|'
+  local -a parsed_keys=()
+  local -a parsed_values=()
   while IFS= read -r line || [[ -n "$line" ]]; do
     line="${line%$'\r'}"
     trimmed="$(trainy_smoke_trim "$line")"
@@ -65,11 +67,18 @@ load_trainy_provider_env() {
       printf 'Unsupported key %s in %s. Expected only: %s.\n' "$key" "$env_file" "${allowed_keys[*]}" >&2
       return 1
     fi
+    if [[ "$seen_keys" == *"|$key|"* ]]; then
+      printf 'Duplicate %s entry found in %s. Keep exactly one assignment.\n' "$key" "$env_file" >&2
+      return 1
+    fi
 
     value="${trimmed#*=}"
     value="$(trainy_smoke_trim "$value")"
 
-    if [[ "$value" != \"*\" && "$value" != \'*\' ]]; then
+    if [[ "$value" == \"* && "$value" != *\" ]] || [[ "$value" == \'* && "$value" != *\' ]]; then
+      printf 'Malformed quoted value found in %s for %s.\n' "$env_file" "$key" >&2
+      return 1
+    elif [[ "$value" != \"*\" && "$value" != \'*\' ]]; then
       value="${value%%#*}"
       value="$(trainy_smoke_trim "$value")"
     fi
@@ -80,8 +89,39 @@ load_trainy_provider_env() {
       return 1
     fi
 
-    export "$key=$value"
+    parsed_keys+=("$key")
+    parsed_values+=("$value")
+    seen_keys+="$key|"
   done < "$env_file"
+
+  local index
+  for (( index = 0; index < ${#parsed_keys[@]}; index += 1 )); do
+    export "${parsed_keys[$index]}=${parsed_values[$index]}"
+  done
+}
+
+validate_trainy_loopback_host() {
+  local host="$1"
+  case "$host" in
+    127.0.0.1|localhost) return 0 ;;
+    *)
+      printf 'Local proxy host must be 127.0.0.1 or localhost.\n' >&2
+      return 1
+      ;;
+  esac
+}
+
+validate_trainy_port() {
+  local port="$1"
+  if [[ ! "$port" =~ ^[0-9]{1,5}$ ]]; then
+    printf 'Local proxy port must be an integer from 1 through 65535.\n' >&2
+    return 1
+  fi
+  local numeric_port=$((10#$port))
+  if (( numeric_port < 1 || numeric_port > 65535 )); then
+    printf 'Local proxy port must be an integer from 1 through 65535.\n' >&2
+    return 1
+  fi
 }
 
 require_trainy_provider_env() {

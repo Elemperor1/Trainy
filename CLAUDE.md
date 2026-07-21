@@ -31,6 +31,13 @@ Trainy is a Flighty-style train tracking app scoped first to Japan Shinkansen jo
 - Uses curated starter catalog as final fallback without key
 - Implements both `ScheduleFeedProvider` and `RealtimeFeedProvider`
 
+**NSTrainProvider** - Station-board provider implementation:
+
+- Calls only Trainy's normalized provider proxy; never the NS upstream API
+- Implements station search, departure boards, and service alerts
+- Is rider-available only when a validated proxy base URL is configured
+- Preserves truthful source and stale/fresh metadata from the proxy
+
 **Models** (`Sources/TrainyCore/TrainModels.swift`):
 
 - `TrainTrip` - Main UI model with `SourceProvenance` tracking
@@ -67,8 +74,13 @@ Providers/
 │   ├── ShinkansenRouteCatalog.swift         # Route metadata and coordinates
 │   ├── ShinkansenStarterCatalog.swift       # Curated fallback trips
 │   └── ShinkansenTrainTripMapper.swift        # Trip mapping and conversion
-└── JREast/
+├── JREast/
     └── JREastTimetableClient.swift            # JR East HTML timetable parser
+└── NS/
+    ├── NSClient.swift                         # Credential-free proxy client
+    ├── NSModels.swift                         # Normalized proxy response models
+    ├── NSRiderViewModels.swift                # Search/board state machines
+    └── NSTrainProvider.swift                  # NS provider adapter
 ```
 
 ## Development Commands
@@ -105,6 +117,16 @@ scripts/smoke-provider-registry.sh
 
 # Verify source provenance
 scripts/smoke-source-provenance.sh
+
+# Verify the credential-neutral Worker contract
+npm run check --prefix provider-proxy
+
+# Verify authorized live NS data through the local proxy
+scripts/smoke-ns-proxy.sh
+
+# Verify env parsing, loopback bounds, and effective build-secret detection
+scripts/test-provider-smoke-pattern.sh
+python3 scripts/test-provider-secret-boundary.py
 ```
 
 ### Configuration
@@ -135,6 +157,9 @@ GitHub Actions workflow at `.github/workflows/swift.yml`:
 - Runs on push to main/master and pull requests
 - Uses macos-latest runner
 - Runs xcodebuild with `CODE_SIGNING_ALLOWED=NO`
+- Pins checkout and setup-node to reviewed immutable commit SHAs with read-only contents permission and checkout credential persistence disabled
+- Runs the credential-neutral Workerd contract/type/bundle gate
+- Scans the built app for provider-secret values and NS upstream-only markers
 
 ## Key Concepts
 
@@ -156,7 +181,7 @@ Japan is the initial region; planned providers span Taiwan, Hong Kong, Germany, 
 
 ### Credential Safety
 
-Provider secrets are never shipped in the app binary. The build script parses `ODPT_CONSUMER_KEY` without executing the secret file as shell code. For production, use a backend proxy for secret-bearing providers.
+No production provider secret may ship in a distribution binary. The legacy ODPT developer path can inject a local development key, so CI and release-proof builds must set `ODPT_ENV_FILE=/dev/null` until ODPT also moves behind a production credential boundary. NS is stricter: `scripts/build-ios.sh` never loads `ns.env`, the app knows only an HTTPS proxy base URL, and `NS_SUBSCRIPTION_KEY` stays in Worker secret storage or the ignored mode-600 local smoke file.
 
 ## Data Flow
 

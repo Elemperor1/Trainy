@@ -1,0 +1,20 @@
+{
+  "name": "trainy-ns-provider-proxy",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "types": "../scripts/provider-proxy-gate.sh types",
+    "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.test.json",
+    "test": "../scripts/provider-proxy-gate.sh test",
+    "test:watch": "vitest",
+    "check": "../scripts/provider-proxy-gate.sh check"
+  },
+  "devDependencies": {
+    "@cloudflare/vitest-pool-workers": "0.18.6",
+    "@types/node": "26.1.1",
+    "typescript": "7.0.2",
+    "vitest": "4.1.10",
+    "wrangler": "4.112.0"
+  }
+}
