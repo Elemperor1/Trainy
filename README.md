@@ -308,6 +308,11 @@ surfaces:
 
 ## License
 
-No open-source license has been added yet. Until a `LICENSE` file is published,
-the repository is available for review but does not grant permission to copy,
-modify, or redistribute the source.
+Trainy is proprietary, all-rights-reserved software. The source is published for
+review only; no permission is granted to use, copy, modify, redistribute, host,
+deploy, or create derivative works without prior written authorization. See the
+[`LICENSE`](LICENSE) file for the complete notice. Separately identified
+third-party materials remain subject to their own licenses and terms. The notice
+includes a limited exception allowing OpenAI Build Week evaluators to download,
+build, run, test, inspect, and demonstrate Trainy for judging and event-related
+purposes.

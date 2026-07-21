@@ -23,7 +23,7 @@ Trainy's honest judge path is:
 | Judge setup | Ready | Root README has a credential-neutral iPhone 17 simulator path |
 | First-run onboarding | Ready | Current Japan/Netherlands scope, deterministic AX2XL completion/replay coverage, and visual Dark Mode review passed |
 | Repository | Public | `https://github.com/Elemperor1/Trainy` |
-| Open-source license | Owner decision required | Choose and add the intended license before submission |
+| Repository license | Ready | Proprietary notice preserves all rights while permitting Build Week evaluation and event-related use |
 | Category | Recommended | Apps for Your Life |
 | Project name, tagline, description | Owner voice required | Devpost explicitly asks entrants to describe their work in their own voice |
 | Demo video | Owner action required | Publish an audio-enabled YouTube video under three minutes |
@@ -58,7 +58,7 @@ Program team and a newly audited distribution-signed export.
 
 ## Final owner checklist
 
-- [ ] Choose and add the repository license.
+- [x] Add the proprietary repository notice with a Build Week evaluation grant.
 - [ ] Confirm the Devpost project name and tagline in the submitter's own voice.
 - [ ] Supply submitter type and country.
 - [ ] Confirm **Apps for Your Life** or choose another category.
