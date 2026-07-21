@@ -155,10 +155,9 @@ bash -n scripts/lib/odpt-env.sh
 GitHub Actions workflow at `.github/workflows/swift.yml`:
 
 - Runs on push to main/master and pull requests
-- Uses the macOS 26 runner, the repository-pinned Xcode 26.5 toolchain, and one named simulator architecture with `CODE_SIGNING_ALLOWED=NO`
-- Reuses only SwiftPM downloads and checkouts; DerivedData remains uncached so compiled output is always fresh
+- Uses the macOS 26 runner and repository-pinned Xcode 26.5 toolchain with `CODE_SIGNING_ALLOWED=NO`
 - Cancels superseded runs on the same branch or pull request
-- Pins the Node 24 checkout/cache actions and setup-node to reviewed immutable commit SHAs, configures Node 24 for proxy gates, and keeps read-only contents permission with checkout credential persistence disabled
+- Pins the Node 24 checkout action and setup-node to reviewed immutable commit SHAs, configures Node 24 for proxy gates, and keeps read-only contents permission with checkout credential persistence disabled
 - Runs the credential-neutral Workerd contract/type/bundle gate
 - Scans the built app for provider-secret values and NS upstream-only markers
 

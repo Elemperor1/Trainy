@@ -37,14 +37,6 @@ jobs:
       - name: Show SDKs
         run: xcodebuild -showsdks
 
-      - name: Restore SwiftPM downloads
-        uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5.1.0
-        with:
-          path: |
-            /private/tmp/trainy-source-packages/checkouts
-            /private/tmp/trainy-swiftpm-cache
-          key: trainy-swiftpm-${{ runner.os }}-${{ runner.arch }}-xcode-26.5.0-${{ hashFiles('Package.swift', 'TrainyIOS/Trainy.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved') }}
-
       - name: Run static and provider smoke gates
         run: |
           DEVELOPER_DIR="$(xcode-select -p)"
@@ -69,9 +61,6 @@ jobs:
         env:
           ODPT_ENV_FILE: /dev/null
           ODPT_CONSUMER_KEY: ""
-          DESTINATION: platform=iOS Simulator,name=iPhone 17,OS=latest
-          ARCHS: arm64
-          ONLY_ACTIVE_ARCH: "YES"
         run: |
           DEVELOPER_DIR="$(xcode-select -p)"
           export DEVELOPER_DIR
@@ -96,6 +85,4 @@ jobs:
             -packageCachePath /private/tmp/trainy-swiftpm-cache \
             -disableAutomaticPackageResolution \
             CODE_SIGNING_ALLOWED=NO \
-            ARCHS=arm64 \
-            ONLY_ACTIVE_ARCH=YES \
             TRAINY_SOURCE_PACKAGES_DIR=/private/tmp/trainy-source-packages
