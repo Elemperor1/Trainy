@@ -1,3 +1,4 @@
+import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { stdout } from "node:process";
 import { URL } from "node:url";
@@ -22,23 +23,37 @@ function wordCount(value) {
   return value.trim().split(/\s+/u).filter(Boolean).length;
 }
 
-const source = await readFile(new URL("../src/copy.ts", import.meta.url), "utf8");
-let previousIndex = -1;
+const contract = JSON.parse(
+  await readFile(new URL("../src/copy.json", import.meta.url), "utf8"),
+);
+const actualJourneyCopy = [
+  contract.hook,
+  contract.welcome,
+  contract.japan.route,
+  contract.japan.trip,
+  contract.netherlands.station,
+  contract.netherlands.question,
+  contract.availability.live,
+  contract.availability.unavailable,
+  contract.build.line,
+  contract.brand,
+  contract.tagline,
+];
 
-for (const value of expectedJourneyCopy) {
-  const index = source.indexOf(JSON.stringify(value), previousIndex + 1);
-  if (index === -1) {
-    throw new Error(`Missing or out-of-order launch-film copy: ${value}`);
-  }
+assert.deepEqual(actualJourneyCopy, expectedJourneyCopy, "Journey copy must match the ordered contract");
+
+for (const value of actualJourneyCopy) {
   if (wordCount(value) > 7) {
     throw new Error(`Main launch-film line exceeds seven words: ${value}`);
   }
-  previousIndex = index;
 }
 
-if (!source.includes(JSON.stringify(requiredCredit))) {
-  throw new Error(`Missing required final credit: ${requiredCredit}`);
-}
+assert.equal(contract.credit, requiredCredit, "Final credit must match the required wording");
+assert.equal(
+  Object.keys(contract).at(-1),
+  "credit",
+  "The required credit must be the final structured copy entry",
+);
 
 stdout.write(
   `Copy contract passed: ${expectedJourneyCopy.length} ordered lines, word limits, and final credit verified.\n`,

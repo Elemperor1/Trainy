@@ -19,6 +19,7 @@ export function stripElementsByTagName(markup, tagName) {
     const opensElement =
       boundary === undefined ||
       boundary === ">" ||
+      boundary === "/" ||
       boundary === " " ||
       boundary === "\t" ||
       boundary === "\n" ||

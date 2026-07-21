@@ -20,7 +20,7 @@ assets, music, copy, devices, or campaign compositions.
 | 03 — Japan | 445–1040 | 0:14.8–0:34.7 | One uninterrupted recording moves from Trips to Search, types the route, finds Nozomi 231, dismisses the keyboard, and returns to Trips. | `Tokyo → Shin‑Osaka` / `Nozomi 231 · 09:21` |
 | 04 — Utrecht | 1033–1677 | 0:34.4–0:55.9 | One uninterrupted recording moves from Trips to Stations, searches Utrecht, opens the matching result, and reaches the NS departure board. | `Utrecht Centraal` / `What leaves next?` / `Live when it’s live.` |
 | 05 — Honest fallback | 1670–1789 | 0:55.7–0:59.7 | The ordinary unavailable state recovers through the visible retry action at native speed. | `Clear when it isn’t.` |
-| 06 — Accessibility | 1782–1841 | 0:59.4–1:01.4 | A two-second real Dark Mode and AX2XL Dynamic Type state appears at the same fixed status-bar time. | Product UI only |
+| 06 — Accessibility | 1782–1841 | 0:59.4–1:01.4 | A two-second Dark Mode and AX2XL Dynamic Type capture appears at the same fixed status-bar time. | Product UI only |
 | 07 — Privacy + Build Week | 1834–1946 | 1:01.1–1:04.9 | A stable Settings take begins with crash diagnostics off, shows the explicit opt-in, and carries one concise factual Build Week line. | `Built with Codex + GPT‑5.6` |
 | 08 — Product resolve | 1939–2088 | 1:04.6–1:09.6 | The matching Nozomi result resolves to the tracked-trip surface in one final centered product hero. | Product UI only |
 | 09 — Trainy | 2081–2519 | 1:09.4–1:24.0 | A pale mint wash replaces the dark field; the repository app icon, name, and promise settle without a zoom. | `Trainy` / `Know before you go.` |

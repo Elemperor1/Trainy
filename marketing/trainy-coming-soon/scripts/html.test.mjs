@@ -12,6 +12,10 @@ test("preserves similarly named custom elements", () => {
   assert.equal(stripElementsByTagName(markup, "script"), markup);
 });
 
+test("removes slash-terminated script start tags", () => {
+  assert.equal(stripElementsByTagName("<script/>payload()</script>", "script"), "");
+});
+
 test("rejects an unterminated executable element", () => {
   assert.throws(
     () => stripElementsByTagName("<script>unfinished", "script"),
