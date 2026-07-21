@@ -1,0 +1,57 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "trainy-ns-provider-proxy",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-07-20",
+  "compatibility_flags": ["nodejs_compat"],
+  "workers_dev": true,
+  "preview_urls": false,
+  "secrets": {
+    "required": ["NS_SUBSCRIPTION_KEY"]
+  },
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "NS_UPSTREAM_QUOTA",
+        "class_name": "NSUpstreamQuota"
+      }
+    ]
+  },
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_sqlite_classes": ["NSUpstreamQuota"]
+    }
+  ],
+  "ratelimits": [
+    {
+      "name": "CLIENT_RATE_LIMITER",
+      "namespace_id": "1001",
+      "simple": {
+        "limit": 60,
+        "period": 60
+      }
+    },
+    {
+      "name": "UPSTREAM_RATE_LIMITER",
+      "namespace_id": "1002",
+      "simple": {
+        "limit": 48,
+        "period": 60
+      }
+    }
+  ],
+  "observability": {
+    "enabled": true,
+    "head_sampling_rate": 1,
+    "logs": {
+      "enabled": true,
+      "head_sampling_rate": 1,
+      "invocation_logs": false,
+      "persist": true
+    },
+    "traces": {
+      "enabled": false
+    }
+  }
+}

@@ -34,7 +34,7 @@ Required scale: `Display / H1 / H2 / H3 / Body / Small / Caption`. Adopted throu
 
 | Token | iOS font | Web font / size | Use |
 | --- | --- | --- | --- |
-| `Display` | `.system(size: 36, weight: .bold, design: .rounded)` | `Inter Tight 600, 40/44, letter-spacing -0.02em` | Hero journey times; 36 pt preserves an optical gap between two 12-hour timestamps on iPhone |
+| `Display` | `.system(.largeTitle, weight: .bold, design: .rounded)` | `Inter Tight 600, 40/44, letter-spacing -0.02em` | Hero journey times and metrics; semantic Dynamic Type scaling is required |
 | `H1` | `.system(.title, weight: .semibold, design: .rounded)` | `Inter 600, 28/32, letter-spacing -0.01em` | Screen titles (Trips, Search, Stations, History, Settings) |
 | `H2` | `.system(.title3, weight: .semibold, design: .rounded)` | `Inter 600, 18/24, letter-spacing 0` | Section headers (rail map, journey progress) |
 | `H3` | `.system(.headline, weight: .semibold, design: .rounded)` | `Inter 600, 15/20, letter-spacing 0` | Card titles, list-item titles |
@@ -44,7 +44,7 @@ Required scale: `Display / H1 / H2 / H3 / Body / Small / Caption`. Adopted throu
 
 Rules:
 - **Optical alignment**: numerals use `font-variant-numeric: tabular-nums` (web) and `.monospacedDigit()` (iOS).
-- **Headings** use `text-wrap: balance` (web) and `.lineLimit(1)` with `.minimumScaleFactor(0.7)` (iOS).
+- **Headings** use `text-wrap: balance` (web). On iOS, rider-facing headings and navigation rows wrap at accessibility sizes; one-line scaling is limited to compact numeric/diagram roles where wrapping would destroy meaning.
 - **No more than 3 type steps per screen**. Trips tab: `Display` (the time), `H2` (the city), `Small` (the meta). That is it.
 - **Font smoothing**: web applies `-webkit-font-smoothing: antialiased` on `body`; iOS uses system defaults.
 
@@ -91,7 +91,7 @@ A single accent: `#0E5F4E` (deep teal). Used for the active tab, the primary CTA
 
 `--line: rgba(15,17,21,0.08)` (light) / `rgba(255,255,255,0.08)` (dark). Use only on inset regions. Prefer shadows over borders (see Section 5).
 
-iOS semantic target: `RailDesign.Palette` collapses to `background / panel / inset / ink / secondaryText / accent / success / warning / danger / info` and their `*-soft` variants. A transitional exception currently keeps `marine / violet / copper / amber / mint / red / blue` for provider-status, source-state, and rail-map cues. A Phase 17 semantic-palette cleanup, required before another rider-facing provider is marked active, will route those remaining call sites through semantic roles and remove the decorative names.
+iOS semantic contract: `RailDesign.Palette` exposes `background / panel / inset / ink / secondaryText / accent / success / warning / danger / info` and their `*-soft` variants. Phase 17 was completed on 2026-07-19 before the NS rider surface was enabled locally: the decorative `marine / violet / copper / amber / mint / red / blue` roles were removed, all call sites use semantic meaning, and the repository guard rejects their reintroduction.
 
 ---
 
@@ -135,13 +135,13 @@ iOS: `RailDesign.Elevation.resting` and `.raised` map to the above values. The `
 | Primary | One per screen. The action the user came to do. | Filled, `--ink-strong` background, `--surface-canvas` text, `--radius-control`, 44-pt minimum height. |
 | Secondary | Supporting actions. | Outlined, transparent background, `--line` border, `--ink-default` text. |
 | Tertiary | Inline link-style actions. | No border, no fill, `--ink-default` text, underline on hover. |
-| Icon | Toolbars / list rows. | 40x40 hit area minimum (extend with pseudo-element if visible icon is smaller), `--radius-control`, `--surface-inset` fill, `--ink-default` icon. |
+| Icon | Toolbars / list rows. | 44x44 hit area minimum (extend the semantic target if the visible icon is smaller), `--radius-control`, `--surface-inset` fill, `--ink-default` icon. |
 
 Press state: `scale(0.96)` over `120ms` ease-out (web and iOS). Use `transform`/`scale` only; never `transition: all`. Focus state: 2-pt ring with `--status-info` at 30% alpha.
 
 ### 6.2 Forms
 
-Inputs are 44-pt tall, 16-pt corner radius, `--surface-panel` background, `--line` 1-pt border, `--ink-default` placeholder, 13-pt `Small` label above (not inside). Focus border switches to `--status-info`. No floating labels.
+Inputs are at least 44-pt tall, 16-pt corner radius, `--surface-panel` background, `--line` 1-pt border, `--ink-default` placeholder, and a semantic label above (not inside). `RailSearchField` owns the native text input, submit action, focus styling, accessibility labels, and AX-size wrapping. Focus border switches to `--status-info`. No floating labels.
 
 ### 6.3 Cards
 
@@ -174,6 +174,16 @@ Empty states use `--surface-panel` background, 48-pt flat tinted circle for the 
 ### 6.10 Error
 
 Inline error below an input uses `--status-danger` text and a 4-pt left border in `--status-danger`. Banner-level errors sit on `--status-danger-soft` background with `--status-danger` border-left.
+
+### 6.11 Provider freshness and source
+
+`StaleDataBanner`, `RateLimitBanner`, and `RailSourceDisclosure` are the shared rider-facing patterns for bounded fallback, throttling/retry, and source/freshness disclosure. They use semantic status colors, expose full VoiceOver text, keep retry targets at least 44 pt, and allow all copy to wrap at accessibility sizes. Screens do not reconstruct these states locally.
+
+Provider-supplied text is data, not localization or Markdown syntax. Shared
+components provide verbatim-string entry points, and NS station, destination,
+alert, source, and attribution fields use them before reaching `Text`. The
+2026-07-20 runtime review confirmed these values wrap at AX2XL and appear in the
+VoiceOver-enabled simulator accessibility tree as literal provider text.
 
 ---
 
@@ -215,7 +225,7 @@ Web:
 
 - Contrast minimum: 4.5:1 for text on `--surface-canvas`; 3:1 for text on `--surface-panel`.
 - Focus ring always visible (`:focus-visible` only). 2-pt ring with `--status-info` at 30% alpha, 2-pt offset.
-- Hit area minimum 40x40-pt; extend with a pseudo-element (`::before`) on small icons.
+- Interaction target minimum 44x44 pt for rider actions; extend the semantic target when the visible icon is smaller.
 - VoiceOver: every status pill reads as "On time, scheduled data, fresh". Every source badge reads as "Scheduled timetable source, fresh, JR Central".
 - Motion: respect `prefers-reduced-motion` and `accessibilityReduceTransparency`. Glass falls back to `--surface-panel` with a 1-pt `--line` border.
 

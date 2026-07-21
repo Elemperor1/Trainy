@@ -64,6 +64,42 @@ protocol StationBoardProvider: TrainProvider {
     func fetchStationBoard(stationID: String) async throws -> StationBoard
 }
 
+protocol StationSearchProvider: TrainProvider {
+    func searchStations(matching query: String, limit: Int) async throws -> StationSearchPage
+}
+
+protocol ServiceAlertProvider: TrainProvider {
+    func fetchServiceAlerts(stationID: String?) async throws -> ServiceAlertPage
+}
+
+struct ProviderStation: Identifiable, Hashable, Sendable {
+    let providerID: String
+    let code: String
+    let name: String
+    let shortName: String?
+    let countryCode: String?
+    let latitude: Double?
+    let longitude: Double?
+
+    var id: String { "\(providerID):\(code)" }
+}
+
+struct StationSearchPage: Hashable, Sendable {
+    let providerID: String
+    let query: String
+    let generatedAt: Date?
+    let stations: [ProviderStation]
+    let sourceProvenance: SourceProvenance?
+}
+
+struct ServiceAlertPage: Hashable, Sendable {
+    let providerID: String
+    let stationID: String?
+    let generatedAt: Date?
+    let alerts: [TrainAlert]
+    let sourceProvenance: SourceProvenance?
+}
+
 protocol JourneyPlanningProvider: TrainProvider {
     func fetchJourneyPlans(
         from originStationID: String,

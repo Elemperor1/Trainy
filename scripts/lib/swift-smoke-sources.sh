@@ -16,6 +16,7 @@ configure_trainy_swift_smoke_sources() {
     "$core_dir/Providers/TrainProvider.swift"
     "$core_dir/Providers/ProviderRegistry.swift"
     "$core_dir/Providers/ProviderTextUtilities.swift"
+    "$core_dir/ProviderProxy.swift"
     "$core_dir/Providers/ODPT/ODPTClient.swift"
     "$core_dir/Providers/ODPT/ODPTModels.swift"
     "$core_dir/Providers/JREast/JREastTimetableClient.swift"
@@ -30,7 +31,6 @@ configure_trainy_swift_smoke_sources() {
   )
 
   TRAINY_STORE_SMOKE_SOURCES=(
-    "$core_dir/ProviderProxy.swift"
     "$core_dir/TrainStore.swift"
   )
 }

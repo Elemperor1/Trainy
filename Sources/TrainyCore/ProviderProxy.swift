@@ -45,7 +45,11 @@ struct ProviderProxyConfiguration: Hashable, Sendable {
             var components = URLComponents(string: trimmed),
             let scheme = components.scheme?.lowercased(),
             ["http", "https"].contains(scheme),
-            components.host?.isEmpty == false
+            let host = components.host?.lowercased(),
+            !host.isEmpty,
+            components.user == nil,
+            components.password == nil,
+            scheme == "https" || Self.isLoopbackHost(host)
         else {
             return nil
         }
@@ -56,6 +60,10 @@ struct ProviderProxyConfiguration: Hashable, Sendable {
             components.path = ""
         }
         return components.url
+    }
+
+    private static func isLoopbackHost(_ host: String) -> Bool {
+        host == "localhost" || host == "127.0.0.1" || host == "::1"
     }
 }
 
@@ -157,21 +165,124 @@ protocol ProviderProxyHealthFetching: Sendable {
     func fetchProviderHealth(from baseURL: URL) async throws -> ProviderProxyHealthResponse
 }
 
+enum BoundedURLSessionError: Error, Equatable {
+    case responseTooLarge
+    case timedOut
+}
+
+/// Streams an HTTP body under both a byte ceiling and a whole-response deadline.
+///
+/// `URLRequest.timeoutInterval` is an inactivity timeout and `data(for:)`
+/// materializes the complete body before callers can inspect its size. This
+/// loader cancels the underlying task as soon as either explicit bound wins.
+struct BoundedURLSession {
+    private struct Payload: @unchecked Sendable {
+        let data: Data
+        let response: URLResponse
+    }
+
+    static func data(
+        for request: URLRequest,
+        using session: URLSession,
+        maximumResponseBytes: Int,
+        deadline: Duration
+    ) async throws -> (Data, URLResponse) {
+        let payload = try await withThrowingTaskGroup(of: Payload.self) { group in
+            group.addTask {
+                try await read(
+                    request: request,
+                    session: session,
+                    maximumResponseBytes: maximumResponseBytes
+                )
+            }
+            group.addTask {
+                try await Task.sleep(for: deadline)
+                try Task.checkCancellation()
+                throw BoundedURLSessionError.timedOut
+            }
+
+            defer { group.cancelAll() }
+            guard let first = try await group.next() else {
+                throw BoundedURLSessionError.timedOut
+            }
+            return first
+        }
+        return (payload.data, payload.response)
+    }
+
+    private static func read(
+        request: URLRequest,
+        session: URLSession,
+        maximumResponseBytes: Int
+    ) async throws -> Payload {
+        let (bytes, response) = try await session.bytes(for: request)
+        let task = bytes.task
+        return try await withTaskCancellationHandler {
+            let expectedLength = response.expectedContentLength
+            if expectedLength > Int64(maximumResponseBytes) {
+                task.cancel()
+                throw BoundedURLSessionError.responseTooLarge
+            }
+
+            var data = Data()
+            if expectedLength > 0 {
+                data.reserveCapacity(min(maximumResponseBytes, Int(expectedLength)))
+            }
+            do {
+                for try await byte in bytes {
+                    guard data.count < maximumResponseBytes else {
+                        task.cancel()
+                        throw BoundedURLSessionError.responseTooLarge
+                    }
+                    data.append(byte)
+                }
+            } catch {
+                if Task.isCancelled { task.cancel() }
+                throw error
+            }
+            return Payload(data: data, response: response)
+        } onCancel: {
+            task.cancel()
+        }
+    }
+}
+
 struct ProviderProxyHealthClient: ProviderProxyHealthFetching {
+    static let maximumResponseBytes = 65_536
+
+    private let session: URLSession
+
+    init(session: URLSession = .shared) {
+        self.session = session
+    }
+
     func fetchProviderHealth(from baseURL: URL) async throws -> ProviderProxyHealthResponse {
         let url = Self.healthURL(from: baseURL)
         var request = URLRequest(url: url)
         request.httpMethod = "GET"
+        request.timeoutInterval = 8
         request.setValue("application/json", forHTTPHeaderField: "Accept")
 
-        let (data, response) = try await URLSession.shared.data(for: request)
+        let data: Data
+        let response: URLResponse
+        do {
+            (data, response) = try await BoundedURLSession.data(
+                for: request,
+                using: session,
+                maximumResponseBytes: Self.maximumResponseBytes,
+                deadline: .seconds(8)
+            )
+        } catch BoundedURLSessionError.responseTooLarge {
+            throw ProviderProxyHealthError.unreadableHealth
+        } catch BoundedURLSessionError.timedOut {
+            throw ProviderProxyHealthError.timedOut
+        }
         guard let httpResponse = response as? HTTPURLResponse else {
             throw ProviderProxyHealthError.badResponse
         }
         guard (200..<300).contains(httpResponse.statusCode) else {
             throw ProviderProxyHealthError.badStatus(httpResponse.statusCode)
         }
-
         do {
             return try Self.makeDecoder().decode(ProviderProxyHealthResponse.self, from: data)
         } catch {
@@ -204,6 +315,7 @@ struct ProviderProxyHealthClient: ProviderProxyHealthFetching {
 enum ProviderProxyHealthError: LocalizedError, Equatable {
     case badResponse
     case badStatus(Int)
+    case timedOut
     case unreadableHealth
 
     var errorDescription: String? {
@@ -212,6 +324,8 @@ enum ProviderProxyHealthError: LocalizedError, Equatable {
             return "The provider proxy returned an unexpected response."
         case .badStatus(let statusCode):
             return "The provider proxy returned HTTP \(statusCode)."
+        case .timedOut:
+            return "The provider proxy health check timed out."
         case .unreadableHealth:
             return "Trainy could not read provider proxy health."
         }

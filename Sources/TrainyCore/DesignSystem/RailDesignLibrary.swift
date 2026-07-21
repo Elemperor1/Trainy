@@ -78,7 +78,7 @@ struct SectionHeader: View {
 
     init(title: LocalizedStringKey, subtitle: String) {
         self.title = title
-        self.subtitle = Text(subtitle)
+        self.subtitle = Text(verbatim: subtitle)
     }
 
     var body: some View {
@@ -92,6 +92,8 @@ struct SectionHeader: View {
                 .fixedSize(horizontal: false, vertical: true)
         }
         .textCase(nil)
+        .accessibilityElement(children: .combine)
+        .accessibilityAddTraits(.isHeader)
     }
 }
 

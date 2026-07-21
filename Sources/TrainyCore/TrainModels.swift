@@ -389,6 +389,14 @@ struct SourceProvenance: Hashable, Codable, Sendable {
         formatter.formatOptions = [.withInternetDateTime]
         return formatter.date(from: value)
     }
+
+    /// Re-evaluates time-bounded freshness without mutating the source record.
+    func resolvedFreshness(at now: Date) -> FreshnessState {
+        if let validUntil, validUntil <= now {
+            return .expired
+        }
+        return freshness
+    }
 }
 
 enum RailFactKind: String, Codable, CaseIterable, Sendable {
@@ -421,6 +429,7 @@ enum RailFactKind: String, Codable, CaseIterable, Sendable {
             return "Seat cue"
         }
     }
+
 }
 
 struct FactProvenance: Identifiable, Hashable, Codable, Sendable {

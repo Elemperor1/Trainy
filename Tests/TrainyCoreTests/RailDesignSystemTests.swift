@@ -156,14 +156,26 @@ final class RailDesignSystemTests: XCTestCase {
 
     // MARK: - Palette contracts
 
-    /// Verifies semantic status colors resolve to their canonical palette tokens.
-    func testSemanticPaletteAliasesResolveToTheirCanonicalTokens() {
+    /// Verifies the semantic status palette is complete, distinct, and adaptive.
+    func testSemanticPaletteRolesAreDistinctAndAdaptive() {
         for style in [UIUserInterfaceStyle.light, .dark] {
-            assertColorsEqual(RailDesign.Palette.success, RailDesign.Palette.mint, style: style)
-            assertColorsEqual(RailDesign.Palette.warning, RailDesign.Palette.amber, style: style)
-            assertColorsEqual(RailDesign.Palette.danger, RailDesign.Palette.red, style: style)
-            assertColorsEqual(RailDesign.Palette.info, RailDesign.Palette.blue, style: style)
+            let roles = [
+                resolvedRGBA(RailDesign.Palette.success, style: style),
+                resolvedRGBA(RailDesign.Palette.warning, style: style),
+                resolvedRGBA(RailDesign.Palette.danger, style: style),
+                resolvedRGBA(RailDesign.Palette.info, style: style)
+            ]
+            XCTAssertEqual(Set(roles.map { "\($0.red)-\($0.green)-\($0.blue)" }).count, 4)
         }
+
+        XCTAssertNotEqual(
+            resolvedRGBA(RailDesign.Palette.success, style: .light).green,
+            resolvedRGBA(RailDesign.Palette.success, style: .dark).green
+        )
+        XCTAssertEqual(resolvedRGBA(RailDesign.Palette.successSoft, style: .light).alpha, 0.12, accuracy: 0.001)
+        XCTAssertEqual(resolvedRGBA(RailDesign.Palette.warningSoft, style: .light).alpha, 0.12, accuracy: 0.001)
+        XCTAssertEqual(resolvedRGBA(RailDesign.Palette.dangerSoft, style: .light).alpha, 0.12, accuracy: 0.001)
+        XCTAssertEqual(resolvedRGBA(RailDesign.Palette.infoSoft, style: .light).alpha, 0.12, accuracy: 0.001)
     }
 
     /// Verifies primary and secondary text meet contrast targets in both appearances.
@@ -209,7 +221,7 @@ final class RailDesignSystemTests: XCTestCase {
             (.delayed, RailDesign.Palette.warning),
             (.platformChanged, RailDesign.Palette.warning),
             (.canceled, RailDesign.Palette.danger),
-            (.disruption, RailDesign.Palette.copper)
+            (.disruption, RailDesign.Palette.danger)
         ]
         for (status, expectedTint) in expectedTints {
             assertColorsEqual(status.tint, expectedTint)

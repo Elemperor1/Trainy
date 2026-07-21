@@ -1,0 +1,32 @@
+{
+  "data": {
+    "stations": [
+      {
+        "code": "UT",
+        "name": "Utrecht Centraal",
+        "shortName": "Utrecht C.",
+        "countryCode": "NL",
+        "latitude": 52.09,
+        "longitude": 5.11
+      },
+      {
+        "code": "UTLR",
+        "name": "Utrecht Leidsche Rijn",
+        "shortName": "Utrecht L.R.",
+        "countryCode": "NL",
+        "latitude": 52.10,
+        "longitude": 5.07
+      }
+    ]
+  },
+  "meta": {
+    "provider": "ns",
+    "source": "NS Reisinformatie API",
+    "attribution": "Data from Nederlandse Spoorwegen (NS)",
+    "fetchedAt": "2026-07-19T12:00:00Z",
+    "expiresAt": "2026-07-19T13:00:00Z",
+    "freshness": "fresh",
+    "cacheStatus": "miss"
+  },
+  "requestId": "fixture-station-search"
+}

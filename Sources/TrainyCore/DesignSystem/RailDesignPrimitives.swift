@@ -177,7 +177,7 @@ struct RailBadge: View {
         symbol: String? = nil,
         minHeight: CGFloat = 30
     ) {
-        self.title = Text(title)
+        self.title = Text(verbatim: title)
         self.tint = tint
         self.symbol = symbol
         self.minHeight = minHeight
@@ -273,39 +273,158 @@ struct RailValueRow: View {
 
 /// Accessible card content that signals navigation to a rail destination.
 struct RailNavigationCard: View {
+    private enum Title {
+        case localized(LocalizedStringKey)
+        case verbatim(String)
+    }
+
     let symbol: String
-    let title: LocalizedStringKey
+    private let title: Title
     let detail: String
-    var tint: Color = RailDesign.Palette.accent
+    let tint: Color
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
+    init(
+        symbol: String,
+        title: LocalizedStringKey,
+        detail: String,
+        tint: Color = RailDesign.Palette.accent
+    ) {
+        self.symbol = symbol
+        self.title = .localized(title)
+        self.detail = detail
+        self.tint = tint
+    }
+
+    /// Creates a navigation card whose title is remote or runtime data.
+    ///
+    /// Verbatim titles bypass localization and Markdown parsing so provider
+    /// content cannot acquire formatting or link semantics.
+    init(
+        symbol: String,
+        verbatimTitle: String,
+        detail: String,
+        tint: Color = RailDesign.Palette.accent
+    ) {
+        self.symbol = symbol
+        self.title = .verbatim(verbatimTitle)
+        self.detail = detail
+        self.tint = tint
+    }
 
     var body: some View {
-        HStack(spacing: RailDesign.Spacing.m) {
-            RailIconBadge(symbol: symbol, tint: tint, size: .hero)
-
-            VStack(alignment: .leading, spacing: RailDesign.Spacing.xxs) {
-                Text(title)
-                    .font(RailDesign.Typography.h3)
-                    .foregroundStyle(RailDesign.Palette.ink)
-                Text(detail)
-                    .font(RailDesign.Typography.small)
-                    .foregroundStyle(RailDesign.Palette.secondaryText)
-                    .lineLimit(2)
+        Group {
+            if dynamicTypeSize.isAccessibilitySize {
+                VStack(alignment: .leading, spacing: RailDesign.Spacing.m) {
+                    HStack {
+                        RailIconBadge(symbol: symbol, tint: tint, size: .hero)
+                        Spacer(minLength: RailDesign.Spacing.s)
+                        destinationIndicator
+                    }
+                    copy
+                }
+            } else {
+                HStack(spacing: RailDesign.Spacing.m) {
+                    RailIconBadge(symbol: symbol, tint: tint, size: .hero)
+                    copy
+                    Spacer(minLength: RailDesign.Spacing.s)
+                    destinationIndicator
+                }
             }
-
-            Spacer(minLength: RailDesign.Spacing.s)
-
-            Image(systemName: "chevron.right")
-                .font(RailDesign.Typography.caption.weight(.semibold))
-                .foregroundStyle(RailDesign.Palette.secondaryText)
-                .offset(y: 1)
-                .accessibilityHidden(true)
         }
         .contentShape(RoundedRectangle(cornerRadius: RailDesign.Radius.card, style: .continuous))
         .accessibilityElement(children: .combine)
     }
+
+    private var copy: some View {
+        VStack(alignment: .leading, spacing: RailDesign.Spacing.xxs) {
+            titleText
+                .font(RailDesign.Typography.h3)
+                .foregroundStyle(RailDesign.Palette.ink)
+                .fixedSize(horizontal: false, vertical: true)
+            Text(detail)
+                .font(RailDesign.Typography.small)
+                .foregroundStyle(RailDesign.Palette.secondaryText)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    @ViewBuilder
+    private var titleText: some View {
+        switch title {
+        case .localized(let key):
+            Text(key)
+        case .verbatim(let value):
+            Text(verbatim: value)
+        }
+    }
+
+    private var destinationIndicator: some View {
+        Image(systemName: "chevron.right")
+            .font(RailDesign.Typography.caption.weight(.semibold))
+            .foregroundStyle(RailDesign.Palette.secondaryText)
+            .accessibilityHidden(true)
+    }
 }
 
 // MARK: - Actions
+
+/// Accessible search input with an explicit submit action for rider-facing lookup flows.
+struct RailSearchField: View {
+    let title: LocalizedStringKey
+    let prompt: LocalizedStringKey
+    @Binding var text: String
+    let action: () -> Void
+
+    var body: some View {
+        RailSurface {
+            VStack(alignment: .leading, spacing: RailDesign.Spacing.s) {
+                Text(title)
+                    .font(RailDesign.Typography.h3)
+                    .foregroundStyle(RailDesign.Palette.ink)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                HStack(spacing: RailDesign.Spacing.s) {
+                    Image(systemName: "magnifyingglass")
+                        .foregroundStyle(RailDesign.Palette.secondaryText)
+                        .accessibilityHidden(true)
+
+                    TextField(prompt, text: $text)
+                        .font(RailDesign.Typography.body)
+                        .foregroundStyle(RailDesign.Palette.ink)
+                        .textInputAutocapitalization(.words)
+                        .autocorrectionDisabled()
+                        .submitLabel(.search)
+                        .onSubmit(action)
+                        .accessibilityLabel(title)
+
+                    Button(action: action) {
+                        Image(systemName: "arrow.right")
+                            .font(RailDesign.Typography.h3)
+                            .foregroundStyle(RailDesign.Palette.onAccent)
+                            .frame(width: 44, height: 44)
+                            .background(
+                                RailDesign.Palette.accent,
+                                in: RoundedRectangle(cornerRadius: RailDesign.Radius.control, style: .continuous)
+                            )
+                    }
+                    .buttonStyle(PressableButtonStyle())
+                    .disabled(text.trimmingCharacters(in: .whitespacesAndNewlines).count < 2)
+                    .accessibilityLabel("Search NS stations")
+                }
+                .padding(.leading, RailDesign.Spacing.s)
+                .background(
+                    RailDesign.Palette.inset,
+                    in: RoundedRectangle(cornerRadius: RailDesign.Radius.control, style: .continuous)
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: RailDesign.Radius.control, style: .continuous)
+                        .stroke(RailDesign.Palette.hairline, lineWidth: 1)
+                )
+            }
+        }
+    }
+}
 
 /// Shared label treatment for primary, secondary, and quiet rail actions.
 struct RailActionLabel: View {

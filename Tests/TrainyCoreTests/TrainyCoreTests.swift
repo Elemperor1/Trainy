@@ -819,6 +819,12 @@ final class TrainyTests: XCTestCase {
 
         XCTAssertFalse(invalidConfig.isConfigured)
         XCTAssertNil(invalidConfig.baseURL)
+
+        XCTAssertNil(ProviderProxyConfiguration(rawBaseURL: "http://proxy.example.com").baseURL)
+        XCTAssertEqual(
+            ProviderProxyConfiguration(rawBaseURL: "http://127.0.0.1:8787").baseURL?.absoluteString,
+            "http://127.0.0.1:8787"
+        )
     }
 
     func testProviderProxyHealthDecodesCompactJSONAndBuildsEndpointURL() throws {

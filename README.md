@@ -37,13 +37,23 @@ scripts/smoke-odpt.sh
 
 The smoke compiles Trainy's provider code and verifies that `Tokyo to Shin-Osaka` and `JR East` searches return real ODPT-backed or official timetable trips instead of starter data.
 
-Other credentialed-provider env files, including `ns.env`, are developer smoke inputs only. `scripts/build-ios.sh` does not load or pass those keys to Xcode. Netherlands NS is adapter-ready and fixture-tested, but it is not rider-available until a proxy-backed station-board surface is connected.
+Other credentialed-provider env files, including `ns.env`, are developer smoke inputs only. `scripts/build-ios.sh` does not load or pass those keys to Xcode. Netherlands NS station search, departure boards, service alerts, and recovery states are implemented through Trainy's narrow provider proxy. The authenticated NS quota/product-page review, production Worker rollout, public contract checks, credential boundary, and iPhone 17 rider path are verified at `https://trainy-ns-provider-proxy.trainy-jacob.workers.dev`; NS is now rider-active in provider metadata. The URL remains an explicit release build setting rather than a source-controlled default. Production receives the NS credential only through the Worker secret binding; the authorized local smoke copy remains ignored and never enters Xcode.
 
 ## Provider Proxy
 
 Cloudflare Workers is the selected production proxy path for credentialed or heavy providers. The app reads only the proxy base URL from `TRAINY_PROVIDER_PROXY_BASE_URL` or `TrainyProviderProxyBaseURL` in the app `Info.plist`; production provider keys stay in Worker secrets or equivalent backend secret storage.
 
 Settings > Providers shows the proxy state and, when configured, can fetch compact health from `GET /v1/health/providers`. That response is intentionally app-safe provider status and cache metadata, not rider trip details or raw upstream/provider debug output.
+
+The implemented NS contract is deliberately small: `GET /v1/ns/stations`, `GET /v1/ns/departures`, and `GET /v1/ns/disruptions`. Inputs, upstream operations, timeouts, response sizes, caches, rate limits, and normalized fields are fixed by the Worker; it is not a general NS relay. For credential-neutral checks and the authorized local path:
+
+```bash
+npm ci --prefix provider-proxy
+npm run check --prefix provider-proxy
+scripts/smoke-ns-proxy.sh
+```
+
+Run `scripts/dev-ns-proxy.sh`, then build with `TRAINY_PROVIDER_PROXY_BASE_URL=http://127.0.0.1:8787` to exercise the iOS flow locally. Non-loopback proxy URLs must use HTTPS. Production configuration, rotation, failure behavior, and the approval-gated rollout are documented in `provider-proxy/README.md`.
 
 ## Swift Package and VS Code
 
@@ -131,7 +141,15 @@ xcodebuild test \
   TRAINY_SOURCE_PACKAGES_DIR=/private/tmp/trainy-source-packages
 ```
 
-`TrainyTests` does not require provider credentials or live network access. It covers source provenance mapping, fallback behavior, route matching, station normalization, time parsing across midnight, persistence migration by `dataScope`, proxy health/config wiring, provider error-to-message mapping, NS fixtures, and design-system contracts. Keep `TRAINY_SOURCE_PACKAGES_DIR` equal to `-clonedSourcePackagesDirPath` so the Crashlytics build phase resolves the same Swift package checkout.
+`TrainyTests` does not require provider credentials or live network access. It covers source provenance mapping, fallback behavior, route matching, station normalization, time parsing across midnight, persistence migration by `dataScope`, proxy health/config wiring, NS proxy adapter and view-model states, provider response-contract validation, native response size/deadline enforcement, provider error-to-message mapping, NS fixtures, and design-system contracts. The Workerd suite separately covers the public contract, input rejection, normalization, stale fallback, upstream failures, whole-response deadlines, field/body bounds, same-key request coalescing, rate limiting, health isolation, and credential-safe output. Keep `TRAINY_SOURCE_PACKAGES_DIR` equal to `-clonedSourcePackagesDirPath` so the Crashlytics build phase resolves the same Swift package checkout.
+
+After a credential-neutral build, `scripts/check-provider-secret-boundary.py` scans versionable files, Trainy-generated artifacts, temporary proxy logs, simulator logs, test products, and the app bundle for any authorized local provider credential value. It also rejects NS upstream-only host/header/secret markers in shipping app files; Xcode-injected `.xctest` plug-ins remain in the exact-value scan but are excluded from that public-marker check because the tests intentionally contain the forbidden strings they assert against.
+
+Current 2026-07-20 verification: 58/58 credential-neutral iOS tests and 34/34 Workerd contract tests passed. The authorized loopback proxy smoke returned 5 Utrecht station matches and 20 fresh departures without printing or persisting the credential. The canonical build also succeeded with ODPT empty and only the public HTTPS proxy base URL configured. The four-case secret-boundary regression suite, provider-smoke parser/host/port suite, 25-case design-system guard self-test, 28-file repository design-system scan, and final boundary scan passed. The expanded final scan checked 58,811 repository/generated/log files plus 122 shipping app files. It found and removed one earlier Xcode DerivedData cache whose private build-command attachments retained an authorized local credential; the clean rerun found neither authorized local provider value nor an NS upstream-only marker in the shipping app.
+
+The iPhone 17 / iOS 26.5 runtime pass exercised live Utrecht search and departure results, source-backed no-match, automatic stale copy, forced offline fallback, and recovery after the loopback Worker restarted. Light and Dark Mode and AX2XL reflow were inspected separately. With VoiceOver actually enabled, the simulator accessibility tree exposed headings, the labelled station field and 44-by-44-point submit action, station-name/code buttons, source/freshness text, and 54-point tabs in logical order. The simulator was restored to standard Large text, Dark Mode, VoiceOver off, and normal contrast afterward.
+
+The owner approved the free Cloudflare hostname and one-time migration bridge on 2026-07-20. The byte-identical bridge version `65f469e7-ef2b-4acf-8503-e6f3793be5a2` applied the SQLite Durable Object lifecycle migration without changing the public contract. After its public checks passed, hardened version `0ece40b0-b27a-43aa-a865-55445909a2a1` was inspected and promoted to 100%; final deployment `46a26a6a-8abe-4091-9b19-3c32b20ccefa` serves only `https://trainy-ns-provider-proxy.trainy-jacob.workers.dev`. Repeated edge checks returned exact station code `UT` first, a fresh Amsterdam cache miss proved the global quota path can reach NS, and a persistent-client probe received normalized `429` then recovered. Rejected `POST` and unknown routes remained `405` and `404`. A canonical simulator candidate opened a fresh Utrecht board with current departures, a current alert, and separate truthful source disclosures. Preview URLs remain disabled, no custom domain or schedule exists, and the free hostname still lacks an owner-controlled zone WAF layer.
 
 The standalone smoke harnesses remain useful for focused script checks:
 

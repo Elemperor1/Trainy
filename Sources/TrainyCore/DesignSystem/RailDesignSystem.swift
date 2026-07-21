@@ -64,21 +64,34 @@ enum RailDesign {
         })
 
         static let accent = Color(red: 0.074, green: 0.455, blue: 0.430)
-        static let marine = Color(red: 0.082, green: 0.310, blue: 0.510)
-        static let violet = Color(red: 0.420, green: 0.315, blue: 0.600)
-        static let copper = Color(red: 0.760, green: 0.390, blue: 0.225)
-        static let mint = Color(red: 0.210, green: 0.670, blue: 0.510)
-        static let amber = Color(red: 0.890, green: 0.570, blue: 0.140)
-        static let red = Color(red: 0.820, green: 0.225, blue: 0.195)
-        static let blue = Color(red: 0.170, green: 0.405, blue: 0.820)
 
         // MARK: Semantic roles
-        // Route all status/meaning colors through these aliases so palette swaps
-        // and theming stay centralized. Do not hardcode status colors inline.
-        static let success = mint
-        static let warning = amber
-        static let danger = red
-        static let info = blue
+        // Status colors adapt with appearance and are the only non-brand hues
+        // available to consumers. Meaning belongs to the role, not a color name.
+        static let success = Color(uiColor: UIColor { traits in
+            traits.userInterfaceStyle == .dark
+                ? UIColor(red: 0.247, green: 0.729, blue: 0.580, alpha: 1)
+                : UIColor(red: 0.059, green: 0.478, blue: 0.361, alpha: 1)
+        })
+        static let warning = Color(uiColor: UIColor { traits in
+            traits.userInterfaceStyle == .dark
+                ? UIColor(red: 0.898, green: 0.643, blue: 0.271, alpha: 1)
+                : UIColor(red: 0.710, green: 0.439, blue: 0.102, alpha: 1)
+        })
+        static let danger = Color(uiColor: UIColor { traits in
+            traits.userInterfaceStyle == .dark
+                ? UIColor(red: 0.886, green: 0.400, blue: 0.349, alpha: 1)
+                : UIColor(red: 0.722, green: 0.220, blue: 0.169, alpha: 1)
+        })
+        static let info = Color(uiColor: UIColor { traits in
+            traits.userInterfaceStyle == .dark
+                ? UIColor(red: 0.478, green: 0.682, blue: 0.922, alpha: 1)
+                : UIColor(red: 0.122, green: 0.357, blue: 0.714, alpha: 1)
+        })
+        static let successSoft = success.opacity(0.12)
+        static let warningSoft = warning.opacity(0.12)
+        static let dangerSoft = danger.opacity(0.12)
+        static let infoSoft = info.opacity(0.12)
         static let onAccent = Color.white
     }
 
@@ -127,27 +140,26 @@ enum RailDesign {
         // across screens; the legacy aliases below stay so existing call
         // sites compile and read the same as before.
 
-        /// 36 pt display value. Large enough to anchor journey times while
-        /// preserving an optical gap between two 12-hour timestamps on iPhone.
-        static let display = Font.system(size: 36, weight: .bold, design: .rounded)
+        /// Dynamic Type display value for journey times and hero metrics.
+        static let display = Font.system(.largeTitle, design: .rounded, weight: .bold)
 
-        /// 28 pt screen title. Used by every `navigationTitle`.
-        static let h1 = Font.system(size: 28, weight: .semibold, design: .rounded)
+        /// Dynamic Type screen title role.
+        static let h1 = Font.system(.title, design: .rounded, weight: .semibold)
 
-        /// 18 pt section header. Used by every `SectionHeader` and card title.
-        static let h2 = Font.system(size: 18, weight: .semibold, design: .rounded)
+        /// Dynamic Type section header role.
+        static let h2 = Font.system(.title3, design: .rounded, weight: .semibold)
 
-        /// 15 pt card title / list-row title.
-        static let h3 = Font.system(size: 15, weight: .semibold, design: .rounded)
+        /// Dynamic Type card and list-row title role.
+        static let h3 = Font.system(.headline, design: .rounded, weight: .semibold)
 
-        /// 14 pt default body copy.
-        static let body = Font.system(size: 14, weight: .regular, design: .default)
+        /// Dynamic Type default body copy.
+        static let body = Font.system(.body, design: .default, weight: .regular)
 
-        /// 13 pt secondary metadata.
-        static let small = Font.system(size: 13, weight: .regular, design: .default)
+        /// Dynamic Type secondary metadata.
+        static let small = Font.system(.subheadline, design: .default, weight: .regular)
 
-        /// 11 pt uppercase eyebrow text.
-        static let caption = Font.system(size: 11, weight: .medium, design: .default)
+        /// Dynamic Type compact supporting text.
+        static let caption = Font.system(.caption, design: .default, weight: .medium)
 
         // Legacy aliases so existing call sites still compile and read the
         // same shape they used to. New code should prefer the tokens above.
@@ -157,7 +169,7 @@ enum RailDesign {
         static let routeTitle = h3
         static let headline = h3
         static let callout = body
-        static let compactLabel = Font.system(size: 12, weight: .semibold, design: .default)
+        static let compactLabel = Font.system(.caption, design: .default, weight: .semibold)
         static let micro = small
 
         // Illustration and map-canvas roles are intentionally named here
@@ -300,13 +312,11 @@ enum RailServiceStatus: String, CaseIterable, Identifiable {
     var tint: Color {
         switch self {
         case .onTime, .boarding, .arrived:
-            return RailDesign.Palette.mint
+            return RailDesign.Palette.success
         case .delayed, .platformChanged:
-            return RailDesign.Palette.amber
-        case .canceled:
-            return RailDesign.Palette.red
-        case .disruption:
-            return RailDesign.Palette.copper
+            return RailDesign.Palette.warning
+        case .canceled, .disruption:
+            return RailDesign.Palette.danger
         }
     }
 
@@ -350,7 +360,7 @@ struct RailGradientBackground: View {
                     RailDesign.Palette.backgroundLift.opacity(0.92),
                     RailDesign.Palette.background.opacity(0.76),
                     RailDesign.Palette.accent.opacity(0.10),
-                    RailDesign.Palette.copper.opacity(0.07)
+                    RailDesign.Palette.warningSoft.opacity(0.58)
                 ],
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing
@@ -358,7 +368,7 @@ struct RailGradientBackground: View {
 
             RadialGradient(
                 colors: [
-                    RailDesign.Palette.mint.opacity(0.20),
+                    RailDesign.Palette.successSoft,
                     .clear
                 ],
                 center: .topTrailing,
@@ -368,7 +378,7 @@ struct RailGradientBackground: View {
 
             RadialGradient(
                 colors: [
-                    RailDesign.Palette.copper.opacity(0.12),
+                    RailDesign.Palette.warningSoft,
                     .clear
                 ],
                 center: .bottomLeading,

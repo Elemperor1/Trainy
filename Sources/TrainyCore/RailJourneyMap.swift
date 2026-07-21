@@ -73,7 +73,7 @@ struct RailJourneyMapPanel: View {
                         .stroke(RailDesign.Palette.ink.opacity(0.22), style: StrokeStyle(lineWidth: 8, lineCap: .round, lineJoin: .round, dash: [11, 8]))
 
                     MapPolyline(coordinates: model.upcomingCoordinates)
-                        .stroke(RailDesign.Palette.marine.opacity(0.84), style: StrokeStyle(lineWidth: 5.5, lineCap: .round, lineJoin: .round, dash: [11, 8]))
+                        .stroke(RailDesign.Palette.accent.opacity(0.84), style: StrokeStyle(lineWidth: 5.5, lineCap: .round, lineJoin: .round, dash: [11, 8]))
 
                     MapPolyline(coordinates: model.completedCoordinates)
                         .stroke(RailDesign.Palette.ink.opacity(0.18), style: StrokeStyle(lineWidth: 10, lineCap: .round, lineJoin: .round))
@@ -278,7 +278,7 @@ private struct RailMapModel {
                 title: trip.vehiclePositionDisplayState.title,
                 detail: trip.vehiclePositionDisplayState.detailText,
                 symbolName: trip.vehiclePositionDisplayState.symbolName,
-                tint: trip.vehiclePositionDisplayState.isLiveVehiclePosition ? RailDesign.Palette.blue : RailDesign.Palette.marine
+                tint: trip.vehiclePositionDisplayState.isLiveVehiclePosition ? RailDesign.Palette.info : RailDesign.Palette.accent
             )
         )
 
@@ -305,7 +305,7 @@ private struct RailMapModel {
                         ? "Watch platform \(platform.displayText) and the split/through-service note before changing trains."
                         : "Watch the split/through-service note before changing trains; platform is not available from this source.",
                     symbolName: "arrow.triangle.branch",
-                    tint: RailDesign.Palette.amber
+                    tint: RailDesign.Palette.warning
                 )
             )
         } else if status == .onTime || status == .boarding {
@@ -314,7 +314,7 @@ private struct RailMapModel {
                     title: "No disruptions ahead",
                     detail: "Tracked stops ahead are clear in the current trip data.",
                     symbolName: "checkmark.shield.fill",
-                    tint: RailDesign.Palette.mint
+                    tint: RailDesign.Palette.success
                 )
             )
         } else {
@@ -561,7 +561,7 @@ private struct RailMapStatusOverlay: View {
             SourceBadge(trip: model.trip)
             Label(model.positionState.mapLabel, systemImage: model.positionState.symbolName)
                 .font(RailDesign.Typography.caption.weight(.semibold))
-                .foregroundStyle(model.positionState.isLiveVehiclePosition ? RailDesign.Palette.blue : RailDesign.Palette.secondaryText)
+                .foregroundStyle(model.positionState.isLiveVehiclePosition ? RailDesign.Palette.info : RailDesign.Palette.secondaryText)
                 .lineLimit(1)
                 .minimumScaleFactor(0.74)
                 .padding(.horizontal, RailDesign.Spacing.xs)
@@ -768,18 +768,18 @@ private struct RailMapStationPin: View {
 
     private var fillColor: Color {
         if stop.isDisruptionPoint {
-            return RailDesign.Palette.amber
+            return RailDesign.Palette.warning
         }
         if isNext {
             return RailDesign.Palette.accent
         }
         switch stop.state {
         case .done:
-            return RailDesign.Palette.mint
+            return RailDesign.Palette.success
         case .current:
             return RailDesign.Palette.accent
         case .pending:
-            return RailDesign.Palette.marine
+            return RailDesign.Palette.accent
         }
     }
 }
@@ -789,7 +789,7 @@ private struct RailMapPositionPin: View {
     let status: RailServiceStatus
 
     private var tint: Color {
-        state.isLiveVehiclePosition ? status.tint : RailDesign.Palette.marine
+        state.isLiveVehiclePosition ? status.tint : RailDesign.Palette.accent
     }
 
     var body: some View {

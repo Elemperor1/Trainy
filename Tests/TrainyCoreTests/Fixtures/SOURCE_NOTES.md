@@ -17,6 +17,16 @@ These fixtures are intentionally reduced samples for offline tests. They preserv
 
 - `future_providers/ns_departures_utrecht_centraal.json`: Reduced Netherlands NS departures response for Utrecht Centraal, captured from the NS travel information departures endpoint on 2026-06-17.
 - `future_providers/ns_active_disruptions.json`: Reduced Netherlands NS active disruptions response, captured from the NS travel information disruptions endpoint on 2026-06-17.
+- `future_providers/ns_proxy_station_search_utrecht.json`: Synthetic, normalized Trainy proxy response for an Utrecht station search. It contains only the public fields and provenance metadata allowed across the app boundary; timestamps and request ID are deterministic test values.
+- `future_providers/ns_proxy_departures_utrecht.json`: Synthetic, normalized Trainy proxy departure response covering on-time, delayed/platform-change, cancelled, and stale-fallback mapping. It is derived from the reduced NS field shapes rather than copied from a live response and contains no raw upstream fields or headers.
+
+Both normalized NS fixtures intentionally use the fixed public metadata contract:
+provider `ns`, source `NS Reisinformatie API`, and attribution `Data from
+Nederlandse Spoorwegen (NS)`. Decoder tests reject altered metadata, invalid
+freshness intervals, excessive item counts, invalid station codes/coordinates,
+calendar-invalid or offset-free timestamps, inconsistent departure
+status/timing, and oversized text. The fixtures therefore prove mapping without being treated
+as evidence that NS is currently reachable or production-live.
 - `future_providers/mtr_next_train_tuen_ma_tai_wai.json`: Hong Kong MTR next-train response for Tuen Ma Line at Tai Wai, captured from DATA.GOV.HK/MTR on 2026-06-17. Public source attribution: data provider and intellectual property owner are MTR Corporation Limited; DATA.GOV.HK lists a 10-second update frequency for this dataset.
 - `future_providers/tdx_thsr_general_timetable.json`: Reduced Taiwan TDX THSR general timetable response, captured on 2026-06-17 after local OAuth exchange.
 - `future_providers/tdx_tra_liveboard_taipei.json`: Reduced Taiwan TDX Taiwan Railway Taipei live-board response, captured on 2026-06-17 after local OAuth exchange.

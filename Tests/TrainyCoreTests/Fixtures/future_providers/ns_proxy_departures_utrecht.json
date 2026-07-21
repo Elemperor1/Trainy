@@ -1,0 +1,43 @@
+{
+  "data": {
+    "station": { "code": "UT" },
+    "departures": [
+      {
+        "id": "1735",
+        "service": "Intercity 1735",
+        "destination": "Enschede",
+        "scheduledAt": "2026-07-19T15:37:00+0200",
+        "expectedAt": "2026-07-19T15:44:00+0200",
+        "platform": "9",
+        "status": "atPlatform"
+      },
+      {
+        "id": "5728",
+      "service": "Sprinter 5728",
+      "destination": "Baarn",
+      "scheduledAt": "2026-07-19T15:41:00+0200",
+      "expectedAt": "2026-07-19T15:41:00+0200",
+      "platform": "3",
+      "status": "onTime"
+      },
+      {
+        "id": "3028",
+        "service": "Intercity 3028",
+        "destination": "Nijmegen",
+        "scheduledAt": "2026-07-19T15:45:00+0200",
+        "platform": "12",
+        "status": "cancelled"
+      }
+    ]
+  },
+  "meta": {
+    "provider": "ns",
+    "source": "NS Reisinformatie API",
+    "attribution": "Data from Nederlandse Spoorwegen (NS)",
+    "fetchedAt": "2026-07-19T12:00:00Z",
+    "expiresAt": "2026-07-19T12:00:20Z",
+    "freshness": "stale",
+    "cacheStatus": "stale-fallback"
+  },
+  "requestId": "fixture-departures"
+}

@@ -16,7 +16,7 @@ styles, modifiers, or reusable controls locally.
 | --- | --- | --- |
 | Tokens and semantic assets | `RailDesignSystem.swift` | Palette, spacing, semantic layout measurements, radius, typography, elevation, motion, status semantics, screen chrome, glass fallback |
 | Interface inputs | `RailInterfacePreferences.swift` | Root-injected time, unit, and source-label preferences; no component-owned persistence |
-| Primitives | `RailDesignPrimitives.swift` | Surfaces, badges, icon badges, dividers, value rows, navigation cards, actions, segmented controls, list-row policy |
+| Primitives | `RailDesignPrimitives.swift` | Surfaces, badges, icon badges, dividers, value rows, navigation cards, actions, search fields, segmented controls, list-row policy |
 | Patterns | `RailDesignLibrary.swift` | Section headers, metrics, trip tools, settings groups and rows, shared press behavior |
 | Domain adapters and states | `RailComponents.swift` | Trip, station, source, timeline, loading, empty, offline, success, and error UI built from the lower layers |
 | Screens | `ContentView.swift`, `RailJourneyMap.swift` | Feature composition, routing, local UI state, and feature-specific map geometry |
@@ -51,9 +51,12 @@ Dependency direction is one way:
 | Key/value metadata | `RailValueRow` (`compact` or `stacked`) |
 | Primary/secondary action | `RailActionButton` |
 | Multi-option selection | `RailSegmentedControl` |
+| Search text plus explicit submit action | `RailSearchField` |
 | Navigation affordance inside a surface | `RailNavigationCard` |
 | Loading content | `LoadingSkeletonView` |
 | Empty, offline, success, or error state | `EmptyStateView`, `OfflineBanner`, `SuccessBanner`, `ErrorBanner` |
+| Stale or rate-limited provider state | `StaleDataBanner`, `RateLimitBanner` |
+| Provider source/freshness disclosure | `RailSourceDisclosure` |
 | Settings composition | `SettingsGroup` and standardized settings rows |
 
 If none fits, add or extend a component in `DesignSystem/` first, then consume
@@ -72,6 +75,8 @@ The guardrail blocks:
 
 - raw colors, non-zero numeric spacing, numeric radii, raw fonts, shadows,
   materials, glass, and motion in screen code;
+- legacy decorative palette names in every Swift source, including the design
+  system itself; provider state must use semantic success/warning/danger/info;
 - token namespaces and custom styles outside the library;
 - redefinition of library-owned components;
 - component-owned persistent interface state;
@@ -91,3 +96,22 @@ Use the repository skill at:
 It requires architecture inspection, guardrail and credential-neutral builds,
 runtime interaction checks, accessibility settings, and a Before/After review
 table before approval.
+
+## NS completion review — 2026-07-20
+
+The NS station-search and departure-board slice uses `RailSearchField`,
+`RailNavigationCard`, `RailSurface`, `StaleDataBanner`, `OfflineBanner`,
+`RateLimitBanner`, `ErrorBanner`, and `RailSourceDisclosure`; no screen-local
+visual system was added. Provider-supplied station, destination, alert, source,
+and attribution strings use verbatim text initializers so Markdown-like input
+cannot alter presentation or accessibility semantics.
+
+The 25-case guard self-test and the 28-file repository scan passed. Runtime
+inspection on iPhone 17 / iOS 26.5 covered Light and Dark Mode and AX2XL as
+separate states. Search, station rows, departures, stale banners, and source
+disclosure remained readable and scrollable; search/back actions measured 44
+points, tabs 54 points, and station rows at least 81 points. With VoiceOver
+enabled, the simulator AX tree exposed logical headings/order, labelled
+fields/actions, station names plus codes, and source/freshness text. The
+simulator was restored to Large text, Dark Mode, VoiceOver off, AX overlay off,
+and normal contrast after the review.
