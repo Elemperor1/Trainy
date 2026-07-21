@@ -12,10 +12,14 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   analyze:
     name: Analyze (${{ matrix.language }})
-    runs-on: ${{ matrix.runner }}
+    runs-on: ubuntu-latest
     timeout-minutes: 60
     permissions:
       actions: read
@@ -29,20 +33,14 @@ jobs:
         include:
           - language: actions
             build-mode: none
-            runner: ubuntu-latest
           - language: javascript-typescript
             build-mode: none
-            runner: ubuntu-latest
           - language: python
             build-mode: none
-            runner: ubuntu-latest
-          - language: swift
-            build-mode: manual
-            runner: macos-26
 
     steps:
       - name: Checkout
-        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
         with:
           persist-credentials: false
 
@@ -54,18 +52,93 @@ jobs:
           config: |
             threat-models: local
 
+      - name: Perform CodeQL analysis
+        uses: github/codeql-action/analyze@7188fc363630916deb702c7fdcf4e481b751f97a # v4
+        with:
+          category: "/language:${{ matrix.language }}"
+
+  analyze-swift:
+    name: Analyze (swift)
+    runs-on: macos-26
+    timeout-minutes: 60
+    permissions:
+      actions: read
+      contents: read
+      packages: read
+      security-events: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Determine Swift analysis scope
+        id: swift-scope
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          if [[ "$GITHUB_EVENT_NAME" != "pull_request" ]]; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          if git diff --quiet "$BASE_SHA" HEAD -- \
+            ':(glob)**/*.swift' \
+            .github/workflows/codeql.yml \
+            Package.swift \
+            TrainyIOS \
+            scripts/build-ios.sh \
+            scripts/lib/odpt-env.sh
+          then
+            echo "run=false" >> "$GITHUB_OUTPUT"
+          else
+            status=$?
+            if [[ "$status" -ne 1 ]]; then
+              exit "$status"
+            fi
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Skip unchanged Swift analysis
+        if: steps.swift-scope.outputs.run != 'true'
+        run: echo "No Swift, Xcode, or build inputs changed; full Swift CodeQL still runs on main/master pushes and schedules."
+
+      - name: Restore SwiftPM downloads
+        if: steps.swift-scope.outputs.run == 'true'
+        uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5.1.0
+        with:
+          path: |
+            /private/tmp/trainy-source-packages/checkouts
+            /private/tmp/trainy-swiftpm-cache
+          key: trainy-swiftpm-${{ runner.os }}-${{ runner.arch }}-xcode-26.5.0-${{ hashFiles('Package.swift', 'TrainyIOS/Trainy.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved') }}
+
+      - name: Initialize CodeQL
+        if: steps.swift-scope.outputs.run == 'true'
+        uses: github/codeql-action/init@7188fc363630916deb702c7fdcf4e481b751f97a # v4
+        with:
+          languages: swift
+          build-mode: manual
+          config: |
+            threat-models: local
+
       - name: Build Swift for CodeQL
-        if: matrix.language == 'swift'
+        if: steps.swift-scope.outputs.run == 'true'
         env:
           ODPT_ENV_FILE: /dev/null
           ODPT_CONSUMER_KEY: ""
           CODE_SIGNING_ALLOWED: "NO"
+          DESTINATION: platform=iOS Simulator,name=iPhone 17,OS=latest
+          ARCHS: arm64
+          ONLY_ACTIVE_ARCH: "YES"
         run: |
           DEVELOPER_DIR="$(xcode-select -p)"
           export DEVELOPER_DIR
           scripts/build-ios.sh
 
       - name: Perform CodeQL analysis
+        if: steps.swift-scope.outputs.run == 'true'
         uses: github/codeql-action/analyze@7188fc363630916deb702c7fdcf4e481b751f97a # v4
         with:
-          category: "/language:${{ matrix.language }}"
+          category: "/language:swift"
