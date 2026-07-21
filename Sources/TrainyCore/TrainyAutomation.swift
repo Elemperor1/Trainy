@@ -1,3 +1,4 @@
+import Combine
 import Foundation
 
 /// Deterministic launch configurations used to exercise the app's normal UI
@@ -26,10 +27,11 @@ struct TrainyAutomationDependencies {
     let nsStartsLoading: Bool
 
     static func make(for scenario: TrainyAutomationScenario?) -> Self {
-        guard let scenario, scenario != .credentialNeutral else {
+        guard let scenario else {
+            let store = TrainStore()
             return Self(
-                store: TrainStore(),
-                nsProvider: NSTrainProvider(proxyBaseURL: nil),
+                store: store,
+                nsProvider: NSTrainProvider(proxyBaseURL: store.providerProxyConfiguration.baseURL),
                 nsStartsLoading: false
             )
         }
@@ -37,6 +39,25 @@ struct TrainyAutomationDependencies {
         let defaults = UserDefaults(suiteName: "TrainyAutomation-\(scenario.rawValue)")!
         defaults.removePersistentDomain(forName: "TrainyAutomation-\(scenario.rawValue)")
         defaults.set(true, forKey: "trainy.firstRunCompleted")
+
+        if scenario == .credentialNeutral {
+            let registry = ProviderRegistry(
+                providers: [
+                    ShinkansenTrainProvider(consumerKey: nil),
+                    NSTrainProvider(proxyBaseURL: nil)
+                ],
+                defaultProviderID: "shinkansen"
+            )
+            return Self(
+                store: TrainStore(
+                    defaults: defaults,
+                    registry: registry,
+                    proxyConfiguration: ProviderProxyConfiguration(baseURL: nil)
+                ),
+                nsProvider: NSTrainProvider(proxyBaseURL: nil),
+                nsStartsLoading: false
+            )
+        }
 
         let proxyURL = URL(string: "https://fixture.trainy.invalid")!
         let registry = ProviderRegistry(
@@ -56,6 +77,24 @@ struct TrainyAutomationDependencies {
             nsProvider: AutomationNSRiderProvider(scenario: scenario),
             nsStartsLoading: scenario == .loading
         )
+    }
+}
+
+/// Owns the app's root dependencies for one SwiftUI app lifecycle.
+///
+/// Keeping this container in `TrainyApp` prevents automation fixture setup
+/// from being recreated as `ContentView` values are rebuilt.
+@MainActor
+public final class TrainyRootDependencies: ObservableObject {
+    let store: TrainStore
+    let nsProvider: any NSRiderDataProviding
+    let nsStartsLoading: Bool
+
+    public init(automationScenario: TrainyAutomationScenario? = nil) {
+        let dependencies = TrainyAutomationDependencies.make(for: automationScenario)
+        store = dependencies.store
+        nsProvider = dependencies.nsProvider
+        nsStartsLoading = dependencies.nsStartsLoading
     }
 }
 
@@ -185,6 +224,6 @@ private actor AutomationSearchAttempts {
 
     func shouldFail() -> Bool {
         defer { attempts += 1 }
-        return attempts < 2
+        return attempts == 0
     }
 }

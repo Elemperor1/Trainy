@@ -76,7 +76,6 @@ final class TrainyCriticalUITests: XCTestCase {
         XCTAssertTrue(stationField.waitForExistence(timeout: 5))
         stationField.tap()
         stationField.typeText("Utrecht")
-        element("ns.stationSearch.submit").tap()
 
         XCTAssertTrue(element("ns.stationSearch.unavailable").waitForExistence(timeout: 5))
         app.buttons["Try again"].tap()

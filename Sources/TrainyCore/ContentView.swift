@@ -3,20 +3,17 @@ import SwiftUI
 import UIKit
 
 public struct ContentView: View {
-    @StateObject private var store: TrainStore
-    private let nsProvider: any NSRiderDataProviding
-    private let nsStartsLoading: Bool
+    @ObservedObject private var rootDependencies: TrainyRootDependencies
+    @ObservedObject private var store: TrainStore
     @State private var selectedTab: RailTab = .trips
     @State private var presentedSheet: RailSheet?
     @AppStorage("trainy.timeFormat") private var timeFormatRaw = UserPreferences.TimeFormat.hour12.rawValue
     @AppStorage("trainy.unitSystem") private var unitSystemRaw = UserPreferences.UnitSystem.metric.rawValue
     @AppStorage("trainy.sourceLabelVerbosity") private var sourceLabelVerbosityRaw = UserPreferences.SourceLabelVerbosity.compact.rawValue
 
-    public init(automationScenario: TrainyAutomationScenario? = nil) {
-        let dependencies = TrainyAutomationDependencies.make(for: automationScenario)
-        _store = StateObject(wrappedValue: dependencies.store)
-        nsProvider = dependencies.nsProvider
-        nsStartsLoading = dependencies.nsStartsLoading
+    public init(rootDependencies: TrainyRootDependencies) {
+        _rootDependencies = ObservedObject(wrappedValue: rootDependencies)
+        _store = ObservedObject(wrappedValue: rootDependencies.store)
         let appearance = UITabBarAppearance()
         appearance.configureWithDefaultBackground()
         appearance.backgroundEffect = UIBlurEffect(style: .systemUltraThinMaterial)
@@ -48,7 +45,11 @@ public struct ContentView: View {
             .tag(RailTab.search)
 
             NavigationStack {
-                StationsScreen(store: store, nsProvider: nsProvider, nsStartsLoading: nsStartsLoading)
+                StationsScreen(
+                    store: store,
+                    nsProvider: rootDependencies.nsProvider,
+                    nsStartsLoading: rootDependencies.nsStartsLoading
+                )
             }
             .tabItem { Label(RailTab.stations.title, systemImage: RailTab.stations.symbolName) }
             .tag(RailTab.stations)
