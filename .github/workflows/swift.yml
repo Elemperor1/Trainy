@@ -37,6 +37,11 @@ jobs:
       - name: Show SDKs
         run: xcodebuild -showsdks
 
+      - name: Audit npm dependency locks
+        run: |
+          npm audit --prefix provider-proxy --audit-level=high
+          npm audit --prefix marketing/trainy-coming-soon --audit-level=high
+
       - name: Run static and provider smoke gates
         run: |
           DEVELOPER_DIR="$(xcode-select -p)"
