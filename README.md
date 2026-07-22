@@ -314,5 +314,6 @@ deploy, or create derivative works without prior written authorization. See the
 [`LICENSE`](LICENSE) file for the complete notice. Separately identified
 third-party materials remain subject to their own licenses and terms. The notice
 includes a limited exception allowing OpenAI Build Week evaluators to download,
-build, run, test, inspect, and demonstrate Trainy for judging and event-related
-purposes.
+build, run, test, inspect, benchmark, and privately demonstrate Trainy solely
+for judging, administering, documenting, and promoting Trainy's participation
+in OpenAI Build Week.
