@@ -1,6 +1,7 @@
 # Japan data decision record: ODPT and Shinkansen timetables
 
-Status: **Proposed, needs a decision from Jacob (section 5).**
+Status: **Decided 2026-10-07: option A (rider-entered trips) for 1.0, with B and C
+pursued in parallel (section 5).**
 Date: 2026-10-07 · Plan item: [2.1](engineering-plan.md#phase-2--real-japan-data)
 (blocks 2.2 to 2.8) · Author: Claude, from public documentation only.
 
@@ -32,10 +33,10 @@ Date: 2026-10-07 · Plan item: [2.1](engineering-plan.md#phase-2--real-japan-dat
    collides with offline trips and a Worker snapshot. The raw JR timetable
    dataset these vendors license (交通新聞社, monthly CSV/XML/GTFS) fits the
    snapshot model but is sold to companies only (F11 to F14).
-6. **Recommendation:** ship Japan in 1.0 as rider-entered trips with reminders
-   and countdowns (option A), and start the trials and licence inquiries now
-   (options B and C), so a licensed source can follow once quotes, terms and a
-   legal entity exist.
+6. **Decision:** Jacob chose option A on 2026-10-07. Japan ships in 1.0 as
+   rider-entered trips with reminders and countdowns, and the trials and
+   licence inquiries start now (options B and C), so a licensed source can
+   follow once quotes, terms and a legal entity exist.
 
 ## 1. Question
 
@@ -218,11 +219,12 @@ NAVITIME trials are free for 90 days and can show the real response shape, line
 coverage and field names while the written answers are pending. They cannot
 back a released app or a public TestFlight (F12).
 
-## 5. Recommendation and decision needed
+## 5. Decision
 
-Choose **A for 1.0**, and **start B and C now** so a licensed source can follow
-in 1.1. D is the fallback if A slips. Starting costs time, not money, and commits
-to nothing:
+**Decided 2026-10-07: A for 1.0.** Jacob chose rider-entered trips on the
+project thread's decision card. B and C start now so a licensed source can follow
+in 1.1, and D is the fallback if A slips. Starting costs time, not money, and
+commits to nothing:
 
 - Request the Ekispert and NAVITIME trial keys, and put the questions in G7 and
   G8 to both vendors in writing.
@@ -237,8 +239,15 @@ Under A the plan changes as follows:
 
 - **2.2** Worker ingestion is built source-neutral and stays dormant until a
   licensed feed exists (section 7).
-- **2.3, 2.4, 2.6, 2.8** wait for the decision. **2.5** proceeds on N02 (F9).
-  **2.7** is done here.
+- **2.3** splits. The Release hygiene part does not depend on a data source and
+  proceeds with Phase 1: drop the `ODPTConsumerKey` Info.plist entry and the
+  local-key path from Release builds, and make the starter catalog Debug-only.
+  The proxy-client rewrite waits for a licensed source.
+- **2.4, 2.6, 2.8** wait. **2.5** proceeds on N02 (F9). **2.7** is done here.
+- **1.6 and 1.7** carry the Japan experience. Implement manual trip entry (do
+  not remove it) with train, date, stations, times, car and seat, and add a
+  rider-entered kind to `SourceKind` once the Phase 0 split lands, so a fact the
+  rider typed never reads as a feed fact.
 - **Copy and listing:** do not describe Japan as live or as searchable
   schedules until a licensed feed ships. Correct the "Production Ready" line in
   `docs/Provider_Status.md`.
