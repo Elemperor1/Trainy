@@ -264,14 +264,16 @@ decision record.
 1. Register at https://developer.odpt.org/ and request a consumer key. Read the
    terms that apply to it before you declare a licence (step 3 under
    [Put it in production](#2-put-it-in-production)).
-2. Create `provider-proxy/.dev.vars` at mode `600` (it is git-ignored):
+2. Install the pinned tools once, with Node 24 as in CI:
+   `npm ci --prefix provider-proxy`.
+3. Create `provider-proxy/.dev.vars` at mode `600` (it is git-ignored):
 
    ```text
    NS_SUBSCRIPTION_KEY=local-unused
    ODPT_CONSUMER_KEY=<your consumer key>
    ```
 
-3. Start the Worker in test-scheduled mode. The `--var` values are a licence
+4. Start the Worker in test-scheduled mode. The `--var` values are a licence
    needed only to let the local simulator run (it republishes nothing, since
    nobody can reach the simulator) and a placeholder that makes Wrangler load
    the real key from `.dev.vars`. They are not a production declaration:
@@ -283,7 +285,7 @@ decision record.
      --var ODPT_CONSUMER_KEY:from-dev-vars
    ```
 
-4. In a second terminal, trigger a run and read the result:
+5. In a second terminal, trigger a run and read the result:
 
    ```bash
    curl -s "http://127.0.0.1:8787/__scheduled?cron=10+18+*+*+*"
@@ -300,7 +302,7 @@ decision record.
    `rejected` show how many survived validation, and the same simulator serves
    `/v1/japan/stations?query=tokyo` and the other routes once the run publishes.
 
-5. Delete `.dev.vars` and the `.wrangler` state when finished.
+6. Delete `.dev.vars` and the `.wrangler` state when finished.
 
 #### 2. Put it in production
 
