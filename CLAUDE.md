@@ -52,9 +52,11 @@ Trainy is a Flighty-style train tracking app scoped first to Japan Shinkansen jo
 - `ScheduledRailTrip`, `RealtimeTripOverlay`, `RailVehiclePosition`, `RailServiceAlert`
 - `RailBoardEntry`, `RailTripCandidate` - Foundation for global provider expansion
 
-**ContentView** (`Sources/TrainyCore/ContentView.swift`):
+**ContentView** (`Sources/TrainyCore/ContentView.swift`) and **Screens** (`Sources/TrainyCore/Screens/`):
 
 - Five-tab SwiftUI interface: Trips, Search, Stations, History, Settings
+- `ContentView.swift` is only the root: the tab shell, first-run sheet routing, and the persisted interface preferences it injects
+- Each tab has its own folder under `Screens/`, next to `FirstRun/`, `TrainDetail/`, and `Support/` (presentation-only `TrainStore` and `TrainTrip` extensions shared by several screens)
 - Uses `RailDesign` system for styling (see `RailDesignSystem.swift`)
 
 ### Provider Directory Structure
