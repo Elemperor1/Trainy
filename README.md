@@ -301,6 +301,7 @@ surfaces:
 - [iOS implementation and provider setup](TrainyIOS/README.md)
 - [Deterministic simulator UI automation](docs/simulator-ui-automation.md)
 - [NS provider proxy contract and operations](provider-proxy/README.md)
+- [App Store launch plan](docs/app-store-launch-plan.md)
 - [Distribution-readiness audit](docs/distribution-readiness-2026-07-21.md)
 - [Release-readiness history](docs/release-readiness-2026-07-19.md)
 - [Design-system architecture](docs/design-system-architecture.md)
