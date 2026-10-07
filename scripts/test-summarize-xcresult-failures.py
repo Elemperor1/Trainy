@@ -7,9 +7,8 @@ import contextlib
 import importlib.util
 import io
 import json
-import os
 from pathlib import Path
-import subprocess
+import sys
 import tempfile
 import unittest
 from unittest import mock
@@ -60,10 +59,6 @@ def tests_payload(*cases: dict[str, object]) -> dict[str, object]:
             }
         ]
     }
-
-
-def completed(payload: object, code: int = 0, stderr: str = "") -> subprocess.CompletedProcess[str]:
-    return subprocess.CompletedProcess([], code, stdout=json.dumps(payload), stderr=stderr)
 
 
 class FailedTestTests(unittest.TestCase):
@@ -129,92 +124,105 @@ class FailedTestTests(unittest.TestCase):
 
 
 class ReportTests(unittest.TestCase):
-    def run_report(self, summary: object, tests: object) -> tuple[str, str]:
-        responses = {"summary": summary, "tests": tests}
+    def setUp(self) -> None:
+        self.temporary = tempfile.TemporaryDirectory(prefix="trainy-xcresult-test-")
+        self.addCleanup(self.temporary.cleanup)
+        self.directory = Path(self.temporary.name)
 
-        def fake_run(command, **_kwargs):
-            payload = responses[command[command.index("test-results") + 1]]
-            if isinstance(payload, subprocess.CompletedProcess):
-                return payload
-            return completed(payload)
-
-        with mock.patch.object(reporter.subprocess, "run", side_effect=fake_run):
-            return reporter.report(Path("/tmp/results.xcresult"))
+    def write(self, name: str, payload: object) -> None:
+        text = payload if isinstance(payload, str) else json.dumps(payload)
+        (self.directory / name).write_text(text, encoding="utf-8")
 
     def test_report_prints_counts_tests_and_messages(self) -> None:
-        text, markdown = self.run_report(
-            {"totalTestCount": 3, "passedTests": 2, "failedTests": 1},
-            tests_payload(case("testFails()", "Failed", "line one\nline two")),
-        )
+        self.write("summary.json", {"totalTestCount": 3, "passedTests": 2, "failedTests": 1})
+        self.write("tests.json", tests_payload(case("testFails()", "Failed", "line one\nline two")))
 
-        self.assertIn("Test failures (3 tests, 2 passed, 1 failed)", text)
-        self.assertIn("FAILED TrainyUITests / TrainyCriticalUITests / testFails()", text)
-        self.assertIn("    line two", text)
-        self.assertIn("```text\nline one\nline two\n```", markdown)
+        text = reporter.report(self.directory)
+
+        self.assertIn("## Test failures (3 tests, 2 passed, 1 failed)", text)
+        self.assertIn("**TrainyUITests / TrainyCriticalUITests / testFails()**", text)
+        self.assertIn("```text\nline one\nline two\n```", text)
 
     def test_report_falls_back_to_the_summary_when_the_tree_has_no_messages(self) -> None:
-        text, _ = self.run_report(
+        self.write(
+            "summary.json",
             {"testFailures": [{"targetName": "TrainyUITests", "testName": "testFails()", "failureText": "boom"}]},
-            tests_payload(case("testFails()", "Failed")),
         )
+        self.write("tests.json", tests_payload(case("testFails()", "Failed")))
 
-        self.assertIn("FAILED TrainyUITests / testFails()", text)
-        self.assertIn("    boom", text)
+        text = reporter.report(self.directory)
 
-    def test_report_explains_a_tool_failure_instead_of_raising(self) -> None:
-        broken = subprocess.CompletedProcess([], 64, stdout="", stderr="unknown option --path")
+        self.assertIn("**TrainyUITests / testFails()**", text)
+        self.assertIn("```text\nboom\n```", text)
 
-        text, _ = self.run_report(broken, broken)
+    def test_report_explains_unreadable_json_instead_of_raising(self) -> None:
+        self.write("summary.json", "")
+        self.write("tests.json", "[]")
 
-        self.assertIn("Could not read the test summary", text)
-        self.assertIn("unknown option --path", text)
+        text = reporter.report(self.directory)
+
+        self.assertIn("Could not read the test summary: summary.json is not JSON", text)
+        self.assertIn("Could not read the test list: tests.json holds list", text)
+
+    def test_report_says_so_when_nothing_was_saved(self) -> None:
+        text = reporter.report(self.directory)
+
+        self.assertIn("No test results were saved", text)
+        self.assertNotIn("Could not read", text)
+
+    def test_report_keeps_going_when_only_the_summary_is_missing(self) -> None:
+        self.write("tests.json", tests_payload(case("testFails()", "Failed", "boom")))
+
+        text = reporter.report(self.directory)
+
+        self.assertIn("Could not read the test summary: summary.json was not written", text)
+        self.assertIn("```text\nboom\n```", text)
 
     def test_report_says_so_when_no_failed_case_exists(self) -> None:
-        text, _ = self.run_report({}, tests_payload(case("testPasses()", "Passed")))
+        self.write("summary.json", {})
+        self.write("tests.json", tests_payload(case("testPasses()", "Passed")))
+
+        text = reporter.report(self.directory)
 
         self.assertIn("found no failed test cases", text)
+        self.assertIn("Test tree (truncated)", text)
 
     def test_long_messages_are_clipped(self) -> None:
-        long_message = "x" * (reporter.MAX_MESSAGE_CHARS + 500)
+        self.write("summary.json", {})
+        self.write(
+            "tests.json",
+            tests_payload(case("testFails()", "Failed", "x" * (reporter.MAX_MESSAGE_CHARS + 500))),
+        )
 
-        text, _ = self.run_report({}, tests_payload(case("testFails()", "Failed", long_message)))
+        text = reporter.report(self.directory)
 
         self.assertIn("500 more characters", text)
         self.assertLess(len(text), reporter.MAX_MESSAGE_CHARS + 1000)
 
     def test_a_long_failure_list_is_capped(self) -> None:
-        cases = [case(f"test{index}()", "Failed", "boom") for index in range(reporter.MAX_TESTS_REPORTED + 3)]
+        self.write("summary.json", {})
+        self.write(
+            "tests.json",
+            tests_payload(*[case(f"test{index}()", "Failed", "boom") for index in range(reporter.MAX_TESTS_REPORTED + 3)]),
+        )
 
-        text, _ = self.run_report({}, tests_payload(*cases))
+        text = reporter.report(self.directory)
 
         self.assertIn("3 more failed tests are not listed.", text)
 
 
 class MainTests(unittest.TestCase):
-    def test_a_missing_bundle_is_reported_and_exits_zero(self) -> None:
-        output = io.StringIO()
-        with contextlib.redirect_stdout(output):
-            status = reporter.main(["/nonexistent/results.xcresult"])
+    def test_main_prints_the_report_and_exits_zero(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="trainy-xcresult-main-") as directory:
+            output = io.StringIO()
+            with (
+                mock.patch.object(sys, "argv", ["summarize-xcresult-failures.py", directory]),
+                contextlib.redirect_stdout(output),
+            ):
+                status = reporter.main()
 
         self.assertEqual(status, 0)
-        self.assertIn("No test result bundle", output.getvalue())
-
-    def test_the_report_is_appended_to_the_job_summary(self) -> None:
-        with tempfile.TemporaryDirectory(prefix="trainy-xcresult-test-") as directory:
-            bundle = Path(directory) / "results.xcresult"
-            bundle.mkdir()
-            summary_file = Path(directory) / "summary.md"
-            summary_file.write_text("existing\n", encoding="utf-8")
-
-            with (
-                mock.patch.dict(os.environ, {"GITHUB_STEP_SUMMARY": str(summary_file)}),
-                mock.patch.object(reporter, "report", return_value=("log text\n", "## markdown\n")),
-                contextlib.redirect_stdout(io.StringIO()),
-            ):
-                status = reporter.main([str(bundle)])
-
-            self.assertEqual(status, 0)
-            self.assertEqual(summary_file.read_text(encoding="utf-8"), "existing\n## markdown\n\n")
+        self.assertIn("No test results were saved", output.getvalue())
 
 
 if __name__ == "__main__":

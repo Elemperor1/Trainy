@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
-"""List the failed tests in an .xcresult bundle, with their failure messages.
+"""Render the failed tests in xcresulttool's JSON as Markdown, with their messages.
 
 `xcodebuild test -quiet` names the tests that failed but prints nothing about
-why, so Swift CI passes -resultBundlePath and runs this after a failed test
-step. The report goes to the job log and to $GITHUB_STEP_SUMMARY.
+why. Swift CI passes -resultBundlePath and, after a failed test step, saves
+`xcrun xcresulttool get test-results summary` as summary.json and `... tests` as
+tests.json in one directory. This script reads that directory and prints the
+report; the workflow tees it into the log and $GITHUB_STEP_SUMMARY.
 
 The script always exits 0. Its job is to explain a failure, never to add one.
 """
@@ -12,8 +14,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
-import subprocess
 import sys
 from pathlib import Path
 
@@ -24,26 +24,26 @@ SCOPE_NODE_TYPES = {"Unit test bundle", "UI test bundle", "Test Suite"}
 
 
 class ReportError(Exception):
-    """The result bundle could not be read."""
+    """An xcresulttool JSON file could not be read."""
 
 
-def read_result(bundle: Path, *subcommand: str) -> dict[str, object]:
-    """Run `xcresulttool get test-results <subcommand>` and parse its JSON."""
-    command = ["xcrun", "xcresulttool", "get", "test-results", *subcommand, "--path", str(bundle)]
-    label = " ".join(subcommand)
+class MissingReport(ReportError):
+    """The workflow never wrote the file."""
+
+
+def read_json(path: Path) -> dict[str, object]:
     try:
-        completed = subprocess.run(command, capture_output=True, text=True, timeout=120, check=False)
-    except (OSError, subprocess.TimeoutExpired) as error:
-        raise ReportError(f"could not run xcresulttool {label}: {error}") from error
-    if completed.returncode != 0:
-        detail = (completed.stderr or completed.stdout).strip()[:2000]
-        raise ReportError(f"xcresulttool {label} exited {completed.returncode}: {detail}")
+        text = path.read_text(encoding="utf-8")
+    except FileNotFoundError as error:
+        raise MissingReport(f"{path.name} was not written") from error
+    except (OSError, UnicodeDecodeError) as error:
+        raise ReportError(f"{path.name} could not be read: {error}") from error
     try:
-        payload = json.loads(completed.stdout)
+        payload = json.loads(text)
     except json.JSONDecodeError as error:
-        raise ReportError(f"xcresulttool {label} did not return JSON: {error}") from error
+        raise ReportError(f"{path.name} is not JSON ({error}); the xcresulttool error is in the step log above") from error
     if not isinstance(payload, dict):
-        raise ReportError(f"xcresulttool {label} returned {type(payload).__name__}, expected an object")
+        raise ReportError(f"{path.name} holds {type(payload).__name__}, expected an object")
     return payload
 
 
@@ -124,47 +124,52 @@ def clip(text: str) -> str:
     return text[:MAX_MESSAGE_CHARS] + f"\n... ({len(text) - MAX_MESSAGE_CHARS} more characters)"
 
 
-def render(
-    failures: list[tuple[str, list[str]]], counts: str, notes: list[str]
-) -> tuple[str, str]:
-    """Return the plain-text log report and the Markdown job summary."""
-    heading = "Test failures" + (f" ({counts})" if counts else "")
-    text = [heading, ""]
-    markdown = [f"## {heading}", ""]
+def render(failures: list[tuple[str, list[str]]], counts: str, notes: list[str]) -> str:
+    heading = "## Test failures" + (f" ({counts})" if counts else "")
+    lines = [heading, ""]
     shown = failures[:MAX_TESTS_REPORTED]
     for name, messages in shown:
         body = [clip(message) for message in messages] or ["(xcresulttool reported no failure message)"]
-        text += [f"FAILED {name}", *("    " + line for message in body for line in message.splitlines()), ""]
-        markdown += [f"**{name}**", "", "```text", *body, "```", ""]
+        lines += [f"**{name}**", "", "```text", *body, "```", ""]
     if len(failures) > len(shown):
-        omitted = f"{len(failures) - len(shown)} more failed tests are not listed."
-        text += [omitted, ""]
-        markdown += [omitted, ""]
+        lines += [f"{len(failures) - len(shown)} more failed tests are not listed.", ""]
     for note in notes:
-        text += [note, ""]
-        markdown += [note, ""]
-    return "\n".join(text).rstrip() + "\n", "\n".join(markdown).rstrip() + "\n"
+        lines += [note, ""]
+    return "\n".join(lines).rstrip() + "\n"
 
 
-def report(bundle: Path) -> tuple[str, str]:
+def report(directory: Path) -> str:
     notes: list[str] = []
     counts = ""
     summary: dict[str, object] = {}
+    missing = 0
     try:
-        summary = read_result(bundle, "summary")
+        summary = read_json(directory / "summary.json")
         counts = count_line(summary)
+    except MissingReport as error:
+        missing += 1
+        notes.append(f"Could not read the test summary: {error}.")
     except ReportError as error:
-        notes.append(f"Could not read the test summary: {error}")
+        notes.append(f"Could not read the test summary: {error}.")
 
     failures: list[tuple[str, list[str]]] = []
     raw = ""
     try:
-        tests = read_result(bundle, "tests")
+        tests = read_json(directory / "tests.json")
         failures = failed_tests(tests)
         raw = json.dumps(tests, indent=1)
+    except MissingReport as error:
+        missing += 1
+        notes.append(f"Could not read the test list: {error}.")
     except ReportError as error:
-        notes.append(f"Could not read the test list: {error}")
+        notes.append(f"Could not read the test list: {error}.")
 
+    if missing == 2:
+        return render(
+            [],
+            "",
+            ["No test results were saved. The build or the test launch failed before any test ran; read the Test Trainy step above."],
+        )
     if not any(messages for _, messages in failures):
         fallback = summary_failures(summary)
         if fallback:
@@ -175,31 +180,17 @@ def report(bundle: Path) -> tuple[str, str]:
             "The test step may have failed before any test ran; read its log above."
         )
     if not failures and raw:
-        notes.append("Test tree (truncated):\n" + raw[:MAX_RAW_CHARS])
+        notes.append("Test tree (truncated):\n\n```json\n" + raw[:MAX_RAW_CHARS] + "\n```")
     return render(failures, counts, notes)
 
 
-def main(argv: list[str]) -> int:
-    parser = argparse.ArgumentParser(description="Explain failed tests in an .xcresult bundle.")
-    parser.add_argument("bundle", type=Path, help="path to the .xcresult bundle")
-    args = parser.parse_args(argv)
-
-    if not args.bundle.exists():
-        text = f"No test result bundle at {args.bundle}. The build or the test launch failed before tests ran.\n"
-        markdown = "## Test failures\n\n" + text
-    else:
-        text, markdown = report(args.bundle)
-
-    print(text, end="")
-    summary_path = os.environ.get("GITHUB_STEP_SUMMARY")
-    if summary_path:
-        try:
-            with open(summary_path, "a", encoding="utf-8") as handle:
-                handle.write(markdown + "\n")
-        except OSError as error:
-            print(f"Could not write the job summary: {error}", file=sys.stderr)
+def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("directory", type=Path, help="directory holding summary.json and tests.json")
+    args = parser.parse_args()
+    print(report(args.directory), end="")
     return 0
 
 
 if __name__ == "__main__":
-    sys.exit(main(sys.argv[1:]))
+    sys.exit(main())
