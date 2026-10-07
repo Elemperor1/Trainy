@@ -172,7 +172,7 @@ A slips. Under A the plan changes as follows:
 
 | # | Gap | How to close |
 | --- | --- | --- |
-| G1 | Does the logged-in Center expose any Shinkansen railway? | After registering, run `curl -s "https://api.odpt.org/api/v4/odpt:Operator?acl:consumerKey=$KEY"` and look for `JR-Central`, `JR-West`, `JR-Kyushu`, `JR-Hokkaido`; then `odpt:Railway?odpt:operator=odpt.Operator:JR-East` and look for `*Shinkansen`. Expected: none. If `odpt:Operator` is not served, use the `odpt:Railway` form for each operator. Keep the key out of chat and logs |
+| G1 | Does the logged-in Center expose any Shinkansen railway? | After registering, run `curl -s "https://api.odpt.org/api/v4/odpt:Operator?acl:consumerKey=$KEY"` and look for `JR-Central`, `JR-West`, `JR-Kyushu`, `JR-Hokkaido`; then `odpt:Railway?odpt:operator=odpt.Operator:JR-East` and look for `*Shinkansen`. Expected: none. If `odpt:Operator` is not served, use the `odpt:Railway` form for each operator. Keep the key out of chat and logs. The local check in `provider-proxy/README.md` does the same through the Worker's parser with the key in a mode-600 file |
 | G2 | Full text of the Basic License and current API guidelines: commercial use, redistribution, caching, attribution | Read https://developer.odpt.org/terms after login |
 | G3 | May JR East's Challenge data be used after the contest? | Ask the ODPT secretariat (odpt-office@ubin.jp) |
 | G4 | Per-token rate limits | Developer site, or the secretariat |
@@ -182,20 +182,42 @@ A slips. Under A the plan changes as follows:
 ## 7. What the Worker build does about this
 
 `provider-proxy` gains a **source-neutral Japan snapshot service** (2.2): a
-validated snapshot in KV, a scheduled ingestion, and `/v1/japan/*` routes. Its
-ODPT adapter targets the Shinkansen railway IDs the app guessed, so a first live
-run *tests this record's prediction* and is expected to report no data. It then
-keeps the previous snapshot and says so in health. Three guards encode this
-record:
+validated snapshot in KV, a nightly ingestion, and `/v1/japan/*` routes for
+stations, trip search, trip detail and line-level notices. Its ODPT adapter
+reads the railways in `JAPAN_ODPT_RAILWAYS`, which default to the Shinkansen
+railway IDs the app guessed, so a first live run *tests this record's
+prediction* and is expected to report no data. It then keeps any previous
+snapshot and says so in health. The service is built and **switched off**: it
+ships with no licence declared and no ODPT key. Four behaviours encode this record:
 
-- **A license gate.** A source must declare a commercial-use license; the
-  Challenge Limited License is refused outright, so Challenge data cannot be
-  published through the public routes.
-- **No empty overwrite.** A run that finds zero trips never replaces a good
-  snapshot.
-- **Honest absence.** Without a snapshot the routes answer 503, never sample data.
+- **A licence gate.** The operator declares the licence the key's data may be
+  republished under (`JAPAN_SOURCE_LICENSE`). Only `odpt-basic`,
+  `commercial-agreement` and `cc-by-4.0` count. The Challenge Limited License
+  (`odpt-challenge`), an empty value and an unknown value are refused: no request
+  is made, nothing is stored, and the routes stop serving even data stored under
+  an earlier declaration. Challenge data cannot be published through the public
+  routes.
+- **No empty overwrite.** A run with fewer than 10 trips, more than 25% rejected
+  timetables, or under half the trips of the served snapshot never replaces a
+  good snapshot.
+- **Honest absence.** Without a snapshot the routes answer `503`, never sample
+  data, and health reports `japan` as `unsupported`, `offline` or
+  `missingCredential` as the case may be.
+- **Line status is separate.** The disruptions route reads the operator feed
+  directly, behind the same licence gate, and does not depend on a timetable
+  snapshot. Shinkansen line notices therefore do not wait for timetables, but
+  they appear only if ODPT carries those lines (G1).
 
-Setup, cost and the secret name are in `provider-proxy/README.md`.
+**Closing G1 without deploying anything.** `provider-proxy/README.md` has a
+step, "Check what ODPT returns, locally", that runs the real ingestion on the
+loopback simulator with the key in a git-ignored mode-600 file. The console
+reports, per railway, whether ODPT knows it and how many timetables it holds.
+That answers G1 with the Worker's own parser and keeps the key off the command
+line. G2 to G4 still need a person.
+
+Setup, cost, the secret name and the production steps are in
+`provider-proxy/README.md`. Running the nightly job needs Workers Paid; the
+production account is on Free.
 
 ## 8. Sources (read 2026-10-07)
 
