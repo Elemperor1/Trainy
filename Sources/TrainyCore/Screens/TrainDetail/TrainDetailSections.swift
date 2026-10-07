@@ -79,7 +79,8 @@ struct StopTimelineList: View {
     var body: some View {
         RailSurface {
             VStack(spacing: 0) {
-                ForEach(Array(trip.stops.enumerated()), id: \.element.id) { index, stop in
+                // Keyed by position: stop ids come from name and time, so a repeated row would repeat its id.
+                ForEach(Array(trip.stops.enumerated()), id: \.offset) { index, stop in
                     StopTimelineRow(stop: stop, isLast: index == trip.stops.count - 1)
                 }
             }
