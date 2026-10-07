@@ -14,7 +14,6 @@
 // Usage:
 //   node scripts/npm-audit-policy.mjs                  audit every project in the policy
 //   node scripts/npm-audit-policy.mjs <project-path>   audit one project
-//   node scripts/npm-audit-policy.mjs --policy <file>  use another policy file
 //
 // Exit status: 0 policy satisfied, 1 policy violated, 2 audit could not run.
 
@@ -228,17 +227,14 @@ function annotate(level, message) {
 
 function main(argv) {
   const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-  let policyPath = path.join(repoRoot, "scripts", "npm-audit-policy.json");
+  const policyPath = path.join(repoRoot, "scripts", "npm-audit-policy.json");
   const selected = [];
-  for (let index = 0; index < argv.length; index += 1) {
-    if (argv[index] === "--policy") {
-      policyPath = path.resolve(argv[(index += 1)] ?? "");
-    } else if (argv[index].startsWith("--")) {
-      console.error(`Unknown option ${argv[index]}`);
+  for (const argument of argv) {
+    if (argument.startsWith("--")) {
+      console.error(`Unknown option ${argument}`);
       return 2;
-    } else {
-      selected.push(argv[index].replace(/\/$/, ""));
     }
+    selected.push(argument.replace(/\/$/, ""));
   }
 
   const today = new Date();
