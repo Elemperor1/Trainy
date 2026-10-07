@@ -15,7 +15,7 @@ Review read-only unless the user explicitly asks for fixes. Preserve unrelated w
    ```bash
    git status --short
    git diff --stat
-   git diff -- Sources/TrainyCore TrainyIOS index.html styles.css app.js components.js scripts/check-design-system-bypass.sh
+   git diff -- Sources/TrainyCore TrainyIOS prototype scripts/check-design-system-bypass.sh
    ```
 
 3. Identify every affected screen, state, shared component, token, modifier, and guardrail. Follow consumers beyond the edited files.
@@ -28,7 +28,7 @@ Discover the current structure instead of trusting a stale component list:
 rg -n "^(enum|struct|extension) |static (let|func)|func [A-Za-z]|var body" \
   Sources/TrainyCore/DesignSystem \
   Sources/TrainyCore/ContentView.swift
-rg -n "TrainyUI|function |--[a-z0-9-]+:" components.js app.js styles.css
+rg -n "TrainyUI|function |--[a-z0-9-]+:" prototype/components.js prototype/app.js prototype/styles.css
 sed -n '1,280p' scripts/check-design-system-bypass.sh
 ```
 

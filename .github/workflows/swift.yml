@@ -47,8 +47,8 @@ jobs:
           DEVELOPER_DIR="$(xcode-select -p)"
           export DEVELOPER_DIR
           bash -n scripts/*.sh scripts/lib/*.sh
-          node --check app.js
-          node --check components.js
+          node --check prototype/app.js
+          node --check prototype/components.js
           bash scripts/check-design-system-bypass.sh --self-test
           bash scripts/check-design-system-bypass.sh
           scripts/test-provider-smoke-pattern.sh

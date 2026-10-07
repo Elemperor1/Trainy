@@ -141,8 +141,9 @@ chmod 600 TrainyIOS/Config/odpt.env
 ### Static Checks
 
 ```bash
-# JavaScript syntax check (browser prototype)
-node --check app.js
+# JavaScript syntax check (browser prototype in prototype/)
+node --check prototype/app.js
+node --check prototype/components.js
 
 # Shell syntax checks
 bash -n scripts/build-ios.sh

@@ -277,8 +277,9 @@ Team build or unsigned archive as distribution proof.
 The native iOS app is the product. The repository also contains supporting
 surfaces:
 
-- `index.html`, `app.js`, `components.js`, and `styles.css`: a dependency-free
-  browser prototype. Run it with `python3 -m http.server 4173`.
+- `prototype/`: a dependency-free browser prototype (`index.html`, `app.js`,
+  `components.js`, `styles.css`). It is not part of the shipped product. Run it
+  with `python3 -m http.server 4173 --directory prototype`.
 - `marketing/trainy-coming-soon/`: a Next.js coming-soon site.
 - `marketing/trainy-launch-video/`: editable Remotion source and production
   notes for Trainy's Build Week launch film.
@@ -292,6 +293,7 @@ surfaces:
 | `Sources/TrainyCore/` | Reusable app models, providers, views, persistence, and design system |
 | `Tests/TrainyCoreTests/` | Unit, fixture, provider-contract, and design-system tests |
 | `provider-proxy/` | Credential-safe Netherlands NS Cloudflare Worker |
+| `prototype/` | Non-shipping browser prototype of the Japan-first flow |
 | `scripts/` | Canonical build, smoke, audit, archive, and policy gates |
 | `docs/` | Provider, design, automation, release, and distribution evidence |
 | `marketing/` | Coming-soon site and launch-film production source |

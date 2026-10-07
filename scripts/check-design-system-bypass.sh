@@ -33,9 +33,9 @@
 #   * no AppStorage, UserDefaults, NotificationCenter, TrainStore, MapKit, or
 #     feature-only navigation/filter types inside Sources/TrainyCore/DesignSystem
 #
-# Web rules:
-#   * app.js must route dynamic markup through components.js
-#   * styles.css color literals are allowed only in CSS custom-property
+# Web rules (browser prototype in prototype/):
+#   * prototype/app.js must route dynamic markup through prototype/components.js
+#   * prototype/styles.css color literals are allowed only in CSS custom-property
 #     declarations; consumers must use var(--token)
 #
 # Test modes:
@@ -77,15 +77,16 @@ run_self_test() {
       "$case_root/Sources/TrainyCore/DesignSystem/RailDesignLibrary.swift"
     cp "$FIXTURE_DIR/valid-screen.swift.fixture" \
       "$case_root/Sources/TrainyCore/FixtureScreen.swift"
-    printf '"use strict";\n' > "$case_root/app.js"
-    printf ':root {\n  --ink: #101419;\n}\n.fixture { color: var(--ink); }\n' > "$case_root/styles.css"
+    mkdir -p "$case_root/prototype"
+    printf '"use strict";\n' > "$case_root/prototype/app.js"
+    printf ':root {\n  --ink: #101419;\n}\n.fixture { color: var(--ink); }\n' > "$case_root/prototype/styles.css"
 
     case "$fixture_name" in
       *.app.js.fixture)
-        cp "$fixture" "$case_root/app.js"
+        cp "$fixture" "$case_root/prototype/app.js"
         ;;
       *.styles.css.fixture)
-        cp "$fixture" "$case_root/styles.css"
+        cp "$fixture" "$case_root/prototype/styles.css"
         ;;
       *.content-view.swift.fixture)
         cp "$fixture" "$case_root/Sources/TrainyCore/ContentView.swift"
@@ -384,18 +385,20 @@ if [ -d "$ROOT_DIR/Sources/TrainyCore" ]; then
   done < <(find "$ROOT_DIR/Sources/TrainyCore" -type f -name '*.swift' -print0)
 fi
 
-printf 'Checking web: app.js inline component markup...\n'
-web_app="$ROOT_DIR/app.js"
+WEB_DIR="$ROOT_DIR/prototype"
+
+printf 'Checking web: prototype/app.js inline component markup...\n'
+web_app="$WEB_DIR/app.js"
 if [ -f "$web_app" ]; then
   while IFS= read -r line; do
-    add_violation "app.js:${line%%:*}: inline component markup; route dynamic HTML through components.js TrainyUI.* — ${line#*:}"
+    add_violation "prototype/app.js:${line%%:*}: inline component markup; route dynamic HTML through components.js TrainyUI.* — ${line#*:}"
   done < <(grep -nE '<[A-Za-z][^>]*class[[:space:]]*=' "$web_app" || true)
 else
-  add_violation "app.js is missing"
+  add_violation "prototype/app.js is missing"
 fi
 
-printf 'Checking web: styles.css color literals outside token declarations...\n'
-web_css="$ROOT_DIR/styles.css"
+printf 'Checking web: prototype/styles.css color literals outside token declarations...\n'
+web_css="$WEB_DIR/styles.css"
 if [ -f "$web_css" ]; then
   while IFS= read -r line; do
     lineno="${line%%:*}"
@@ -404,10 +407,10 @@ if [ -f "$web_css" ]; then
     if [[ "$trimmed" =~ ^--[A-Za-z0-9_-]+[[:space:]]*: ]]; then
       continue
     fi
-    add_violation "styles.css:$lineno: hardcoded color literal outside a CSS token declaration; use var(--token) — $content"
+    add_violation "prototype/styles.css:$lineno: hardcoded color literal outside a CSS token declaration; use var(--token) — $content"
   done < <(grep -nE '#[0-9a-fA-F]{3,8}([^0-9a-fA-F]|$)|rgba?\([[:space:]]*[0-9]|hsla?\([[:space:]]*[0-9]' "$web_css" || true)
 else
-  add_violation "styles.css is missing"
+  add_violation "prototype/styles.css is missing"
 fi
 
 # The legacy web prototype remains out of scope for spacing/radius enforcement

@@ -18,6 +18,26 @@ trainy_api_credentials_fillable_form.pdf
 docs/global-provider-implementation-checklist.md
 .env
 firebase-debug.log
+
+# The Firebase client configuration the app ships is the tracked file at
+# TrainyIOS/Trainy/GoogleService-Info.plist (the archive audit requires the
+# shipped copy to match it). A second copy at the repository root is
+# unreferenced, so keep it from being re-added.
+/GoogleService-Info.plist
+
+# Signing and release material must never be committed: App Store Connect and
+# APNs keys, certificates, provisioning profiles, and build outputs.
+*.p8
+*.p12
+*.pfx
+*.pem
+*.cer
+*.certSigningRequest
+*.mobileprovision
+*.ipa
+*.xcarchive
+*.xcresult
+*.dSYM
 /marketing/trainy-launch-video/out/
 /marketing/trainy-launch-video/build/
 /marketing/trainy-launch-video/public/audio/*.m4a
