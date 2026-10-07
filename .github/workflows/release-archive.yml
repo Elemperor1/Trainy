@@ -1,0 +1,136 @@
+name: Release Archive
+
+# Compiles the Release configuration and audits the archive. Swift CI only
+# builds Debug, so the `#if DEBUG` boundary around automation scenarios and
+# fixtures is otherwise first exercised when someone archives by hand.
+#
+# The archive is unsigned (CODE_SIGNING_ALLOWED=NO) and Crashlytics runs in
+# validation-only mode, so nothing is uploaded or distributed. It is content
+# proof only; a distribution-signed export needs its own audit.
+
+on:
+  push:
+    branches:
+      - main
+      - master
+    tags:
+      - "v*"
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  scope:
+    name: Select Release archive scope
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      run: ${{ steps.scope.outputs.run }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      # Pushes, tags, and manual runs always archive. Pull requests archive only
+      # when something that can change the shipped app or the audit changed, so
+      # the macOS runner stays free for docs-only and Worker-only changes. The
+      # job itself always reports, which keeps the check name stable.
+      - name: Determine whether Release inputs changed
+        id: scope
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          if [[ "$GITHUB_EVENT_NAME" != "pull_request" ]]; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          if git diff --quiet "$BASE_SHA" HEAD -- \
+            Package.swift \
+            Sources \
+            TrainyIOS \
+            scripts/archive-ios.sh \
+            scripts/audit-ios-archive.py \
+            scripts/normalize-ios-archive-metadata.py \
+            scripts/summarize-archive-audit.py \
+            .github/workflows/release-archive.yml
+          then
+            echo "run=false" >> "$GITHUB_OUTPUT"
+            echo "No app, Xcode, archive-script, or workflow input changed; skipping the Release archive."
+          else
+            status=$?
+            if [[ "$status" -ne 1 ]]; then
+              exit "$status"
+            fi
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          fi
+
+  archive:
+    name: Release archive audit
+    needs: scope
+    if: needs.scope.outputs.run == 'true'
+    runs-on: macos-26
+    timeout-minutes: 60
+    env:
+      ARCHIVE_PATH: /private/tmp/trainy-distribution/Trainy.xcarchive
+      RESULT_BUNDLE_PATH: /private/tmp/trainy-distribution/Trainy.xcresult
+      DERIVED_DATA_PATH: /private/tmp/trainy-distribution/DerivedData
+      AUDIT_JSON_PATH: /private/tmp/trainy-distribution/audit.json
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          persist-credentials: false
+
+      - name: Show toolchain
+        run: |
+          xcode-select -p
+          xcodebuild -version
+          xcrun --sdk iphoneos --show-sdk-version
+          python3 --version
+
+      - name: Lint release inputs
+        run: |
+          plutil -lint \
+            TrainyIOS/Trainy/Info.plist \
+            TrainyIOS/Trainy/GoogleService-Info.plist \
+            TrainyIOS/Trainy/PrivacyInfo.xcprivacy
+          xmllint --noout TrainyIOS/Trainy.xcodeproj/xcshareddata/xcschemes/Trainy.xcscheme
+          python3 -m py_compile \
+            scripts/audit-ios-archive.py \
+            scripts/normalize-ios-archive-metadata.py \
+            scripts/summarize-archive-audit.py
+
+      # archive-ios.sh unsets ODPT_CONSUMER_KEY and pins the production proxy
+      # URL, so the archive cannot inherit a developer credential.
+      - name: Archive Release without signing
+        env:
+          CODE_SIGNING_ALLOWED: "NO"
+          ODPT_ENV_FILE: /dev/null
+          ODPT_CONSUMER_KEY: ""
+        run: |
+          DEVELOPER_DIR="$(xcode-select -p)"
+          export DEVELOPER_DIR
+          scripts/archive-ios.sh
+
+      - name: Audit the Release archive
+        run: |
+          DEVELOPER_DIR="$(xcode-select -p)"
+          export DEVELOPER_DIR
+          python3 scripts/audit-ios-archive.py "$ARCHIVE_PATH" \
+            --result-bundle "$RESULT_BUNDLE_PATH" \
+            --json-output "$AUDIT_JSON_PATH"
+
+      - name: Summarize the audit
+        if: ${{ !cancelled() }}
+        run: python3 scripts/summarize-archive-audit.py "$AUDIT_JSON_PATH" >> "$GITHUB_STEP_SUMMARY"
