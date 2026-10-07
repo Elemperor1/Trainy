@@ -161,6 +161,11 @@ GitHub Actions workflow at `.github/workflows/swift.yml`:
 - Pins the Node 24 checkout action and setup-node to reviewed immutable commit SHAs, configures Node 24 for proxy gates, and keeps read-only contents permission with checkout credential persistence disabled
 - Runs the credential-neutral Workerd contract/type/bundle gate
 - Scans the built app for provider-secret values and NS upstream-only markers
+- Runs the `npm audit policy` check as its own Linux job (`scripts/npm-audit-policy.mjs`): production dependencies fail at high, development tooling at critical, with expiring exceptions in `scripts/npm-audit-policy.json`; an advisory never skips the iOS build and tests
+
+The Release Archive workflow (`.github/workflows/release-archive.yml`) compiles the Release configuration unsigned with `scripts/archive-ios.sh` and runs `scripts/audit-ios-archive.py` on the archive. It always runs on pushes to main/master, `v*` tags, and manual dispatch; on pull requests it runs only when Swift, Xcode-project, package, archive-script, or workflow inputs changed, and the `Release archive audit` check still reports success when it is skipped. It is content proof only: the archive is unsigned and nothing is uploaded. The audit pins the Firebase version, so a Firebase bump needs `FIREBASE_PINNED_VERSION` updated in the same pull request.
+
+Dependabot groups version updates monthly. See `docs/dependency-policy.md` for the groups, the audit policy, the Firebase cadence, and what to do when a security update cannot be applied.
 
 The CodeQL workflow keeps full Swift analysis on main/master pushes and the weekly schedule. On pull requests, its expensive manual Xcode trace runs only when Swift, Xcode-project, package, workflow, or canonical build inputs changed; the stable `Analyze (swift)` check still reports success when the trace is intentionally skipped.
 

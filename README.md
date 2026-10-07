@@ -272,6 +272,12 @@ team, a new distribution-signed export, and a repeat of the signature,
 entitlement, privacy, provenance, and secret audit. Do not treat the Personal
 Team build or unsigned archive as distribution proof.
 
+The `Release Archive` workflow repeats the unsigned archive and content audit in
+CI on pushes to the default branch, on `v*` tags, and on pull requests that
+change app, Xcode, or archive inputs, so a Release-only compile error or an
+audit regression surfaces before anyone archives by hand. It uploads nothing and
+does not replace the signed-export audit.
+
 ## Other repository surfaces
 
 The native iOS app is the product. The repository also contains supporting
@@ -308,6 +314,7 @@ surfaces:
 - [Distribution-readiness audit](docs/distribution-readiness-2026-07-21.md)
 - [Release-readiness history](docs/release-readiness-2026-07-19.md)
 - [Design-system architecture](docs/design-system-architecture.md)
+- [Dependency policy](docs/dependency-policy.md)
 - [Build Week submission readiness](docs/devpost-build-week-2026-07-21.md)
 
 ## License
