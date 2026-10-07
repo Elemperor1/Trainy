@@ -1,9 +1,5 @@
 import XCTest
 
-/// Accepted audit findings, as `screen | audit type | element`. The element is
-/// the accessibility identifier when there is one, otherwise its label.
-private let knownAccessibilityIssues: Set<String> = []
-
 private final class AuditFindings: @unchecked Sendable {
     var unknown: [String] = []
     var reproduced: Set<String> = []
@@ -31,22 +27,33 @@ private func auditFindingKey(screen: String, issue: XCUIAccessibilityAuditIssue)
     return "\(screen) | \(auditTypeName(issue.auditType)) | \(findingName(identifier: identifier, label: label))"
 }
 
-/// An identifier names an element as it is. A label can carry times, counts, and
-/// platforms that change between runs, so its digits are masked.
+/// An identifier names an element as it is. A label can carry counts, clock
+/// times, dates, and ages that change between runs, so those are masked to keep
+/// one element on one key.
 private func findingName(identifier: String, label: String) -> String {
     if !identifier.isEmpty { return identifier }
-    let words = label.split(whereSeparator: \.isWhitespace).joined(separator: " ")
-    let masked = words.replacingOccurrences(of: "[0-9]+", with: "#", options: .regularExpression)
-    return masked.isEmpty ? "(unnamed element)" : String(masked.prefix(80))
+    var name = label.split(whereSeparator: \.isWhitespace).joined(separator: " ")
+    for mask in volatileLabelMasks {
+        name = name.replacingOccurrences(of: mask.pattern, with: mask.replacement, options: .regularExpression)
+    }
+    return name.isEmpty ? "(unnamed element)" : String(name.prefix(80))
 }
+
+private let volatileLabelMasks: [(pattern: String, replacement: String)] = [
+    (#"[0-9]+"#, "#"),
+    (#"\b(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\.?(?= #)"#, "<month>"),
+    (#"\b[AP]M\b"#, "<am/pm>"),
+    (#"\bupdated (?:now|#s ago|#m ago)"#, "updated <age>")
+]
 
 /// Runs Apple's automated accessibility audit on the screens riders reach first.
 ///
 /// The audit reports contrast, hit-target, clipped-text, Dynamic Type, trait,
 /// and missing-description problems. Findings that already exist are listed in
-/// `knownAccessibilityIssues`, so the suite fails on anything new while the old
-/// ones are fixed. Delete an entry when its screen is fixed. An attachment on
-/// each test lists entries the audit no longer reproduces.
+/// `knownAccessibilityIssues` (TrainyAccessibilityAuditBaseline.swift), so the
+/// suite fails on anything new while the old ones are fixed. Delete an entry
+/// when its screen is fixed. An attachment on each test lists entries the audit
+/// no longer reproduces.
 @MainActor
 final class TrainyAccessibilityAuditUITests: XCTestCase {
     private lazy var app = XCUIApplication()
@@ -148,12 +155,11 @@ final class TrainyAccessibilityAuditUITests: XCTestCase {
     func testRailMapExposesLabelledStopsAndControls() throws {
         defer { app.terminate() }
         launch("fixture")
-        try openTripDetail()
-        let mapLink = app.descendants(matching: .any)
+        let mapButton = app.buttons
             .matching(NSPredicate(format: "label BEGINSWITH 'Open rail map'"))
             .firstMatch
-        try scrollTo(mapLink, "the Open rail map card")
-        mapLink.tap()
+        try scrollTo(mapButton, "the Open rail map button on the active trip")
+        mapButton.tap()
         try require(app.navigationBars["Rail map"], "the Rail map navigation bar")
         continueAfterFailure = true
         dumpLabelledElements("rail map")
@@ -233,11 +239,15 @@ final class TrainyAccessibilityAuditUITests: XCTestCase {
         try require(element("ns.stationSearch.screen"), "the NS station search screen")
     }
 
+    /// The active trip's card opens the rail map, not the trip. The rows under
+    /// "More active journeys" open trip details.
     private func openTripDetail() throws {
-        let trip = app.staticTexts["Nozomi 231"]
-        try require(trip, "the tracked Nozomi 231 trip")
-        trip.tap()
-        try require(app.navigationBars["Nozomi 231"], "the Nozomi 231 detail screen")
+        let row = app.descendants(matching: .any)
+            .matching(NSPredicate(format: "label BEGINSWITH 'Hayabusa 17'"))
+            .firstMatch
+        try scrollTo(row, "the Hayabusa 17 row")
+        row.tap()
+        try require(app.navigationBars["Hayabusa 17"], "the Hayabusa 17 detail screen")
     }
 
     private func require(_ element: XCUIElement, _ name: String, timeout: TimeInterval = 5) throws {
