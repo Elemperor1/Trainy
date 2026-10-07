@@ -28,8 +28,16 @@ private func auditTypeName(_ type: XCUIAccessibilityAuditType) -> String {
 private func auditFindingKey(screen: String, issue: XCUIAccessibilityAuditIssue) -> String {
     let identifier = issue.element?.identifier ?? ""
     let label = issue.element?.label ?? ""
-    let name = identifier.isEmpty ? String(label.prefix(80)) : identifier
-    return "\(screen) | \(auditTypeName(issue.auditType)) | \(name.isEmpty ? "(unnamed element)" : name)"
+    return "\(screen) | \(auditTypeName(issue.auditType)) | \(findingName(identifier: identifier, label: label))"
+}
+
+/// An identifier names an element as it is. A label can carry times, counts, and
+/// platforms that change between runs, so its digits are masked.
+private func findingName(identifier: String, label: String) -> String {
+    if !identifier.isEmpty { return identifier }
+    let words = label.split(whereSeparator: \.isWhitespace).joined(separator: " ")
+    let masked = words.replacingOccurrences(of: "[0-9]+", with: "#", options: .regularExpression)
+    return masked.isEmpty ? "(unnamed element)" : String(masked.prefix(80))
 }
 
 /// Runs Apple's automated accessibility audit on the screens riders reach first.
