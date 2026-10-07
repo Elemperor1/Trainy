@@ -37,7 +37,7 @@ separately instead of presenting every source as live.
 
 | Region | Status | Current experience | Data path |
 | --- | --- | --- | --- |
-| Japan | Rider-active | Shinkansen search, tracked trips, route details, maps, and source-aware schedules | Credential-free starter catalog; optional ODPT timetable and alert data; official JR timetable fallback when applicable |
+| Japan | Rider-active | Shinkansen search, tracked trips, route details, maps, and source-aware schedules | Credential-free starter catalog; optional ODPT alert data (ODPT does not publish Shinkansen timetables, see [`docs/japan-data-decision-record.md`](docs/japan-data-decision-record.md)) |
 | Netherlands | Rider-active when the public proxy URL is configured | NS station search, departures, disruptions, freshness, and recovery states | Trainy iOS → fixed Cloudflare Worker contract → NS Reisinformatie API |
 | Other regions | Planned or research-ready | Visible in the provider directory but unavailable for rider selection | Provider access does not count as an implemented Trainy experience |
 
@@ -137,7 +137,7 @@ flowchart LR
     UI["SwiftUI app"] --> Registry["Provider registry"]
     Registry --> Japan["Japan Shinkansen provider"]
     Japan --> Starter["Curated starter catalog"]
-    Japan --> ODPT["ODPT and JR schedules"]
+    Japan --> ODPT["ODPT alerts"]
     Registry --> NS["Netherlands NS adapter"]
     NS --> Worker["Fixed Cloudflare Worker API"]
     Worker --> Upstream["NS Reisinformatie API"]

@@ -19,6 +19,8 @@ This document began as a planning snapshot. Current repository truth now include
 
 The older assessment sections below are retained as historical rationale; this checkpoint and `docs/global-provider-implementation-checklist.md` own current implementation status.
 
+Japan data update (2026-10-07): the JR East HTML fallback described below was removed, and `docs/japan-data-decision-record.md` records that ODPT publishes no Shinkansen timetables. Treat the Japan data-path statements below as superseded by that record.
+
 ## Executive Decision
 
 Keep Trainy Shinkansen-first while turning the current single-provider app into a provider-capability platform. The current app should not try to add 10 providers by copy-pasting 10 `ShinkansenTrainProvider` variants. It should first split provider contracts, normalized rail models, credentials, provenance, and fixture tests, then add providers in ranked slices.

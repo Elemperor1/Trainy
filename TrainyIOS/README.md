@@ -19,7 +19,7 @@ Open `Trainy.xcodeproj` in Xcode, select an iPhone simulator, then run the `Trai
 
 ## Data provider direction
 
-`TrainDataProvider.swift` now contains the Shinkansen-first provider boundary. When `ODPT_CONSUMER_KEY` is configured, Trainy requests ODPT `odpt:TrainTimetable` and `odpt:TrainInformation` data for mapped Shinkansen railways and converts those records into scheduled `TrainTrip` cards. If ODPT exposes route metadata but no timetable rows for a Shinkansen railway, Trainy uses official JR timetable pages for scheduled times and platform data. Without a key, it falls back to the curated starter catalog with route/station coordinates.
+`TrainDataProvider.swift` now contains the Shinkansen-first provider boundary. When `ODPT_CONSUMER_KEY` is configured, Trainy requests ODPT `odpt:TrainTimetable` and `odpt:TrainInformation` data for mapped Shinkansen railways and converts those records into scheduled `TrainTrip` cards. ODPT is not expected to publish Shinkansen timetable rows (see `docs/japan-data-decision-record.md`); when it returns none, Trainy reports no live trips instead of substituting other data. Without a key, it falls back to the curated starter catalog with route/station coordinates.
 
 The ODPT key is read from either the app `Info.plist` value `ODPTConsumerKey` or the `ODPT_CONSUMER_KEY` environment/build setting. For local builds:
 
@@ -42,7 +42,7 @@ For a repeatable ODPT-backed search check:
 scripts/smoke-odpt.sh
 ```
 
-The smoke compiles the Trainy provider code and requires both `Tokyo to Shin-Osaka` and `JR East` searches to return ODPT-backed or scheduled timetable trips instead of starter data.
+The smoke compiles the Trainy provider code and requires both `Tokyo to Shin-Osaka` and `JR East` searches to return ODPT-backed timetable trips instead of starter data. Until a Shinkansen timetable source is licensed, it is expected to fail with the no-live-trips message.
 
 ## Provider proxy configuration
 

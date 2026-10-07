@@ -49,13 +49,15 @@ Japan ODPT
 
 Status: Production Ready
 
+Correction (2026-10-07): this entry records that an ODPT credential exists, not that ODPT carries Shinkansen timetables. The public ODPT catalog lists no Shinkansen timetable dataset, and the JR East data it does list is licensed to the ODPT Challenge only. See `docs/japan-data-decision-record.md` before relying on the capability list below.
+
 Credential:
 
 ODPT_CONSUMER_KEY
 
 Capabilities:
 
-* Shinkansen timetable
+* Shinkansen timetable (not confirmed; see the correction above)
 * Train information
 * Route search
 * Existing Trainy integration

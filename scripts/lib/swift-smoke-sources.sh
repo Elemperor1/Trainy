@@ -19,7 +19,6 @@ configure_trainy_swift_smoke_sources() {
     "$core_dir/ProviderProxy.swift"
     "$core_dir/Providers/ODPT/ODPTClient.swift"
     "$core_dir/Providers/ODPT/ODPTModels.swift"
-    "$core_dir/Providers/JREast/JREastTimetableClient.swift"
     "$core_dir/Providers/Shinkansen/ShinkansenTrainProvider.swift"
     "$core_dir/Providers/Shinkansen/ShinkansenRouteCatalog.swift"
     "$core_dir/Providers/Shinkansen/ShinkansenStarterCatalog.swift"

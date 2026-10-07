@@ -26,9 +26,9 @@ Trainy is a Flighty-style train tracking app scoped first to Japan Shinkansen jo
 
 **ShinkansenTrainProvider** - Primary provider implementation:
 
-- Attempts ODPT API first (requires `ODPT_CONSUMER_KEY`)
-- Falls back to JR East official timetable pages
-- Uses curated starter catalog as final fallback without key
+- Attempts ODPT API when `ODPT_CONSUMER_KEY` is configured; ODPT is not expected to publish Shinkansen timetables (see `docs/japan-data-decision-record.md`), so a configured build reports no live trips instead of substituting starter data
+- Uses the curated starter catalog without a key
+- The JR East HTML scraper was removed; the planned live path is the Worker's `/v1/japan/*` timetable routes
 - Implements both `ScheduleFeedProvider` and `RealtimeFeedProvider`
 
 **NSTrainProvider** - Station-board provider implementation:
@@ -74,8 +74,6 @@ Providers/
 │   ├── ShinkansenRouteCatalog.swift         # Route metadata and coordinates
 │   ├── ShinkansenStarterCatalog.swift       # Curated fallback trips
 │   └── ShinkansenTrainTripMapper.swift        # Trip mapping and conversion
-├── JREast/
-    └── JREastTimetableClient.swift            # JR East HTML timetable parser
 └── NS/
     ├── NSClient.swift                         # Credential-free proxy client
     ├── NSModels.swift                         # Normalized proxy response models
@@ -175,7 +173,7 @@ Providers declare their capabilities; the UI adapts accordingly. A provider may 
 
 ### Fallback Behavior
 
-The Shinkansen provider demonstrates the pattern: ODPT live → JR East timetable → starter catalog. All providers should implement similar graceful degradation.
+The Shinkansen provider demonstrates the pattern: ODPT live → starter catalog without a key. A configured build never silently substitutes starter data for missing live data. All providers should degrade gracefully and say plainly what source a fact came from.
 
 ### Provider Regions
 
