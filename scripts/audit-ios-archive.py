@@ -59,6 +59,10 @@ PERMISSION_KEYS = {
     "NSSpeechRecognitionUsageDescription",
     "NSUserTrackingUsageDescription",
 }
+# Firebase moves only as a reviewed release decision. When Dependabot (or a
+# manual update) bumps the package, update this constant together with
+# EXPECTED_PRIVACY_MANIFESTS below; docs/dependency-policy.md has the steps.
+FIREBASE_PINNED_VERSION = "12.15.0"
 EXPECTED_PRIVACY_MANIFESTS = {
     "PrivacyInfo.xcprivacy",
     "Firebase_FirebaseCore.bundle/PrivacyInfo.xcprivacy",
@@ -422,11 +426,15 @@ def audit_archive(args: argparse.Namespace) -> Audit:
 
     privacy_paths = sorted(app.rglob("PrivacyInfo.xcprivacy"))
     privacy_relative = {str(path.relative_to(app)) for path in privacy_paths}
+    missing_manifests = sorted(EXPECTED_PRIVACY_MANIFESTS - privacy_relative)
+    unexpected_manifests = sorted(privacy_relative - EXPECTED_PRIVACY_MANIFESTS)
     audit.check(
         "privacy manifest inventory",
         privacy_relative == EXPECTED_PRIVACY_MANIFESTS,
         f"all {len(EXPECTED_PRIVACY_MANIFESTS)} pinned app and SDK privacy manifests are present",
-        "privacy manifest inventory differs from the pinned Firebase 12.15.0 release set",
+        f"privacy manifest inventory differs from the pinned Firebase {FIREBASE_PINNED_VERSION} release set "
+        f"(missing: {', '.join(missing_manifests) or 'none'}; unexpected: {', '.join(unexpected_manifests) or 'none'}); "
+        "see docs/dependency-policy.md",
     )
     privacy_valid = True
     tracking_manifests: list[str] = []
@@ -829,9 +837,9 @@ def audit_archive(args: argparse.Namespace) -> Audit:
     ]
     audit.check(
         "Firebase dependency pin",
-        firebase_versions == ["12.15.0"],
-        "Firebase iOS SDK is pinned to 12.15.0",
-        "Firebase iOS SDK pin differs from 12.15.0",
+        firebase_versions == [FIREBASE_PINNED_VERSION],
+        f"Firebase iOS SDK is pinned to {FIREBASE_PINNED_VERSION}",
+        f"Firebase iOS SDK pin differs from {FIREBASE_PINNED_VERSION}; see docs/dependency-policy.md",
     )
 
     if args.result_bundle:

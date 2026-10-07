@@ -1,11 +1,108 @@
-# To get started with Dependabot version updates, you'll need to specify which
-# package ecosystems to update and where the package manifests are located.
-# Please see the documentation for all configuration options:
-# https://docs.github.com/code-security/dependabot/dependabot-version-updates/configuration-options-for-the-dependabot.yml-file
+# Dependabot configuration. The policy behind it is in docs/dependency-policy.md.
+#
+# Version updates are monthly and grouped, so a solo maintainer reviews a few
+# pull requests a month instead of one per package. Security updates ignore the
+# schedule and arrive as soon as an advisory has a fix; the `security-updates`
+# groups below fold those into one pull request per directory.
+#
+# A dependency joins only the first group it matches, so list the narrow groups
+# before the catch-alls. Majors are left out of the tooling groups on purpose:
+# they arrive as their own pull requests, and CI must pass on each.
 
 version: 2
 updates:
-  - package-ecosystem: "swift" # See documentation for possible values
-    directory: "/" # Location of package manifests
+  # Xcode project dependencies. Firebase is the only third-party package in the
+  # app. A Firebase bump is a deliberate release decision: the Release archive
+  # audit pins the version and the privacy-manifest inventory, so CI fails on
+  # the bump until both are reviewed and updated in the same pull request.
+  - package-ecosystem: "swift"
+    directory: "/TrainyIOS"
     schedule:
-      interval: "weekly"
+      interval: "monthly"
+    groups:
+      firebase:
+        patterns:
+          - "*"
+
+  # Root Swift package (TrainyCore). It has no third-party dependencies today.
+  - package-ecosystem: "swift"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+
+  # Cloudflare Worker. Every dependency is build, test, or deploy tooling.
+  # wrangler and @cloudflare/vitest-pool-workers each pin an exact miniflare,
+  # and miniflare pins an exact undici, so they have to move together.
+  - package-ecosystem: "npm"
+    directory: "/provider-proxy"
+    schedule:
+      interval: "monthly"
+    groups:
+      cloudflare-toolchain:
+        patterns:
+          - "wrangler"
+          - "miniflare"
+          - "workerd"
+          - "@cloudflare/*"
+      dev-tooling:
+        dependency-type: "development"
+        update-types:
+          - "minor"
+          - "patch"
+      security-updates:
+        applies-to: security-updates
+        patterns:
+          - "*"
+
+  # Coming-soon site. next, react, and react-dom must stay on matching versions.
+  - package-ecosystem: "npm"
+    directory: "/marketing/trainy-coming-soon"
+    schedule:
+      interval: "monthly"
+    groups:
+      framework:
+        patterns:
+          - "next"
+          - "react"
+          - "react-dom"
+      security-updates:
+        applies-to: security-updates
+        patterns:
+          - "*"
+
+  # Launch-film tooling. Every @remotion package and remotion itself must share
+  # one version, so they update as a unit, and react moves with react-dom.
+  - package-ecosystem: "npm"
+    directory: "/marketing/trainy-launch-video"
+    schedule:
+      interval: "monthly"
+    groups:
+      remotion:
+        patterns:
+          - "remotion"
+          - "@remotion/*"
+      react:
+        patterns:
+          - "react"
+          - "react-dom"
+          - "@types/react"
+      dev-tooling:
+        dependency-type: "development"
+        update-types:
+          - "minor"
+          - "patch"
+      security-updates:
+        applies-to: security-updates
+        patterns:
+          - "*"
+
+  # Workflow actions are pinned to commit SHAs with a version comment; Dependabot
+  # moves the SHA and the comment together.
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+    groups:
+      github-actions:
+        patterns:
+          - "*"

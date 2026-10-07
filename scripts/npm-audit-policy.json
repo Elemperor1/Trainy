@@ -1,0 +1,23 @@
+{
+  "thresholds": {
+    "production": "high",
+    "development": "critical"
+  },
+  "maxAllowanceDays": 180,
+  "projects": [
+    {
+      "path": "provider-proxy",
+      "ships": "Cloudflare Worker bundle. The Worker imports no npm packages at runtime, so every dependency here is build, test, or deploy tooling."
+    },
+    {
+      "path": "marketing/trainy-coming-soon",
+      "ships": "Static coming-soon site built by Next.js."
+    },
+    {
+      "path": "marketing/trainy-launch-video",
+      "tooling": true,
+      "ships": "Nothing. Local Remotion tooling that renders the launch film, so every dependency is treated as development tooling."
+    }
+  ],
+  "allowlist": []
+}
