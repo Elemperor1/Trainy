@@ -111,7 +111,13 @@ upstream URLs.
 "synthetic". `scripts/ODPTSmoke.swift` accepts a trip if its source is ODPT *or* a
 string containing "official timetable", which is what the scraper emits. The app
 turns an ODPT 404 into an empty list. `docs/Provider_Status.md` says "Japan ODPT:
-Production Ready", but the matrix there records credential access only.
+Production Ready", but the matrix there records credential access only. The
+project's own docs also expected the gap: `TrainyIOS/README.md` said "If ODPT
+exposes route metadata but no timetable rows for a Shinkansen railway, Trainy
+uses official JR timetable pages", and `docs/phase-0-baseline.md` records the
+provider order as ODPT, then the JR pages "when ODPT route metadata exists but
+timetable rows are missing". Both describe the scraper as the path that actually
+fills the gap.
 
 **F8. The scraper was the real source.** `JREastTimetableClient` parsed
 `timetables.jreast.co.jp` HTML (including JR Central's Tokaido trains) with no
