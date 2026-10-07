@@ -185,7 +185,7 @@ Japan is the initial region; planned providers span Taiwan, Hong Kong, Germany, 
 
 ### Clock Seam and Stable Ids
 
-`RailClock` (`Sources/TrainyCore/RailClock.swift`) is the one place Trainy reads the wall clock. Stores and providers take `clock: RailClock = .system` at their initializer, read `clock.now` once per operation, and pass the resulting `Date` into pure functions such as `ShinkansenTrainProvider.statusText(for:now:)` and `RailStopTime.state(at:)`. Tests pin time with `RailClock.fixed(_:)`. New time-dependent code should follow that shape instead of calling `Date()` inline. The NS view models keep their own `now` closure, which has the same shape.
+`RailClock` (`Sources/TrainyCore/RailClock.swift`) is the one place Trainy reads the wall clock. Stores and providers take `clock: RailClock = .system` at their initializer, read `clock.now` once per operation (after any network response the result describes, not before the request), and pass the resulting `Date` into pure functions such as `ShinkansenTrainProvider.statusText(for:now:)` and `RailStopTime.state(at:)`. Tests pin time with `RailClock.fixed(_:)`. New time-dependent code should follow that shape instead of calling `Date()` inline. The NS view models keep their own `now` closure, which has the same shape.
 
 `StationStop` and `TrainAlert` derive `id` from their content (`name|time`, and `title|detail|tone`), so identities survive decoding and refreshes. Persisted JSON does not carry an `id` key.
 

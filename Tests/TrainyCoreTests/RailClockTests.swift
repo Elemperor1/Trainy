@@ -187,6 +187,34 @@ final class RailClockTests: XCTestCase {
         XCTAssertEqual(later.sourceProvenance.freshness, .fresh)
     }
 
+    func testShinkansenProviderReadsItsClockAfterTheTimetableResponseArrives() async throws {
+        let configuration = URLSessionConfiguration.ephemeral
+        configuration.protocolClasses = [ODPTFixtureURLProtocol.self]
+        let session = URLSession(configuration: configuration)
+        defer { session.invalidateAndCancel() }
+
+        // The search starts half a minute before the 09:21 departure and the
+        // timetable response takes a minute to arrive.
+        let start = try instant("2026-06-20T09:20:30+09:00")
+        let source = LockedTestClock(start)
+        ODPTFixtureURLProtocol.timetableServed.install { source.advance(by: 60) }
+        defer { ODPTFixtureURLProtocol.timetableServed.install(nil) }
+
+        let provider = ShinkansenTrainProvider(
+            consumerKey: "fixture-consumer-key",
+            session: session,
+            clock: RailClock { source.read() }
+        )
+        let trips = try await provider.fetchTrips(
+            matching: "Tokaido",
+            knownRoutes: ShinkansenTrainProvider.routes
+        )
+        let trip = try XCTUnwrap(trips.first { $0.routeID == "tokaido" })
+
+        XCTAssertEqual(trip.status, "In timetable")
+        XCTAssertEqual(trip.sourceProvenance.fetchedAt, start.addingTimeInterval(60))
+    }
+
     func testStoreMeasuresLiveRefreshAgeWithItsClock() async throws {
         let suiteName = "RailClockTests-\(UUID().uuidString)"
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
@@ -320,9 +348,32 @@ private struct ClockFixtureProvider: ScheduleFeedProvider {
     }
 }
 
+/// A test-installed action that runs when the fixture protocol serves a response.
+private final class ServedResponseHook: @unchecked Sendable {
+    private let lock = NSLock()
+    private var action: (@Sendable () -> Void)?
+
+    func install(_ action: (@Sendable () -> Void)?) {
+        lock.lock()
+        self.action = action
+        lock.unlock()
+    }
+
+    func fire() {
+        lock.lock()
+        let action = self.action
+        lock.unlock()
+        action?()
+    }
+}
+
 /// Serves the recorded ODPT fixtures for any api.odpt.org request so provider
 /// tests run without a network.
 private final class ODPTFixtureURLProtocol: URLProtocol, @unchecked Sendable {
+    /// Runs as each timetable response is served, so a test can move its clock
+    /// while the request is still in flight.
+    static let timetableServed = ServedResponseHook()
+
     private static let fixtureRoot = URL(fileURLWithPath: #filePath)
         .deletingLastPathComponent()
         .appendingPathComponent("Fixtures")
@@ -344,6 +395,7 @@ private final class ODPTFixtureURLProtocol: URLProtocol, @unchecked Sendable {
         let fixtureName: String
         if url.absoluteString.contains("TrainTimetable") {
             fixtureName = "odpt_train_timetable_tokaido.json"
+            Self.timetableServed.fire()
         } else if url.absoluteString.contains("TrainInformation") {
             fixtureName = "odpt_train_information_tokaido.json"
         } else {
