@@ -73,6 +73,8 @@ export async function loadWithCache<T>(options: {
   context: ExecutionContext;
   load: () => Promise<T>;
   onLoadResult: (fault?: ProxyFault) => void;
+  /** Public wording when a load fails with something other than a ProxyFault. */
+  unavailableMessage?: string;
 }): Promise<LoadedValue<T>> {
   const cached = await readCached<T>(options.cache, options.key, options.now);
   if (cached?.freshness === "fresh") {
@@ -110,6 +112,7 @@ async function refreshCachedValue<T>(
     context: ExecutionContext;
     load: () => Promise<T>;
     onLoadResult: (fault?: ProxyFault) => void;
+    unavailableMessage?: string;
   },
   cached: CacheRead<T> | null
 ): Promise<LoadedValue<T>> {
@@ -129,7 +132,12 @@ async function refreshCachedValue<T>(
   } catch (error) {
     const fault = error instanceof ProxyFault
       ? error
-      : new ProxyFault("upstream_unavailable", "offline", 503, "NS data is temporarily unavailable.");
+      : new ProxyFault(
+        "upstream_unavailable",
+        "offline",
+        503,
+        options.unavailableMessage ?? "NS data is temporarily unavailable."
+      );
     options.onLoadResult(fault);
     if (fault.publicStatus === "invalidRequest") throw fault;
     if (cached) {
