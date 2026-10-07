@@ -147,7 +147,28 @@ final class TrainyAccessibilityAuditUITests: XCTestCase {
         try scrollTo(mapLink, "the Open rail map card")
         mapLink.tap()
         try require(app.navigationBars["Rail map"], "the Rail map navigation bar")
+        continueAfterFailure = true
+        dumpLabelledElements("rail map")
         try audit("rail-map")
+    }
+
+    // DISCOVERY ONLY: remove with the first baseline commit.
+    private func dumpLabelledElements(_ title: String) {
+        let lines = app.debugDescription.split(separator: "\n").filter {
+            $0.contains("label:") || $0.contains("identifier:")
+        }
+        var chunk = ""
+        var index = 1
+        for line in lines {
+            if chunk.count + line.count > 7000 {
+                XCTFail("DISCOVERY \(title) \(index)\n\(chunk)")
+                chunk = ""
+                index += 1
+                if index > 3 { return }
+            }
+            chunk += String(line) + "\n"
+        }
+        XCTFail("DISCOVERY \(title) \(index)\n\(chunk)")
     }
 
     // MARK: - Audit
