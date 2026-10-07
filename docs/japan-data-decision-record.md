@@ -25,9 +25,17 @@ Date: 2026-10-07 · Plan item: [2.1](engineering-plan.md#phase-2--real-japan-dat
    repo are synthetic, and `scripts/ODPTSmoke.swift` passes on results from the
    JR East HTML scraper, so "16 Tokyo to Shin-Osaka trips" most likely came from
    the scraper, not ODPT (finding F7). The scraper is removed in this change.
-5. **Recommendation:** ship Japan in 1.0 as rider-entered trips with reminders
-   and countdowns (option A), and start the licensed-API and operator-deal
-   conversations in parallel for 1.1 (options B and C).
+5. **Services exist, but none is self-serve.** Ekispert and NAVITIME document
+   Shinkansen train number, name, platform and stops, behind sales-led contracts
+   with free 90-day trials. Their terms forbid keeping results (Ekispert: fetch
+   every time; NAVITIME: no caching unless the application says so), which
+   collides with offline trips and a Worker snapshot. The raw JR timetable
+   dataset these vendors license (交通新聞社, monthly CSV/XML/GTFS) fits the
+   snapshot model but is sold to companies only (F11 to F14).
+6. **Recommendation:** ship Japan in 1.0 as rider-entered trips with reminders
+   and countdowns (option A), and start the trials and licence inquiries now
+   (options B and C), so a licensed source can follow once quotes, terms and a
+   legal entity exist.
 
 ## 1. Question
 
@@ -46,6 +54,9 @@ Pages were read on 2026-10-07 through a page fetcher. Three limits matter:
   comes from a live response.
 - Where a source is a blog or a summary, it is marked *reported* and not relied
   on for a legal conclusion.
+- The services research (F11 to F14) was done by three parallel readers using a
+  summarizing page fetcher, so quoted wording is relayed, not byte-exact. Re-read
+  every contract term in the original before relying on it (gaps G7 to G9).
 
 ## 3. Findings
 
@@ -138,25 +149,91 @@ multi-megabyte timetable cannot fit in 10 ms, so **nightly ingestion inside the
 Worker needs the Workers Paid plan**, or must run elsewhere and upload a
 snapshot.
 
+**F11. No open or official source allows Shinkansen train-level reuse.**
+Checked 2026-10-07 for timetables and status:
+
+| Source | Covers | Terms | Usable? |
+| --- | --- | --- | --- |
+| ODPT and CKAN, every publisher | JR East Kanto lines; a search for 新幹線 returns only JR East's exclusions | Basic, CC BY, Challenge | No Shinkansen |
+| GTFS Data Repository, Mobility Database, Transitland | No JR feed found (one Kurobe City bus line is named 新幹線生地線) | n/a | No |
+| Research GTFS (gtfs-gis.jp/gtfs4research) | Hokuriku Shinkansen, 2023 to 2025 editions; dropped from the 2026-06 edition | 「データの利用は調査・研究目的に限ります」, unofficial | No |
+| MLIT and data.go.jp | An annual ridership PDF; no timetable data | n/a | No |
+| JR East, Central, West, Hokkaido, Kyushu sites and Smart EX | Timetables and status are published | JR East's site rules refuse 「複製・転用・転載・電磁的加工・送信・頒布・二次的使用」 of the photographs, logos, images and text on the site and do not name timetables. JR Central's notice (relayed, not re-read) forbids copying without the rights holder's permission | Not without permission; scraping them is what 2.7 removed |
+| JR East 「リアルタイムデータ連携基盤」 (real-time data linkage platform) | Delay time and position for JR East's Shinkansen (Tohoku, Hokkaido, Joetsu, Hokuriku, Yamagata, Akita), not Tokaido or Sanyo | Offered to route-guidance providers for a fee (「有償で提供可能」); Yahoo!, Val Laboratory and Jorudan are named users (Impress Watch, 2023-02-21 and 2023-08-31) | Paid, companies only |
+
+The author of gtfs-gis.jp writes 「我が国の鉄道についてはオープンデータで公開されているものがほとんどありません」
+(Japanese rail has almost no open data).
+
+**F12. Commercial timetable services exist, and they are sales-led.**
+
+| Service | Shinkansen train-level data | Who can sign up | Price | Keeping results |
+| --- | --- | --- | --- | --- |
+| Ekispert API, Standard plan (Val Laboratory) | Yes, documented: train name and number, platform and stops, with times from the six JR companies. Per-line coverage unverified | Marketed to companies (法人向け); the terms set no corporate or Japan requirement; invoice billing, annual or monthly | On request: initial fee plus metered, and timetable data adds operator licence fees | Banned: fetch every time (TOS 27(1)(8)) |
+| Ekispert Free and Prepaid | No: Free returns only web page URLs, Prepaid has no timetable search | Self-serve | Free; 5,500 yen per 5,000 requests | n/a |
+| NAVITIME API, direct | Documented as a paid option (`train_data=timetable` adds train number, train name, platform and stops). Shinkansen coverage unverified | Trial form, then sales and invoice; the product page says 法人向け | Table unpublished; setup fee and a 10,000-access minimum | No caching unless the application names it (Art. 5.5) |
+| NAVITIME on RapidAPI | No: train timetable data is 「APIマーケットでは利用不可」 | Self-serve | Free for 500 accesses; $200 or $300 a month | Cache banned |
+| Jorudan Open API and Biz API | Open: no, routes ignore timetables. Biz: unverified | Open: self-serve after review. Biz: sales | Open: free, 10,000 calls a month. Biz: from 354,000 yen | No sublicensing |
+| Ekitan | Unverified | Inquiry form, companies | Unpublished | Unpublished |
+| Google Routes, Apple MapKit | No: Google transit returns no results in Japan, MapKit returns ETA only | Self-serve | n/a | Google bans storing |
+
+Both Ekispert and NAVITIME offer a free 90-day trial. Ekispert's trial is for
+evaluation and building only, must not be shown to third parties (which likely
+rules out external TestFlight), and limits the data area (*reported*: Tokyo,
+Kanagawa, Osaka and Hokkaido). NAVITIME says a trial key arrives in two to four
+business days. Neither can back a released app.
+
+**F13. Those terms collide with offline trips and a Worker snapshot.** Ekispert
+TOS 27(1)(8) bans 「鉄道時刻情報の利用により出力されるデータを保持して再利用する行為」
+(keeping and reusing timetable output) and says the data must be fetched each
+time. NAVITIME Art. 5.5 bars saving data 「キャッシュ等に」 except for uses named
+in the application. Both also restrict passing the service on: Ekispert 27(1)(7)
+bans secondary use and resale, NAVITIME 5.2 bars 「譲渡、使用許諾、貸与その他の一切の処分」,
+and neither says outright whether a server may relay normalized results to app
+users. Ekispert 27(1)(10) needs written consent for a competing 経路検索・乗換案内
+service, which a Japan trip search could be read as. Each of these needs the
+vendor's written answer (G7, G8).
+
+**F14. The upstream dataset can be licensed directly.** 交通新聞社 (Kotsu
+Shimbun) sells JR旅客6社 train timetables, formations and station data as CSV, XML
+or GTFS, updated monthly, to companies and organizations only, under a
+時刻情報使用許諾契約 (time-information licence agreement). Its listed customers
+include NAVITIME, Jorudan, Ekitan, Val Laboratory and Google. A monthly dataset is
+the shape the Worker's snapshot expects, and it would allow offline use if the
+licence says so. Price, the field list (train numbers, platforms) and whether a
+foreign company or sole proprietor qualifies are unverified (G9).
+
 ## 4. Options
 
 | | What a rider gets in 1.0 | Data rights | Cost and effort | Main risk |
 | --- | --- | --- | --- | --- |
-| **A. Rider-entered trips** | Add a trip from the ticket (train, date, stations, times, car, seat); countdown, reminders, offline, history | None needed; the rider's own data | Lowest. Needs the 1.6 form and a "from your ticket" provenance kind | No train search for Japan; less magic than a feed |
-| **B. Licensed timetable API** (for example Ekispert) | Train search, stop lists, possibly operation status | By contract | Recurring fees; contract terms for caching and offline use must be checked before building 2.2 to 2.4 | Terms may forbid storing results, which breaks offline and the snapshot model |
-| **C. Operator data deal** | Same as B if granted | By agreement | Free if granted; slow and uncertain | 1.0 cannot depend on it |
+| **A. Rider-entered trips** | Add a trip from the ticket (train, date, stations, times, car, seat); countdown, reminders, offline, history. A later option is prefilling it from a pasted Smart EX or えきねっと confirmation, parsed on the device (formats unverified) | None needed; the rider's own data | Lowest. Needs a manual trip form (plan items 1.6 and 1.7 start it) and a "from your ticket" provenance kind | No train search for Japan; less magic than a feed |
+| **B. Licensed timetable API** (Ekispert Standard or NAVITIME direct) | Train search, train number and name, platform, stops (documented; per-line Shinkansen coverage unverified) | By contract, with fees (F12) | Recurring fees, an operator licence fee on Ekispert, invoice onboarding. The 90-day trial cannot back a release | The terms ban keeping results (F13), which breaks offline trips and the Worker snapshot unless the vendor agrees in writing. Without that, the design is a query-through relay with nothing stored, which the vendor must also allow |
+| **C. Operator data licence** (交通新聞社 monthly dataset, or a deal with an operator) | Train search from a nightly snapshot, offline; the fields the dataset holds | By licence agreement (時刻情報使用許諾契約, F14) | Price unpublished. Companies and organizations only. A new adapter into the Worker's snapshot builder under `commercial-agreement` | Needs a legal entity and a budget; field list, price and eligibility unverified (G9) |
 | **D. NS-led 1.0** | Real Netherlands boards; Japan marked coming soon | NS terms already reviewed | Lowest engineering | Drops the Japan promise from the first release |
 | E. Self-compiled timetable | Same as B | Unclear; copying a compiled timetable may breach copyright or terms | Ongoing manual work | **Not recommended** without legal advice |
 | F. Unofficial scrapers and aggregators (JR sites, Yahoo!, delay-info feeds) | Same as B | None | Low | **Not recommended**: App Review 5.2.2 and terms risk |
 
-Only Ekispert was checked: a free trial and a JSON/XML API exist
-(https://api-info.ekispert.com/form/trial/). Its Shinkansen train-level coverage,
-pricing and terms are unverified. Other vendors were not researched.
+B and C do not exclude each other, and neither blocks A. The Ekispert and
+NAVITIME trials are free for 90 days and can show the real response shape, line
+coverage and field names while the written answers are pending. They cannot
+back a released app or a public TestFlight (F12).
 
 ## 5. Recommendation and decision needed
 
-Choose **A for 1.0**, then pursue **B and C** for 1.1, with D as the fallback if
-A slips. Under A the plan changes as follows:
+Choose **A for 1.0**, and **start B and C now** so a licensed source can follow
+in 1.1. D is the fallback if A slips. Starting costs time, not money, and commits
+to nothing:
+
+- Request the Ekispert and NAVITIME trial keys, and put the questions in G7 and
+  G8 to both vendors in writing.
+- Send the licence inquiry to 交通新聞社 (G9).
+- Revisit this record when the first written answers arrive. B is workable for
+  1.0 or 1.1 only if a vendor agrees in writing to what Trainy needs: a Worker
+  relay, and a rider's saved trip keeping the train, times and platform it was
+  found with. C is workable if the licence reaches a sole proprietor or the
+  company Trainy forms.
+
+Under A the plan changes as follows:
 
 - **2.2** Worker ingestion is built source-neutral and stays dormant until a
   licensed feed exists (section 7).
@@ -173,11 +250,15 @@ A slips. Under A the plan changes as follows:
 | # | Gap | How to close |
 | --- | --- | --- |
 | G1 | Does the logged-in Center expose any Shinkansen railway? | After registering, run `curl -s "https://api.odpt.org/api/v4/odpt:Operator?acl:consumerKey=$KEY"` and look for `JR-Central`, `JR-West`, `JR-Kyushu`, `JR-Hokkaido`; then `odpt:Railway?odpt:operator=odpt.Operator:JR-East` and look for `*Shinkansen`. Expected: none. If `odpt:Operator` is not served, use the `odpt:Railway` form for each operator. Keep the key out of chat and logs. The local check in `provider-proxy/README.md` does the same through the Worker's parser with the key in a mode-600 file |
-| G2 | Full text of the Basic License and current API guidelines: commercial use, redistribution, caching, attribution | Read https://developer.odpt.org/terms after login |
+| G2 | Full text of the Basic License and current API guidelines: commercial use, redistribution, caching, attribution. This matters only if a Basic-licensed ODPT dataset is ever used, since the services research found no ODPT Shinkansen data | Read https://developer.odpt.org/terms after login |
 | G3 | May JR East's Challenge data be used after the contest? | Ask the ODPT secretariat (odpt-office@ubin.jp) |
 | G4 | Per-token rate limits | Developer site, or the secretariat |
 | G5 | Update cadence for any dataset we would use (`odpt:frequency`, `dct:valid`) | Inspect a response |
-| G6 | Pricing, caching and offline terms, and Shinkansen coverage, of a licensed API | Ekispert trial form; ask for written terms |
+| G6 | Who can sign: a sole proprietor outside Japan, or a newly formed company? Ekispert, NAVITIME and 交通新聞社 are all marketed to companies, and the Apple account type is also open | Ask in the same written inquiries (G7 to G9); settle the legal entity together with the Apple Developer enrollment |
+| G7 | Ekispert: price including operator licence fees and the minimum term; may a Worker relay results to app users (TOS 27(1)(7) and (10)); may a rider's saved trip keep the train, times and platform it was found with (27(1)(8)); English output and romaji station input; which Shinkansen lines and date range the timetable covers; how the key's domain check works from a Cloudflare Worker | Written questions to Val Laboratory (info@val.co.jp or https://api-info.ekispert.com/form/inquiry/), after reading the terms in the original. Use the trial only to inspect responses: it forbids showing results to third parties |
+| G8 | NAVITIME: price of the train-timetable option and the 10,000-access minimum; does naming "saving a rider's tracked trip" in the application satisfy Art. 5.5; may a server relay results; which Shinkansen lines are covered | Trial form, then written questions to sales (https://api-sdk.navitime.co.jp/api/specs/) |
+| G9 | 交通新聞社 dataset: price; whether a foreign sole proprietor or a new company qualifies; field list (train numbers, platforms, formations); delivery format and schedule; whether a server snapshot and on-device storage are licensed uses | Inquiry in Japanese via https://www.kotsu.co.jp/service/jikoku_solution/data_sales/ |
+| G10 | Is any licensed per-train delay or position feed open to a small app? JR East sells its platform data to route-guidance providers (F11), and the vendors in F12 describe line-level operation information only | Ask in the G7 to G9 inquiries. Until one is licensed, do not call Japan live (plan 2.8) |
 
 ## 7. What the Worker build does about this
 
@@ -215,6 +296,16 @@ reports, per railway, whether ODPT knows it and how many timetables it holds.
 That answers G1 with the Worker's own parser and keeps the key off the command
 line. G2 to G4 still need a person.
 
+**If a licensed source arrives.** A dataset licence (option C) fits the shape
+already built: a new adapter reads the vendor's monthly files into the same
+snapshot builder, the operator declares `commercial-agreement`, and the routes,
+guards, health and tests stay as they are. An API whose terms require fetching
+every time (option B) does not fit the snapshot. It would be a query-through
+route with nothing stored, which makes the Worker a relay that the vendor must
+approve (G7, G8), and a tracked trip could not keep vendor-supplied times
+offline unless the vendor allows it. No vendor adapter is built, because price,
+terms and eligibility are unknown and a trial key cannot back a released app.
+
 Setup, cost, the secret name and the production steps are in
 `provider-proxy/README.md`. Running the nightly job needs Workers Paid; the
 production account is on Free.
@@ -237,3 +328,28 @@ production account is on Free.
   terms: https://nlftp.mlit.go.jp/ksj/other/agreement.html
 - Cloudflare limits: https://developers.cloudflare.com/workers/platform/limits/ ·
   https://developers.cloudflare.com/kv/platform/limits/
+- JR East site rules (copyright clause): https://www.jreast.co.jp/site/rules.html
+- JR East real-time data linkage platform: https://www.watch.impress.co.jp/docs/news/1480396.html
+  (2023-02-21) · https://www.watch.impress.co.jp/docs/news/1527576.html (2023-08-31)
+- Research GTFS for Hokuriku Shinkansen, gtfs-gis.jp/gtfs4research (*reported*;
+  exact page not kept)
+- Ekispert API: plans https://api-info.ekispert.com/plan/ · trial
+  https://api-info.ekispert.com/form/trial/ · API reference
+  https://docs.ekispert.com/v1/api/ · FAQ https://docs.ekispert.com/v1/faq/ ·
+  restrictions https://docs.ekispert.com/v1/get-started/restriction/ · terms
+  https://docs.ekispert.com/v1/WebService_TOS.pdf · official sample
+  https://docs.ekispert.com/v1/api/search/course.html
+- NAVITIME API: https://api-sdk.navitime.co.jp/api/specs/ (route search guide,
+  trial, terms of use, product description and RapidAPI terms under it)
+- Jorudan: https://norikae.jorudan.co.jp/openapi/ ·
+  https://biz.jorudan.co.jp/service/biz_api.html
+- Ekitan: https://go.ekitan.com/service/asp/transit/ ·
+  https://go.ekitan.com/developer/trial/
+- Google coverage: https://developers.google.com/maps/coverage
+- 交通新聞社 data sales: https://www.kotsu.co.jp/service/jikoku_solution/data_sales/
+
+Every page in F11 to F14 was read through a summarizing fetcher, so quoted
+wording is relayed, not byte-exact. The JR East site rules and the two Impress
+Watch articles were re-checked afterwards with targeted questions. Moovit, HERE,
+Rome2rio, Apple MapKit and Google Routes were also checked and found unusable
+for Shinkansen train data (not self-serve, no Japan transit, or caching banned).
