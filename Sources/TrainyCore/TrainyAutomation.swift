@@ -153,7 +153,11 @@ private struct AutomationNSRiderProvider: NSRiderDataProviding {
     }
 
     func searchStations(matching query: String, limit: Int) async throws -> StationSearchPage {
-        if scenario == .searchFailureRecovery, await attempts.shouldFail() {
+        // The field searches for the prefixes it passes while a test types, so
+        // only the finished query may spend the scripted failure.
+        if scenario == .searchFailureRecovery,
+           query.localizedCaseInsensitiveCompare("utrecht") == .orderedSame,
+           await attempts.shouldFail() {
             throw NSClientError.unavailable
         }
 
