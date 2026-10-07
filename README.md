@@ -315,6 +315,7 @@ surfaces:
 - [Release-readiness history](docs/release-readiness-2026-07-19.md)
 - [Design-system architecture](docs/design-system-architecture.md)
 - [Dependency policy](docs/dependency-policy.md)
+- [Security review and threat model](docs/security-review-2026-10-07.md)
 - [Build Week submission readiness](docs/devpost-build-week-2026-07-21.md)
 
 ## License

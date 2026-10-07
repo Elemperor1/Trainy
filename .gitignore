@@ -17,6 +17,8 @@ TrainyIOS/Config/*.env
 trainy_api_credentials_fillable_form.pdf
 docs/global-provider-implementation-checklist.md
 .env
+.env.*
+!.env.example
 firebase-debug.log
 
 # The Firebase client configuration the app ships is the tracked file at
