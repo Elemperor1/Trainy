@@ -161,28 +161,26 @@ final class TrainyAccessibilityAuditUITests: XCTestCase {
         try scrollTo(mapButton, "the Open rail map button on the active trip")
         mapButton.tap()
         try require(app.navigationBars["Rail map"], "the Rail map navigation bar")
-        continueAfterFailure = true
-        dumpLabelledElements("rail map")
-        try audit("rail-map")
-    }
 
-    // DISCOVERY ONLY: remove with the first baseline commit.
-    private func dumpLabelledElements(_ title: String) {
-        let lines = app.debugDescription.split(separator: "\n").filter {
-            $0.contains("label:") || $0.contains("identifier:")
-        }
-        var chunk = ""
-        var index = 1
-        for line in lines {
-            if chunk.count + line.count > 7000 {
-                XCTFail("DISCOVERY \(title) \(index)\n\(chunk)")
-                chunk = ""
-                index += 1
-                if index > 3 { return }
-            }
-            chunk += String(line) + "\n"
-        }
-        XCTFail("DISCOVERY \(title) \(index)\n\(chunk)")
+        // VoiceOver reaches each stop by name, platform, and where the train is.
+        let stopPins = app.staticTexts.matching(NSPredicate(format: "label MATCHES %@", ".+, platform .+, .+"))
+        try require(stopPins.firstMatch, "labelled stop pins on the map", timeout: 10)
+        XCTAssertGreaterThanOrEqual(stopPins.count, 2, "Expected the origin and destination stops to be labelled on the map")
+
+        try require(app.buttons["Center map"], "the Center map button")
+
+        // The starter catalog has no vehicle-position feed, so the marker must call
+        // itself a route marker and nothing may present it as a vehicle position.
+        let routeMarker = app.descendants(matching: .any)
+            .matching(NSPredicate(format: "label == 'Route marker'"))
+            .firstMatch
+        try require(routeMarker, "the route marker")
+        let vehiclePosition = app.descendants(matching: .any)
+            .matching(NSPredicate(format: "label == 'Vehicle position'"))
+            .firstMatch
+        XCTAssertFalse(vehiclePosition.exists, "A schedule-only trip must not present its map marker as a vehicle position")
+
+        try audit("rail-map")
     }
 
     // MARK: - Audit

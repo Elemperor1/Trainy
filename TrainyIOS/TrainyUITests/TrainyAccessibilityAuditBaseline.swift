@@ -36,6 +36,23 @@ let knownAccessibilityIssues: Set<String> = [
     "trips | textClipped | Shin-Osaka",
     "trips | textClipped | Tokyo → Shin-Osaka",
 
+    // trip-detail (7)
+    "trip-detail | contrast | Expected",
+    "trip-detail | contrast | Next: Sendai · Route marker",
+    "trip-detail | contrast | On time",
+    "trip-detail | contrast | Scheduled times, platforms, and the operator-handoff cue for this train.",
+    "trip-detail | textClipped | #:# <am/pm>",
+    "trip-detail | textClipped | JR EAST",
+    "trip-detail | textClipped | Tokyo → Shin-Aomori",
+
+    // rail-map (6)
+    "rail-map | contrast | Map marker uses station/corridor geometry, not a vehicle-position feed.",
+    "rail-map | contrast | On time",
+    "rail-map | contrast | Starter",
+    "rail-map | hitRegion | Legal",
+    "rail-map | textClipped | Platform # · #:# <am/pm>",
+    "rail-map | textClipped | Route marker",
+
     // search (25)
     "search | contrast | Departure, arrival, duration, transfers, operator, and status",
     "search | contrast | Fast station search",
