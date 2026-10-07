@@ -7,8 +7,10 @@ struct ShinkansenTrainProvider: ScheduleFeedProvider, RealtimeFeedProvider {
     let region = ProviderRegion.japan
     private let odptClient: ODPTClient?
     private let timetableClient: JREastTimetableClient
+    private let clock: RailClock
 
-    init(consumerKey: String? = TrainyAPIConfig.odptConsumerKey, session: URLSession = .shared) {
+    init(consumerKey: String? = TrainyAPIConfig.odptConsumerKey, session: URLSession = .shared, clock: RailClock = .system) {
+        self.clock = clock
         self.timetableClient = JREastTimetableClient(session: session)
         if let consumerKey = TrainyAPIConfig.cleanODPTKey(consumerKey) {
             self.odptClient = ODPTClient(consumerKey: consumerKey, session: session)
@@ -209,6 +211,7 @@ struct ShinkansenTrainProvider: ScheduleFeedProvider, RealtimeFeedProvider {
 
     private func fetchODPTTrips(client: ODPTClient, routes: [LiveTrainRoute], starterMatches: [TrainTrip]) async throws -> [TrainTrip] {
         var trips: [TrainTrip] = []
+        let now = clock.now
 
         for route in routes.prefix(5) {
             guard let railwayRefs = Self.odptRailwaysByRouteID[route.id], !railwayRefs.isEmpty else { continue }
@@ -218,7 +221,7 @@ struct ShinkansenTrainProvider: ScheduleFeedProvider, RealtimeFeedProvider {
             for railwayRef in railwayRefs {
                 let timetables = try await client.fetchTrainTimetables(for: railwayRef)
                 let routeTrips = timetables.prefix(10).compactMap { timetable in
-                    Self.trip(from: timetable, route: route, railwayRef: railwayRef, starterTrips: routeStarterTrips, alerts: alerts)
+                    Self.trip(from: timetable, route: route, railwayRef: railwayRef, starterTrips: routeStarterTrips, alerts: alerts, now: now)
                 }
                 trips.append(contentsOf: routeTrips)
             }
@@ -232,6 +235,7 @@ struct ShinkansenTrainProvider: ScheduleFeedProvider, RealtimeFeedProvider {
     private func fetchOfficialTimetableTrips(routes: [LiveTrainRoute], starterMatches: [TrainTrip], query: String) async throws -> [TrainTrip] {
         var trips: [TrainTrip] = []
         var fetchedURLs: Set<URL> = []
+        let now = clock.now
 
         for route in routes.prefix(4) {
             guard let reference = Self.jrEastTimetableReferencesByRouteID[route.id] else { continue }
@@ -240,7 +244,7 @@ struct ShinkansenTrainProvider: ScheduleFeedProvider, RealtimeFeedProvider {
             let routeStarterTrips = starterMatches.filter { $0.routeID == route.id }
             let timetables = try await timetableClient.fetchTrainTimetables(for: reference)
             let routeTrips = timetables.compactMap { timetable in
-                Self.trip(from: timetable, route: route, reference: reference, starterTrips: routeStarterTrips)
+                Self.trip(from: timetable, route: route, reference: reference, starterTrips: routeStarterTrips, now: now)
             }
             trips.append(contentsOf: routeTrips)
         }

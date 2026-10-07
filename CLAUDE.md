@@ -183,6 +183,12 @@ The Shinkansen provider demonstrates the pattern: ODPT live → JR East timetabl
 
 Japan is the initial region; planned providers span Taiwan, Hong Kong, Germany, Switzerland, UK, Australia/NSW, US (MTA), Netherlands, South Korea, and France.
 
+### Clock Seam and Stable Ids
+
+`RailClock` (`Sources/TrainyCore/RailClock.swift`) is the one place Trainy reads the wall clock. Stores and providers take `clock: RailClock = .system` at their initializer, read `clock.now` once per operation, and pass the resulting `Date` into pure functions such as `ShinkansenTrainProvider.statusText(for:now:)` and `RailStopTime.state(at:)`. Tests pin time with `RailClock.fixed(_:)`. New time-dependent code should follow that shape instead of calling `Date()` inline. The NS view models keep their own `now` closure, which has the same shape.
+
+`StationStop` and `TrainAlert` derive `id` from their content (`name|time`, and `title|detail|tone`), so identities survive decoding and refreshes. Persisted JSON does not carry an `id` key.
+
 ### Credential Safety
 
 No production provider secret may ship in a distribution binary. The legacy ODPT developer path can inject a local development key, so CI and release-proof builds must set `ODPT_ENV_FILE=/dev/null` until ODPT also moves behind a production credential boundary. NS is stricter: `scripts/build-ios.sh` never loads `ns.env`, the app knows only an HTTPS proxy base URL, and `NS_SUBSCRIPTION_KEY` stays in Worker secret storage or the ignored mode-600 local smoke file.

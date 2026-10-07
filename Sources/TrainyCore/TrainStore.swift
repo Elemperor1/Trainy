@@ -76,6 +76,7 @@ final class TrainStore: ObservableObject {
     @Published private(set) var providerProxyLoadState: ProviderProxyLoadState
 
     private let defaults: UserDefaults
+    private let clock: RailClock
     private let providerRegistry: ProviderRegistry
     let providerProxyConfiguration: ProviderProxyConfiguration
     private let proxyHealthFetcher: any ProviderProxyHealthFetching
@@ -89,16 +90,18 @@ final class TrainStore: ObservableObject {
         registry: ProviderRegistry = .default,
         providerID: String? = nil,
         proxyConfiguration: ProviderProxyConfiguration = .current(),
-        proxyHealthFetcher: any ProviderProxyHealthFetching = ProviderProxyHealthClient()
+        proxyHealthFetcher: any ProviderProxyHealthFetching = ProviderProxyHealthClient(),
+        clock: RailClock = .system
     ) {
         self.defaults = defaults
+        self.clock = clock
         self.providerRegistry = registry
         self.providerProxyConfiguration = proxyConfiguration
         self.proxyHealthFetcher = proxyHealthFetcher
         let requestedProviderID = providerID ?? defaults.string(forKey: DefaultsKey.selectedProviderID) ?? registry.defaultProviderID
         let resolvedProvider = registry.scheduleProvider(id: requestedProviderID)
             ?? registry.defaultScheduleProvider
-            ?? ShinkansenTrainProvider()
+            ?? ShinkansenTrainProvider(clock: clock)
         self.provider = resolvedProvider
         self.selectedProviderID = resolvedProvider.providerID
         let storedRegionID = defaults.string(forKey: DefaultsKey.selectedRegionID)
@@ -118,11 +121,12 @@ final class TrainStore: ObservableObject {
         defaults.set(selectedRegionID, forKey: DefaultsKey.selectedRegionID)
     }
 
-    convenience init(defaults: UserDefaults = .standard, provider: any ScheduleFeedProvider) {
+    convenience init(defaults: UserDefaults = .standard, provider: any ScheduleFeedProvider, clock: RailClock = .system) {
         self.init(
             defaults: defaults,
             registry: ProviderRegistry(providers: [provider], defaultProviderID: provider.providerID),
-            providerID: provider.providerID
+            providerID: provider.providerID,
+            clock: clock
         )
     }
 
@@ -290,7 +294,7 @@ final class TrainStore: ObservableObject {
             return "Refreshing \(provider.feedLabel)"
         case .loaded:
             if let lastLiveRefresh {
-                return "\(provider.feedLabel) · updated \(Self.relativeTime(from: lastLiveRefresh))"
+                return "\(provider.feedLabel) · updated \(Self.relativeTime(from: lastLiveRefresh, to: clock.now))"
             }
             return "\(provider.feedLabel) ready"
         case .empty(let message):
@@ -391,7 +395,7 @@ final class TrainStore: ObservableObject {
         do {
             liveRoutes = try await provider.fetchRoutes()
             liveLoadState = .loaded
-            lastLiveRefresh = Date()
+            lastLiveRefresh = clock.now
         } catch {
             liveLoadState = .offline(error.localizedDescription)
         }
@@ -413,7 +417,7 @@ final class TrainStore: ObservableObject {
         do {
             liveResults = try await provider.fetchTrips(matching: query, knownRoutes: liveRoutes)
             liveLoadState = .loaded
-            lastLiveRefresh = Date()
+            lastLiveRefresh = clock.now
         } catch TrainDataProviderError.noLiveTrips {
             liveResults = []
             liveLoadState = .empty("no new departures for this search")
@@ -463,7 +467,7 @@ final class TrainStore: ObservableObject {
                 if let refreshedTrip = try await realtimeProvider.refresh(trip, knownRoutes: liveRoutes) {
                     applyRefreshedTrip(refreshedTrip, replacing: trip)
                     liveLoadState = .loaded
-                    lastLiveRefresh = Date()
+                    lastLiveRefresh = clock.now
                 } else {
                     refreshSampleTrip()
                     liveLoadState = .loaded
@@ -664,8 +668,8 @@ final class TrainStore: ObservableObject {
         )
     }
 
-    private static func relativeTime(from date: Date) -> String {
-        let seconds = max(0, Int(Date().timeIntervalSince(date)))
+    private static func relativeTime(from date: Date, to now: Date) -> String {
+        let seconds = max(0, Int(now.timeIntervalSince(date)))
         if seconds < 60 {
             return "\(seconds)s ago"
         }
