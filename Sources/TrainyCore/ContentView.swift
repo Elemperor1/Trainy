@@ -46,9 +46,9 @@ public struct ContentView: View {
 
             NavigationStack {
                 StationsScreen(
-                    store: store,
-                    nsProvider: rootDependencies.nsProvider,
-                    nsStartsLoading: rootDependencies.nsStartsLoading
+                    provider: rootDependencies.stationProvider,
+                    favorites: rootDependencies.stationFavorites,
+                    startsLoading: rootDependencies.stationsStartLoading
                 )
             }
             .tabItem { Label(RailTab.stations.title, systemImage: RailTab.stations.symbolName) }

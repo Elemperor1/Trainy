@@ -39,9 +39,6 @@ struct SearchScreen: View {
                     ) { value in
                         searchText = value
                     }
-                    FavoriteStationsStrip(stations: store.stationSnapshots.prefix(6).map { $0.name }) { station in
-                        searchText = station
-                    }
                 }
 
                 SearchResultsSection(
@@ -213,36 +210,6 @@ private struct RecentSearchesView: View {
                 RoundedRectangle(cornerRadius: RailDesign.Radius.card, style: .continuous)
                     .fill(RailDesign.Palette.panel)
             )
-        }
-    }
-}
-
-private struct FavoriteStationsStrip: View {
-    let stations: [String]
-    let select: (String) -> Void
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: RailDesign.Spacing.s) {
-            SectionHeader(title: "Favorite stations", subtitle: "Fast station search")
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: RailDesign.Spacing.s) {
-                    ForEach(stations, id: \.self) { station in
-                        Button {
-                            select(station)
-                        } label: {
-                            StationBadge(name: station, code: String(station.prefix(3)))
-                                .padding(RailDesign.Spacing.s)
-                                .background(RailDesign.Palette.panel, in: RoundedRectangle(cornerRadius: RailDesign.Radius.control, style: .continuous))
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: RailDesign.Radius.control, style: .continuous)
-                                        .stroke(RailDesign.Palette.hairline, lineWidth: 1)
-                                )
-                        }
-                        .buttonStyle(.plain)
-                    }
-                }
-                .padding(.vertical, RailDesign.Spacing.xxs)
-            }
         }
     }
 }

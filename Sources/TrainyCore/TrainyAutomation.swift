@@ -25,8 +25,9 @@ public enum TrainyAutomationScenario: String, CaseIterable, Sendable {
 @MainActor
 struct TrainyAutomationDependencies {
     let store: TrainStore
-    let nsProvider: any NSRiderDataProviding
-    let nsStartsLoading: Bool
+    let stationProvider: any StationDataProviding
+    let stationFavorites: StationFavoritesStore
+    let stationsStartLoading: Bool
 
     static func make(for scenario: TrainyAutomationScenario) -> Self {
         let defaults = UserDefaults(suiteName: "TrainyAutomation-\(scenario.rawValue)")!
@@ -49,8 +50,9 @@ struct TrainyAutomationDependencies {
                     registry: registry,
                     proxyConfiguration: ProviderProxyConfiguration(baseURL: nil)
                 ),
-                nsProvider: NSTrainProvider(proxyBaseURL: nil),
-                nsStartsLoading: false
+                stationProvider: NSTrainProvider(proxyBaseURL: nil),
+                stationFavorites: StationFavoritesStore(defaults: defaults),
+                stationsStartLoading: false
             )
         }
 
@@ -69,8 +71,9 @@ struct TrainyAutomationDependencies {
                 proxyConfiguration: ProviderProxyConfiguration(baseURL: proxyURL),
                 proxyHealthFetcher: AutomationProxyHealthFetcher()
             ),
-            nsProvider: AutomationNSRiderProvider(scenario: scenario),
-            nsStartsLoading: scenario == .loading
+            stationProvider: AutomationStationProvider(scenario: scenario),
+            stationFavorites: StationFavoritesStore(defaults: defaults),
+            stationsStartLoading: scenario == .loading
         )
     }
 }
@@ -83,17 +86,20 @@ struct TrainyAutomationDependencies {
 @MainActor
 public final class TrainyRootDependencies: ObservableObject {
     let store: TrainStore
-    let nsProvider: any NSRiderDataProviding
-    let nsStartsLoading: Bool
+    let stationProvider: any StationDataProviding
+    let stationFavorites: StationFavoritesStore
+    let stationsStartLoading: Bool
 
     private init(
         store: TrainStore,
-        nsProvider: any NSRiderDataProviding,
-        nsStartsLoading: Bool
+        stationProvider: any StationDataProviding,
+        stationFavorites: StationFavoritesStore,
+        stationsStartLoading: Bool
     ) {
         self.store = store
-        self.nsProvider = nsProvider
-        self.nsStartsLoading = nsStartsLoading
+        self.stationProvider = stationProvider
+        self.stationFavorites = stationFavorites
+        self.stationsStartLoading = stationsStartLoading
     }
 
     /// Creates the production dependency graph without automation fixtures.
@@ -101,8 +107,9 @@ public final class TrainyRootDependencies: ObservableObject {
         let store = TrainStore()
         self.init(
             store: store,
-            nsProvider: NSTrainProvider(proxyBaseURL: store.providerProxyConfiguration.baseURL),
-            nsStartsLoading: false
+            stationProvider: NSTrainProvider(proxyBaseURL: store.providerProxyConfiguration.baseURL),
+            stationFavorites: StationFavoritesStore(),
+            stationsStartLoading: false
         )
     }
 
@@ -116,8 +123,9 @@ public final class TrainyRootDependencies: ObservableObject {
         let dependencies = TrainyAutomationDependencies.make(for: automationScenario)
         self.init(
             store: dependencies.store,
-            nsProvider: dependencies.nsProvider,
-            nsStartsLoading: dependencies.nsStartsLoading
+            stationProvider: dependencies.stationProvider,
+            stationFavorites: dependencies.stationFavorites,
+            stationsStartLoading: dependencies.stationsStartLoading
         )
     }
     #endif
@@ -144,7 +152,11 @@ private struct AutomationProxyHealthFetcher: ProviderProxyHealthFetching {
     }
 }
 
-private struct AutomationNSRiderProvider: NSRiderDataProviding {
+private struct AutomationStationProvider: StationDataProviding {
+    let providerID = "netherlands-ns"
+    let displayName = "Netherlands NS"
+    let suggestedSearches = NSTrainProvider.commonStationSearches
+
     private let scenario: TrainyAutomationScenario
     private let attempts = AutomationSearchAttempts()
 
