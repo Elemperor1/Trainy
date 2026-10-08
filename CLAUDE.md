@@ -57,6 +57,8 @@ Trainy is a Flighty-style train tracking app scoped first to Japan Shinkansen jo
 - Five-tab SwiftUI interface: Trips, Search, Stations, History, Settings
 - `ContentView.swift` is only the root: the tab shell, first-run sheet routing, and the persisted interface preferences it injects
 - Each tab has its own folder under `Screens/`, next to `FirstRun/`, `TrainDetail/`, and `Support/` (presentation-only `TrainStore` and `TrainTrip` extensions shared by several screens)
+- The Stations tab (`Screens/Stations/`) is one provider-neutral directory: search, favorites (`StationFavoritesStore`), and departure boards. Its views and view models depend on `StationDataProviding`, which `NSTrainProvider` conforms to there, not on a provider type
+- An open `StationBoardView` keeps itself current through `StationBoardViewModel.keepFresh()`, paced by `StationBoardRefreshPolicy`: a 30 s cadence against the Worker's 20 s fresh window, exponential backoff on failures and saved-copy responses, `Retry-After` honoured on 429, no polling once the provider reports `notConfigured`, paused while the scene is not active
 - Uses `RailDesign` system for styling (see `RailDesignSystem.swift`)
 
 ### Provider Directory Structure
@@ -81,7 +83,6 @@ Providers/
 └── NS/
     ├── NSClient.swift                         # Credential-free proxy client
     ├── NSModels.swift                         # Normalized proxy response models
-    ├── NSRiderViewModels.swift                # Search/board state machines
     └── NSTrainProvider.swift                  # NS provider adapter
 ```
 
@@ -185,7 +186,7 @@ Japan is the initial region; planned providers span Taiwan, Hong Kong, Germany, 
 
 ### Clock Seam and Stable Ids
 
-`RailClock` (`Sources/TrainyCore/RailClock.swift`) is the one place Trainy reads the wall clock. Stores and providers take `clock: RailClock = .system` at their initializer, read `clock.now` once per operation (after any network response the result describes, not before the request), and pass the resulting `Date` into pure functions such as `ShinkansenTrainProvider.statusText(for:now:)` and `RailStopTime.state(at:)`. Tests pin time with `RailClock.fixed(_:)`. New time-dependent code should follow that shape instead of calling `Date()` inline. The NS view models keep their own `now` closure, which has the same shape.
+`RailClock` (`Sources/TrainyCore/RailClock.swift`) is the one place Trainy reads the wall clock. Stores and providers take `clock: RailClock = .system` at their initializer, read `clock.now` once per operation (after any network response the result describes, not before the request), and pass the resulting `Date` into pure functions such as `ShinkansenTrainProvider.statusText(for:now:)` and `RailStopTime.state(at:)`. Tests pin time with `RailClock.fixed(_:)`. New time-dependent code should follow that shape instead of calling `Date()` inline. The Stations view models take the same `clock: RailClock = .system`; `StationBoardViewModel` also takes an injectable `refreshSleep` so tests drive its refresh cadence without waiting in real time.
 
 `StationStop` and `TrainAlert` derive `id` from their content (`name|time`, and `title|detail|tone`), so identities survive decoding and refreshes. Persisted JSON does not carry an `id` key.
 

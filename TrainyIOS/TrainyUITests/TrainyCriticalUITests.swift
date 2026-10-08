@@ -155,7 +155,7 @@ final class TrainyCriticalUITests: XCTestCase {
     func testNSStationSearchAndDepartureResultsUseFixtureData() throws {
         defer { app.terminate() }
         launch("fixture")
-        openNSStationSearch()
+        openStations()
 
         let stationField = element("ns.stationSearch.field")
         XCTAssertTrue(stationField.waitForExistence(timeout: 5))
@@ -175,6 +175,43 @@ final class TrainyCriticalUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["Data from Nederlandse Spoorwegen (NS)"].exists)
     }
 
+    func testStarredStationAppearsInFavoritesWhenTheSearchIsCleared() throws {
+        defer { app.terminate() }
+        launch("fixture")
+        openStations()
+
+        let stationField = element("ns.stationSearch.field")
+        XCTAssertTrue(stationField.waitForExistence(timeout: 5))
+        stationField.tap()
+        stationField.typeText("Utrecht")
+        element("ns.stationSearch.submit").tap()
+
+        let station = element("ns.station.UT")
+        XCTAssertTrue(station.waitForExistence(timeout: 5))
+        station.tap()
+
+        let star = element("ns.departures.favorite")
+        XCTAssertTrue(star.waitForExistence(timeout: 5))
+        XCTAssertEqual(star.label, "Add to favorites")
+        star.tap()
+        let starred = XCTNSPredicateExpectation(
+            predicate: NSPredicate(format: "label == 'Remove from favorites'"),
+            object: star
+        )
+        XCTAssertEqual(XCTWaiter.wait(for: [starred], timeout: 5), .completed)
+
+        app.navigationBars.buttons.element(boundBy: 0).tap()
+        XCTAssertTrue(station.waitForExistence(timeout: 5))
+        XCTAssertEqual(station.value as? String, "Favorite")
+
+        stationField.tap()
+        let typedText = stationField.value as? String ?? ""
+        stationField.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: typedText.count))
+        let favorite = element("stations.favorite.UT")
+        XCTAssertTrue(favorite.waitForExistence(timeout: 5))
+        XCTAssertEqual(favorite.label, "Utrecht Centraal, station code UT")
+    }
+
     func testLaunchFilmUtrechtJourneyAtStandardSize() throws {
         defer { app.terminate() }
         launch(
@@ -186,7 +223,7 @@ final class TrainyCriticalUITests: XCTestCase {
 
         XCTAssertTrue(app.staticTexts["Nozomi 231"].waitForExistence(timeout: 5))
         sleep(1)
-        openNSStationSearch()
+        openStations()
 
         let stationField = element("ns.stationSearch.field")
         XCTAssertTrue(stationField.waitForExistence(timeout: 5))
@@ -208,7 +245,7 @@ final class TrainyCriticalUITests: XCTestCase {
     func testNSFailureRecoversThroughTheVisibleRetryAction() throws {
         defer { app.terminate() }
         launch("search-failure-recovery")
-        openNSStationSearch()
+        openStations()
 
         let stationField = element("ns.stationSearch.field")
         XCTAssertTrue(stationField.waitForExistence(timeout: 5))
@@ -223,7 +260,7 @@ final class TrainyCriticalUITests: XCTestCase {
     func testNSLoadingStateHasAnAccessibleStatus() throws {
         defer { app.terminate() }
         launch("loading")
-        openNSStationSearch()
+        openStations()
 
         let loading = element("ns.stationSearch.loading")
         XCTAssertTrue(loading.waitForExistence(timeout: 5))
@@ -244,7 +281,7 @@ final class TrainyCriticalUITests: XCTestCase {
                     "-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXL"
                 ]
             )
-            openNSStationSearch()
+            openStations()
 
             let stationField = element("ns.stationSearch.field")
             XCTAssertTrue(stationField.waitForExistence(timeout: 5), "\(appearance) AX2XL search field")
@@ -279,16 +316,12 @@ final class TrainyCriticalUITests: XCTestCase {
         app.launch()
     }
 
-    private func openNSStationSearch() {
+    private func openStations() {
         let stationsTab = app.tabBars.buttons["Stations"]
         XCTAssertTrue(stationsTab.waitForExistence(timeout: 5))
         XCTAssertTrue(stationsTab.isHittable)
         stationsTab.tap()
-        let link = element("stations.nsDepartures")
-        XCTAssertTrue(link.waitForExistence(timeout: 5))
-        scrollUntilHittable(link)
-        link.tap()
-        XCTAssertTrue(element("ns.stationSearch.screen").waitForExistence(timeout: 5))
+        XCTAssertTrue(element("stations.screen").waitForExistence(timeout: 5))
     }
 
     private func clear(_ field: XCUIElement) {

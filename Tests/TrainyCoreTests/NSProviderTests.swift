@@ -186,7 +186,7 @@ final class NSProviderTests: XCTestCase {
                 .failure(.rateLimited(retryAfterSeconds: 45))
             ]
         )
-        let viewModel = NSStationSearchViewModel(provider: provider)
+        let viewModel = StationDirectoryViewModel(provider: provider)
 
         viewModel.query = "Utrecht"
         await viewModel.search()
@@ -211,7 +211,7 @@ final class NSProviderTests: XCTestCase {
         let provider = SequencedNSRiderProvider(
             searchOutcomes: [.success(makeSearchPage(stations: [makeStation()], freshness: .stale))]
         )
-        let viewModel = NSStationSearchViewModel(provider: provider)
+        let viewModel = StationDirectoryViewModel(provider: provider)
         viewModel.query = "Utrecht"
 
         await viewModel.search()
@@ -249,7 +249,7 @@ final class NSProviderTests: XCTestCase {
                 freshness: .fresh
             ))]
         )
-        let viewModel = NSDepartureBoardViewModel(station: makeStation(), provider: provider)
+        let viewModel = StationBoardViewModel(station: makeStation(), provider: provider)
 
         await viewModel.load()
         XCTAssertEqual(viewModel.phase, .loaded)
@@ -265,14 +265,14 @@ final class NSProviderTests: XCTestCase {
         let emptyProvider = SequencedNSRiderProvider(
             boardOutcomes: [.success(makeBoard(departures: [], freshness: .fresh))]
         )
-        let emptyViewModel = NSDepartureBoardViewModel(station: makeStation(), provider: emptyProvider)
+        let emptyViewModel = StationBoardViewModel(station: makeStation(), provider: emptyProvider)
         await emptyViewModel.load()
         XCTAssertEqual(emptyViewModel.phase, .empty)
 
         let limitedProvider = SequencedNSRiderProvider(
             boardOutcomes: [.failure(.rateLimited(retryAfterSeconds: 30))]
         )
-        let limitedViewModel = NSDepartureBoardViewModel(station: makeStation(), provider: limitedProvider)
+        let limitedViewModel = StationBoardViewModel(station: makeStation(), provider: limitedProvider)
         await limitedViewModel.load()
         XCTAssertEqual(limitedViewModel.phase, .failed(.rateLimited(retryAfterSeconds: 30)))
     }
@@ -296,7 +296,7 @@ final class NSProviderTests: XCTestCase {
                 .failure(.offline)
             ]
         )
-        let viewModel = NSDepartureBoardViewModel(station: makeStation(), provider: provider)
+        let viewModel = StationBoardViewModel(station: makeStation(), provider: provider)
 
         await viewModel.load()
         XCTAssertEqual(viewModel.phase, .loaded)
@@ -316,7 +316,7 @@ final class NSProviderTests: XCTestCase {
             boardOutcomes: [.success(board)],
             alertOutcomes: [.failure(.offline)]
         )
-        let unavailable = NSDepartureBoardViewModel(station: makeStation(), provider: unavailableProvider)
+        let unavailable = StationBoardViewModel(station: makeStation(), provider: unavailableProvider)
         await unavailable.load()
         XCTAssertEqual(unavailable.phase, .loaded)
         XCTAssertEqual(unavailable.alertPhase, .failed(.offline))
@@ -337,7 +337,7 @@ final class NSProviderTests: XCTestCase {
             freshness: .fresh
         )
         let provider = DelayedBoardNSRiderProvider(board: board, alertPage: alertPage)
-        let viewModel = NSDepartureBoardViewModel(station: makeStation(), provider: provider)
+        let viewModel = StationBoardViewModel(station: makeStation(), provider: provider)
         let loadTask = Task { await viewModel.load() }
 
         for _ in 0..<200 where !(await provider.boardIsWaiting()) {
@@ -378,7 +378,7 @@ final class NSProviderTests: XCTestCase {
             currentBoard: newBoard,
             alertPage: makeAlertPage(alerts: [], freshness: .fresh)
         )
-        let viewModel = NSDepartureBoardViewModel(station: makeStation(), provider: provider)
+        let viewModel = StationBoardViewModel(station: makeStation(), provider: provider)
         let oldLoad = Task { await viewModel.load() }
 
         for _ in 0..<200 where !(await provider.firstBoardIsWaiting()) {
@@ -413,10 +413,10 @@ final class NSProviderTests: XCTestCase {
                 validUntil: validUntil
             ))]
         )
-        let viewModel = NSDepartureBoardViewModel(
+        let viewModel = StationBoardViewModel(
             station: makeStation(),
             provider: provider,
-            now: clock.read
+            clock: RailClock(clock.read)
         )
 
         await viewModel.load()
@@ -432,6 +432,355 @@ final class NSProviderTests: XCTestCase {
         XCTAssertEqual(viewModel.alertFreshness, .expired)
         XCTAssertEqual(viewModel.notice, .stale)
         XCTAssertEqual(viewModel.alertNotice, .stale)
+    }
+
+    // MARK: - Board refresh cadence
+
+    func testRefreshPolicyHoldsTheFreshCadenceAndBacksOffFailures() {
+        let policy = StationBoardRefreshPolicy.standard
+
+        XCTAssertEqual(policy.delay(after: .fresh, consecutiveSetbacks: 0), 30)
+        XCTAssertEqual(policy.delay(after: .degraded, consecutiveSetbacks: 1), 30)
+        XCTAssertEqual(policy.delay(after: .degraded, consecutiveSetbacks: 2), 60)
+        XCTAssertEqual(policy.delay(after: .failed(.offline), consecutiveSetbacks: 3), 120)
+        XCTAssertEqual(policy.delay(after: .failed(.unavailable), consecutiveSetbacks: 9), 120)
+        XCTAssertNil(policy.delay(after: .failed(.notConfigured), consecutiveSetbacks: 1))
+    }
+
+    func testRefreshPolicyHonoursRetryAfterWithinItsBounds() {
+        let policy = StationBoardRefreshPolicy.standard
+
+        XCTAssertEqual(policy.delay(after: .failed(.rateLimited(retryAfterSeconds: 45)), consecutiveSetbacks: 1), 45)
+        XCTAssertEqual(
+            policy.delay(after: .failed(.rateLimited(retryAfterSeconds: 5)), consecutiveSetbacks: 1),
+            30,
+            "A short Retry-After never shortens the cadence"
+        )
+        XCTAssertEqual(policy.delay(after: .failed(.rateLimited(retryAfterSeconds: nil)), consecutiveSetbacks: 1), 60)
+        XCTAssertEqual(policy.delay(after: .failed(.rateLimited(retryAfterSeconds: nil)), consecutiveSetbacks: 4), 240)
+        XCTAssertEqual(policy.delay(after: .failed(.rateLimited(retryAfterSeconds: 900)), consecutiveSetbacks: 1), 300)
+        XCTAssertEqual(policy.delay(after: .failed(.rateLimited(retryAfterSeconds: nil)), consecutiveSetbacks: 12), 300)
+    }
+
+    func testOpenBoardRefreshesOnTheFreshCadenceWithoutAnnouncingEachRefresh() async {
+        let clock = LockedTestClock(Date(timeIntervalSince1970: 1_784_467_200))
+        let firstBoard = makeBoard(departures: [makeDeparture("1735")], freshness: .fresh)
+        let laterBoard = makeBoard(departures: [makeDeparture("1735"), makeDeparture("1737")], freshness: .fresh)
+        let alertPage = makeAlertPage(alerts: [], freshness: .fresh)
+        let provider = SequencedNSRiderProvider(
+            boardOutcomes: [.success(firstBoard), .success(laterBoard), .success(laterBoard)],
+            alertOutcomes: [.success(alertPage), .success(alertPage), .success(alertPage)]
+        )
+        let sleeper = ScriptedRefreshSleeper(clock: clock, allowedWaits: 2)
+        let viewModel = StationBoardViewModel(
+            station: makeStation(),
+            provider: provider,
+            clock: RailClock(clock.read),
+            refreshSleep: { duration in try await sleeper.sleep(duration) }
+        )
+
+        await viewModel.keepFresh()
+
+        let counts = await provider.requestCounts()
+        XCTAssertEqual(counts.board, 3, "One requested load and two scheduled refreshes")
+        XCTAssertEqual(counts.alerts, 3)
+        assertWaits(sleeper.recordedWaits, [30, 30, 30])
+        XCTAssertEqual(viewModel.phase, .loaded)
+        XCTAssertEqual(viewModel.board?.departures.count, 2)
+        XCTAssertNil(viewModel.notice)
+        XCTAssertEqual(viewModel.consecutiveSetbacks, 0)
+        XCTAssertEqual(
+            viewModel.accessibilityAnnouncement,
+            "1 NS departures loaded for Utrecht Centraal.",
+            "Scheduled refreshes do not re-announce the board"
+        )
+    }
+
+    func testOpenBoardBacksOffOnRateLimitHonouringRetryAfterThenRecovers() async {
+        let clock = LockedTestClock(Date(timeIntervalSince1970: 1_784_467_200))
+        let board = makeBoard(departures: [makeDeparture("1735")], freshness: .fresh)
+        let alertPage = makeAlertPage(alerts: [], freshness: .fresh)
+        let provider = SequencedNSRiderProvider(
+            boardOutcomes: [.success(board), .failure(.rateLimited(retryAfterSeconds: 90)), .success(board)],
+            alertOutcomes: [.success(alertPage), .success(alertPage), .success(alertPage)]
+        )
+        let sleeper = ScriptedRefreshSleeper(clock: clock, allowedWaits: 2)
+        let viewModel = StationBoardViewModel(
+            station: makeStation(),
+            provider: provider,
+            clock: RailClock(clock.read),
+            refreshSleep: { duration in try await sleeper.sleep(duration) }
+        )
+        let log = BoardStateLog()
+        sleeper.onWait = { log.record(viewModel) }
+
+        await viewModel.keepFresh()
+
+        assertWaits(sleeper.recordedWaits, [30, 90, 30])
+        XCTAssertEqual(log.notices, [nil, .rateLimited(retryAfterSeconds: 90), nil])
+        XCTAssertEqual(viewModel.phase, .loaded)
+        XCTAssertEqual(viewModel.consecutiveSetbacks, 0)
+        XCTAssertFalse(viewModel.refreshStopped)
+    }
+
+    func testOpenBoardBacksOffSavedCopiesLikeFailuresAndTrustsFreshResponsesAgain() async {
+        let clock = LockedTestClock(Date(timeIntervalSince1970: 1_784_467_200))
+        let saved = makeBoard(departures: [makeDeparture("1735")], freshness: .stale)
+        let fresh = makeBoard(departures: [makeDeparture("1735")], freshness: .fresh)
+        let alertPage = makeAlertPage(alerts: [], freshness: .fresh)
+        let provider = SequencedNSRiderProvider(
+            boardOutcomes: [.success(saved), .success(saved), .success(fresh)],
+            alertOutcomes: [.success(alertPage), .success(alertPage), .success(alertPage)]
+        )
+        let sleeper = ScriptedRefreshSleeper(clock: clock, allowedWaits: 2)
+        let viewModel = StationBoardViewModel(
+            station: makeStation(),
+            provider: provider,
+            clock: RailClock(clock.read),
+            refreshSleep: { duration in try await sleeper.sleep(duration) }
+        )
+
+        await viewModel.keepFresh()
+
+        assertWaits(sleeper.recordedWaits, [30, 60, 30])
+        XCTAssertEqual(viewModel.consecutiveSetbacks, 0)
+        XCTAssertNil(viewModel.notice)
+    }
+
+    func testOpenBoardStopsRefreshingWhenTheProviderIsNotConfigured() async {
+        let clock = LockedTestClock(Date(timeIntervalSince1970: 1_784_467_200))
+        let provider = SequencedNSRiderProvider(
+            boardOutcomes: [.failure(.notConfigured)],
+            alertOutcomes: [.failure(.notConfigured)]
+        )
+        let sleeper = ScriptedRefreshSleeper(clock: clock, allowedWaits: 5)
+        let viewModel = StationBoardViewModel(
+            station: makeStation(),
+            provider: provider,
+            clock: RailClock(clock.read),
+            refreshSleep: { duration in try await sleeper.sleep(duration) }
+        )
+
+        await viewModel.keepFresh()
+
+        XCTAssertEqual(viewModel.phase, .failed(.notConfigured))
+        XCTAssertTrue(viewModel.refreshStopped)
+        XCTAssertNil(viewModel.nextRefreshAt)
+        XCTAssertTrue(sleeper.recordedWaits.isEmpty)
+        let counts = await provider.requestCounts()
+        XCTAssertEqual(counts.board, 1)
+    }
+
+    func testOpenBoardWaitsOutTheScheduleAfterARequestedRefresh() async {
+        let start = Date(timeIntervalSince1970: 1_784_467_200)
+        let clock = LockedTestClock(start)
+        let board = makeBoard(departures: [makeDeparture("1735")], freshness: .fresh)
+        let provider = SequencedNSRiderProvider(
+            boardOutcomes: [.success(board)],
+            alertOutcomes: [.success(makeAlertPage(alerts: [], freshness: .fresh))]
+        )
+        let sleeper = ScriptedRefreshSleeper(clock: clock, allowedWaits: 0)
+        let viewModel = StationBoardViewModel(
+            station: makeStation(),
+            provider: provider,
+            clock: RailClock(clock.read),
+            refreshSleep: { duration in try await sleeper.sleep(duration) }
+        )
+
+        await viewModel.load()
+        XCTAssertEqual(viewModel.nextRefreshAt, start.addingTimeInterval(30))
+
+        clock.advance(by: 20)
+        await viewModel.keepFresh()
+
+        assertWaits(sleeper.recordedWaits, [10])
+        let counts = await provider.requestCounts()
+        XCTAssertEqual(counts.board, 1, "A board that is not due is not reloaded when refreshing starts")
+    }
+
+    func testPullToRefreshPostponesTheScheduledRefresh() async {
+        let start = Date(timeIntervalSince1970: 1_784_467_200)
+        let clock = LockedTestClock(start)
+        let board = makeBoard(departures: [makeDeparture("1735")], freshness: .fresh)
+        let alertPage = makeAlertPage(alerts: [], freshness: .fresh)
+        let provider = SequencedNSRiderProvider(
+            boardOutcomes: [.success(board), .success(board)],
+            alertOutcomes: [.success(alertPage), .success(alertPage)]
+        )
+        let viewModel = StationBoardViewModel(
+            station: makeStation(),
+            provider: provider,
+            clock: RailClock(clock.read)
+        )
+
+        await viewModel.load()
+        XCTAssertEqual(viewModel.nextRefreshAt, start.addingTimeInterval(30))
+
+        clock.advance(by: 20)
+        await viewModel.load()
+        XCTAssertEqual(viewModel.nextRefreshAt, start.addingTimeInterval(50))
+    }
+
+    func testOpenBoardRefreshesAtOnceAndQuietlyWhenTheScheduleHasPassed() async {
+        let clock = LockedTestClock(Date(timeIntervalSince1970: 1_784_467_200))
+        let provider = SequencedNSRiderProvider(
+            boardOutcomes: [
+                .success(makeBoard(departures: [makeDeparture("1735")], freshness: .fresh)),
+                .success(makeBoard(departures: [makeDeparture("1735"), makeDeparture("1737")], freshness: .fresh))
+            ],
+            alertOutcomes: [
+                .success(makeAlertPage(alerts: [], freshness: .fresh)),
+                .success(makeAlertPage(alerts: [], freshness: .fresh))
+            ]
+        )
+        let sleeper = ScriptedRefreshSleeper(clock: clock, allowedWaits: 0)
+        let viewModel = StationBoardViewModel(
+            station: makeStation(),
+            provider: provider,
+            clock: RailClock(clock.read),
+            refreshSleep: { duration in try await sleeper.sleep(duration) }
+        )
+
+        await viewModel.load()
+        clock.advance(by: 120)
+        await viewModel.keepFresh()
+
+        let counts = await provider.requestCounts()
+        XCTAssertEqual(counts.board, 2)
+        XCTAssertEqual(viewModel.board?.departures.count, 2)
+        assertWaits(sleeper.recordedWaits, [30])
+        XCTAssertEqual(viewModel.accessibilityAnnouncement, "1 NS departures loaded for Utrecht Centraal.")
+    }
+
+    func testCancellingARefreshLeavesNoLoadingBoardOrFailureBehind() async {
+        let provider = CancellableBoardNSRiderProvider(alertPage: makeAlertPage(alerts: [], freshness: .fresh))
+        let viewModel = StationBoardViewModel(station: makeStation(), provider: provider)
+        let refreshTask = Task { await viewModel.keepFresh() }
+
+        for _ in 0..<500 where !(await provider.boardRequestIsInFlight()) {
+            await Task.yield()
+        }
+        refreshTask.cancel()
+        await refreshTask.value
+
+        XCTAssertEqual(viewModel.phase, .idle)
+        XCTAssertNil(viewModel.notice)
+        XCTAssertNil(viewModel.board)
+        XCTAssertNil(viewModel.nextRefreshAt, "A refresh that never arrived leaves no schedule behind")
+        XCTAssertFalse(viewModel.refreshStopped)
+    }
+
+    func testOpenBoardStaysLabelledFreshForTheGracePeriodPastTheProxyWindow() async {
+        let start = Date(timeIntervalSince1970: 1_784_467_200)
+        let clock = LockedTestClock(start)
+        let board = makeBoard(
+            departures: [makeDeparture("1735")],
+            freshness: .fresh,
+            validUntil: start.addingTimeInterval(20)
+        )
+        let alertPage = makeAlertPage(
+            alerts: [],
+            freshness: .fresh,
+            validUntil: start.addingTimeInterval(3_600)
+        )
+        let provider = SequencedNSRiderProvider(
+            boardOutcomes: [.success(board), .failure(.offline), .failure(.offline)],
+            alertOutcomes: [.success(alertPage), .success(alertPage), .success(alertPage)]
+        )
+        let sleeper = ScriptedRefreshSleeper(clock: clock, allowedWaits: 2)
+        let viewModel = StationBoardViewModel(
+            station: makeStation(),
+            provider: provider,
+            clock: RailClock(clock.read),
+            refreshSleep: { duration in try await sleeper.sleep(duration) }
+        )
+        let log = BoardStateLog()
+        sleeper.onWait = { log.record(viewModel) }
+
+        await viewModel.keepFresh()
+
+        // The log samples the label 0 s, 30 s and 60 s after the first load. The proxy window closed
+        // at 20 s, so the last sample sits exactly 40 s past it, where the grace period ends.
+        assertWaits(sleeper.recordedWaits, [30, 30, 60])
+        XCTAssertEqual(log.freshness, [.fresh, .fresh, .expired])
+        XCTAssertEqual(viewModel.notice, .offline)
+        XCTAssertEqual(
+            viewModel.boardFreshness,
+            .expired,
+            "Once the board is no longer refreshing itself the label is strict again"
+        )
+    }
+
+    func testStationDirectoryOffersTheProvidersSuggestedSearches() {
+        let viewModel = StationDirectoryViewModel(provider: SequencedNSRiderProvider())
+        XCTAssertEqual(viewModel.suggestedSearches, ["Utrecht Centraal", "Amsterdam Centraal"])
+
+        let nsProvider = NSTrainProvider(proxyBaseURL: nil)
+        XCTAssertFalse(nsProvider.isConfigured)
+        XCTAssertEqual(nsProvider.suggestedSearches.first, "Utrecht Centraal")
+        XCTAssertEqual(nsProvider.providerID, "netherlands-ns")
+    }
+
+    // MARK: - Favorites
+
+    func testFavoritesToggleAndPersistPerProviderInNameOrder() throws {
+        let suiteName = "NSProviderTests-\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+        let utrecht = makeStation()
+        let amsterdam = ProviderStation(
+            providerID: "netherlands-ns",
+            code: "ASD",
+            name: "Amsterdam Centraal",
+            shortName: "Amsterdam C.",
+            countryCode: "NL",
+            latitude: 52.37,
+            longitude: 4.9
+        )
+        let sameCodeElsewhere = ProviderStation(
+            providerID: "other-provider",
+            code: "UT",
+            name: "Zürich HB",
+            shortName: nil,
+            countryCode: "CH",
+            latitude: nil,
+            longitude: nil
+        )
+
+        let store = StationFavoritesStore(defaults: defaults)
+        XCTAssertFalse(store.isFavorite(utrecht))
+        store.toggle(utrecht)
+        store.toggle(amsterdam)
+        store.toggle(sameCodeElsewhere)
+
+        XCTAssertTrue(store.isFavorite(utrecht))
+        XCTAssertEqual(store.favorites(for: "netherlands-ns").map(\.code), ["ASD", "UT"])
+        XCTAssertEqual(store.favorites(for: "other-provider").map(\.name), ["Zürich HB"])
+
+        store.toggle(sameCodeElsewhere)
+        XCTAssertFalse(store.isFavorite(sameCodeElsewhere))
+        XCTAssertTrue(store.isFavorite(utrecht), "The same code at another provider is a different station")
+
+        let reloaded = StationFavoritesStore(defaults: defaults)
+        XCTAssertEqual(reloaded.favorites(for: "netherlands-ns").map(\.code), ["ASD", "UT"])
+        XCTAssertEqual(reloaded.favorites(for: "netherlands-ns").first?.station, amsterdam)
+        XCTAssertTrue(reloaded.favorites(for: "other-provider").isEmpty)
+
+        reloaded.toggle(utrecht)
+        XCTAssertFalse(StationFavoritesStore(defaults: defaults).isFavorite(utrecht))
+    }
+
+    func testFavoritesIgnoreAndPreserveAnUnreadablePayload() throws {
+        let suiteName = "NSProviderTests-\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+        let unreadable = Data("not a favorites list".utf8)
+        defaults.set(unreadable, forKey: StationFavoritesStore.storageKey)
+
+        let store = StationFavoritesStore(defaults: defaults)
+
+        XCTAssertTrue(store.stations.isEmpty)
+        XCTAssertEqual(defaults.data(forKey: StationFavoritesStore.undecodableStorageKey), unreadable)
     }
 
     func testNSProxyContractRejectsOversizedDisplayFieldsAndWrongMetadata() {
@@ -540,15 +889,31 @@ final class NSProviderTests: XCTestCase {
         ).hasValidContract())
     }
 
-    func testNSRiderViewsRenderCoreStatesAtAccessibility2XLInLightAndDarkMode() async throws {
+    func testStationViewsRenderCoreStatesAtAccessibility2XLInLightAndDarkMode() async throws {
+        let suiteName = "NSProviderTests-\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+        let favorites = StationFavoritesStore(defaults: defaults)
+        favorites.toggle(makeStation())
+
         let searchProvider = SequencedNSRiderProvider(
             searchOutcomes: [.success(makeSearchPage(stations: [makeStation()], freshness: .fresh))]
         )
-        let searchViewModel = NSStationSearchViewModel(provider: searchProvider)
+        let idleImage = try render(
+            StationsScreen(
+                provider: searchProvider,
+                favorites: favorites,
+                viewModel: StationDirectoryViewModel(provider: searchProvider)
+            ),
+            style: .light,
+            dynamicTypeSize: .accessibility2
+        )
+
+        let searchViewModel = StationDirectoryViewModel(provider: searchProvider)
         searchViewModel.query = "Utrecht"
         await searchViewModel.search()
         let searchImage = try render(
-            NSStationSearchView(provider: searchProvider, viewModel: searchViewModel),
+            StationsScreen(provider: searchProvider, favorites: favorites, viewModel: searchViewModel),
             style: .light,
             dynamicTypeSize: .accessibility2
         )
@@ -570,10 +935,10 @@ final class NSProviderTests: XCTestCase {
                 freshness: .stale
             ))]
         )
-        let boardViewModel = NSDepartureBoardViewModel(station: makeStation(), provider: boardProvider)
+        let boardViewModel = StationBoardViewModel(station: makeStation(), provider: boardProvider)
         await boardViewModel.load()
         let boardImage = try render(
-            NSDepartureBoardView(viewModel: boardViewModel),
+            StationBoardView(viewModel: boardViewModel, favorites: favorites),
             style: .dark,
             dynamicTypeSize: .accessibility2
         )
@@ -582,17 +947,38 @@ final class NSProviderTests: XCTestCase {
             boardOutcomes: [.failure(.rateLimited(retryAfterSeconds: 30))],
             alertOutcomes: [.failure(.offline)]
         )
-        let failureViewModel = NSDepartureBoardViewModel(station: makeStation(), provider: failureProvider)
+        let failureViewModel = StationBoardViewModel(station: makeStation(), provider: failureProvider)
         await failureViewModel.load()
         let failureImage = try render(
-            NSDepartureBoardView(viewModel: failureViewModel),
+            StationBoardView(viewModel: failureViewModel, favorites: favorites),
             style: .light,
             dynamicTypeSize: .large
         )
 
-        for image in [searchImage, boardImage, failureImage] {
+        for image in [idleImage, searchImage, boardImage, failureImage] {
             XCTAssertEqual(image.size, CGSize(width: 320, height: 844))
             XCTAssertGreaterThan(try XCTUnwrap(image.pngData()).count, 1_000)
+        }
+    }
+
+    private func makeDeparture(_ tripID: String) -> StationBoardDeparture {
+        StationBoardDeparture(
+            tripID: tripID,
+            trainName: "Intercity \(tripID)",
+            destinationName: "Enschede",
+            scheduledDeparture: "15:37"
+        )
+    }
+
+    private func assertWaits(
+        _ actual: [TimeInterval],
+        _ expected: [TimeInterval],
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) {
+        XCTAssertEqual(actual.count, expected.count, "Refresh waits: \(actual)", file: file, line: line)
+        for (actualWait, expectedWait) in zip(actual, expected) {
+            XCTAssertEqual(actualWait, expectedWait, accuracy: 0.001, file: file, line: line)
         }
     }
 
@@ -712,7 +1098,11 @@ final class NSProviderTests: XCTestCase {
     }
 }
 
-private actor SequencedNSRiderProvider: NSRiderDataProviding {
+private actor SequencedNSRiderProvider: StationDataProviding {
+    let providerID = "netherlands-ns"
+    let displayName = "Netherlands NS"
+    let suggestedSearches = ["Utrecht Centraal", "Amsterdam Centraal"]
+
     enum SearchOutcome: Sendable {
         case success(StationSearchPage)
         case failure(NSClientError)
@@ -731,6 +1121,8 @@ private actor SequencedNSRiderProvider: NSRiderDataProviding {
     private var searchOutcomes: [SearchOutcome]
     private var boardOutcomes: [BoardOutcome]
     private var alertOutcomes: [AlertOutcome]
+    private var boardRequestCount = 0
+    private var alertRequestCount = 0
 
     init(
         searchOutcomes: [SearchOutcome] = [],
@@ -751,6 +1143,7 @@ private actor SequencedNSRiderProvider: NSRiderDataProviding {
     }
 
     func fetchStationBoard(stationID: String) async throws -> StationBoard {
+        boardRequestCount += 1
         guard !boardOutcomes.isEmpty else { throw NSClientError.unavailable }
         switch boardOutcomes.removeFirst() {
         case .success(let board): return board
@@ -759,15 +1152,23 @@ private actor SequencedNSRiderProvider: NSRiderDataProviding {
     }
 
     func fetchServiceAlerts(stationID: String?) async throws -> ServiceAlertPage {
+        alertRequestCount += 1
         guard !alertOutcomes.isEmpty else { throw NSClientError.unavailable }
         switch alertOutcomes.removeFirst() {
         case .success(let page): return page
         case .failure(let error): throw error
         }
     }
+
+    func requestCounts() -> (board: Int, alerts: Int) {
+        (boardRequestCount, alertRequestCount)
+    }
 }
 
-private actor DelayedBoardNSRiderProvider: NSRiderDataProviding {
+private actor DelayedBoardNSRiderProvider: StationDataProviding {
+    let providerID = "netherlands-ns"
+    let displayName = "Netherlands NS"
+
     private let board: StationBoard
     private let alertPage: ServiceAlertPage
     private var boardContinuation: CheckedContinuation<Void, Never>?
@@ -802,7 +1203,10 @@ private actor DelayedBoardNSRiderProvider: NSRiderDataProviding {
     }
 }
 
-private actor SupersedingNSRiderProvider: NSRiderDataProviding {
+private actor SupersedingNSRiderProvider: StationDataProviding {
+    let providerID = "netherlands-ns"
+    let displayName = "Netherlands NS"
+
     private let delayedBoard: StationBoard
     private let currentBoard: StationBoard
     private let alertPage: ServiceAlertPage
@@ -841,6 +1245,89 @@ private actor SupersedingNSRiderProvider: NSRiderDataProviding {
     func releaseFirstBoard() {
         firstBoardContinuation?.resume()
         firstBoardContinuation = nil
+    }
+}
+
+private actor CancellableBoardNSRiderProvider: StationDataProviding {
+    let providerID = "netherlands-ns"
+    let displayName = "Netherlands NS"
+
+    private let alertPage: ServiceAlertPage
+    private var boardRequestStarted = false
+
+    init(alertPage: ServiceAlertPage) {
+        self.alertPage = alertPage
+    }
+
+    func searchStations(matching query: String, limit: Int) async throws -> StationSearchPage {
+        throw NSClientError.unavailable
+    }
+
+    /// Never answers on its own: it only ends when the caller's task is cancelled.
+    func fetchStationBoard(stationID: String) async throws -> StationBoard {
+        boardRequestStarted = true
+        try await Task.sleep(for: .seconds(60))
+        throw NSClientError.unavailable
+    }
+
+    func fetchServiceAlerts(stationID: String?) async throws -> ServiceAlertPage {
+        alertPage
+    }
+
+    func boardRequestIsInFlight() -> Bool {
+        boardRequestStarted
+    }
+}
+
+/// Stands in for the board's refresh timer. It records each wait the board asks
+/// for, moves a fake clock forward by that wait, and ends the refresh loop by
+/// throwing once the allowed number of waits has been used.
+final class ScriptedRefreshSleeper: @unchecked Sendable {
+    /// Runs on the main actor each time the board asks to wait, before the clock moves.
+    var onWait: (@MainActor @Sendable () -> Void)?
+
+    private let lock = NSLock()
+    private let clock: LockedTestClock
+    private let allowedWaits: Int
+    private var waits: [TimeInterval] = []
+
+    init(clock: LockedTestClock, allowedWaits: Int) {
+        self.clock = clock
+        self.allowedWaits = allowedWaits
+    }
+
+    var recordedWaits: [TimeInterval] {
+        lock.lock()
+        defer { lock.unlock() }
+        return waits
+    }
+
+    func sleep(_ duration: Duration) async throws {
+        let seconds = TimeInterval(duration.components.seconds)
+            + TimeInterval(duration.components.attoseconds) / 1_000_000_000_000_000_000
+        let allowed = record(seconds)
+        await onWait?()
+        guard allowed else { throw CancellationError() }
+        clock.advance(by: seconds)
+    }
+
+    private func record(_ seconds: TimeInterval) -> Bool {
+        lock.lock()
+        defer { lock.unlock() }
+        waits.append(seconds)
+        return waits.count <= allowedWaits
+    }
+}
+
+/// What a board looked like each time it went to sleep.
+@MainActor
+private final class BoardStateLog {
+    private(set) var notices: [StationBoardViewModel.Notice?] = []
+    private(set) var freshness: [FreshnessState] = []
+
+    func record(_ viewModel: StationBoardViewModel) {
+        notices.append(viewModel.notice)
+        freshness.append(viewModel.boardFreshness)
     }
 }
 

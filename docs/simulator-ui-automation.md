@@ -12,8 +12,8 @@ both execute it.
 - Shinkansen tracked-service search, no-match copy, and recovery.
 - Credential-neutral starter-catalog fallback and truthful provider-status
   grouping.
-- NS station lookup, exact station semantics, source disclosure, and departure
-  results.
+- NS station lookup from the Stations tab, exact station semantics, source
+  disclosure, departure results, and starring a station into the favorites list.
 - NS loading state plus unavailable-to-retry recovery.
 - Light Mode, Dark Mode, and AX2XL interaction/semantics on the NS search flow.
 
@@ -25,11 +25,12 @@ network request, and contain no credentials. They are not an alternate UI or a
 test-only screen branch.
 
 Stable identifiers are reserved for automation seams such as
-`onboarding.screen`, `onboarding.start`, `stations.nsDepartures`,
-`ns.stationSearch.field`, `ns.station.UT`, and
-`ns.departure.fixture-sprinter-7400`. The suite uses semantic labels only for
-native controls whose identifier is owned by the system search field or where
-the rider-facing accessibility text itself is the contract.
+`onboarding.screen`, `onboarding.start`, `stations.screen`,
+`ns.stationSearch.field`, `ns.station.UT`, `ns.departures.favorite`,
+`stations.favorite.UT`, and `ns.departure.fixture-sprinter-7400`. The suite
+uses semantic labels only for native controls whose identifier is owned by the
+system search field or where the rider-facing accessibility text itself is the
+contract.
 
 ## Run locally
 
