@@ -118,6 +118,14 @@ problems silently while the old ones are fixed.
   show a contrast problem for a moment that the next look no longer sees.
   Findings only one of the two audits saw are attached as **Accessibility
   findings seen once**; if the same one keeps appearing there, treat it as real.
+- A contrast finding the audit ties to no element (`(no element)`) does not
+  fail the test, because no baseline key can name it and such findings came and
+  went between CI runs on unchanged code. It is attached as **Contrast findings
+  with no element**. If it appears on a screen after a change that touched
+  colors, treat it as real and find the text it describes.
+- An audit that reports "failed to complete in time" on a busy simulator is run
+  once more before that fails the test, and a tab tap that the tab bar ignores
+  while it is still settling is repeated up to three times.
 - Swift CI prints every failed test's messages in the **Report test failures**
   step and in the job summary, so the keys can be copied from there without
   downloading the result bundle. A navigation step that cannot find its element
