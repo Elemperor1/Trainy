@@ -152,7 +152,12 @@ not publish, and to take a licensed source later without changing the routes.
 - **Calendars.** Each train runs on weekdays, Saturdays, Sundays and holidays,
   or on dates the source lists. Japanese national holidays (including
   substitute and citizens' holidays) are computed from the statutory rules for
-  2022 through 2099.
+  2022 through 2099. A calendar the source lists by date is a special-day
+  timetable, as the ODPT specification defines its `Specific` calendars: on
+  those dates, the trains a line has under it replace that line's regular
+  trains, and several special calendars on one date combine. A line with no
+  trains under one keeps its regular service, and a through train follows its
+  first line.
 - **`meta`** names the provider, source, attribution text, licence,
   `snapshotId`, `fetchedAt`, `expiresAt` (`fetchedAt` plus 36 hours),
   `freshness` (`fresh`, or `stale` after 36 hours), `cacheStatus` (`hit` or
@@ -367,11 +372,20 @@ approval.
 - ODPT gives each railway its own station ids, so a station served by two
   railways has two ids and no merging is attempted. A through train appears on
   each line it runs on.
+- The calendar model has the day classes weekday, Saturday and holiday (Sunday
+  and national holidays), plus explicit dates. ODPT's single-day calendars
+  (`odpt.Calendar:Monday` to `Friday`, and `Sunday`) are therefore not
+  recognised: a Sunday-only timetable cannot be told apart from the holiday
+  one without a day-of-week rule. Timetables that use them are rejected as
+  `unsupported_calendar`, listed by id in the run report, and counted toward
+  the rejection threshold that holds a run back. Add a day-of-week rule if a
+  source needs them.
 - Year-end and New Year service, and other special days, are covered only when
-  the source publishes explicit calendars. A trip with no declared validity is
-  claimed for 14 days, special days included, so it is not offered for a date
-  further out; if no trip declares a longer validity, that date answers
-  `date_out_of_range` until a nightly run brings it inside the window.
+  the source publishes explicit calendars, and a special-day timetable has to
+  list every train that runs, not only the extra ones. A trip with no declared
+  validity is claimed for 14 days, special days included, so it is not offered
+  for a date further out; if no trip declares a longer validity, that date
+  answers `date_out_of_range` until a nightly run brings it inside the window.
 - The attribution text is a placeholder until the licence text is read (gap G2
   in the decision record).
 - ODPT's per-key rate limit is undocumented (gap G4). A nightly run and one

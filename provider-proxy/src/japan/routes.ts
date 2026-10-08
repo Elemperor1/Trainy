@@ -138,6 +138,24 @@ function applicableCalendars(manifest: SnapshotManifest, serviceDate: string): s
     .sort();
 }
 
+/**
+ * The calendars in force for each line on a date, by line slug. A calendar listed by explicit
+ * dates is a special-day timetable: on those dates the trains a line has under it replace the
+ * line's recurring service, and several special calendars on one date combine (the ODPT
+ * specification's rule for Specific calendars). A line with no trains under a special calendar
+ * keeps its recurring service.
+ */
+function calendarsInForce(manifest: SnapshotManifest, serviceDate: string): Map<string, ReadonlySet<string>> {
+  const matching = applicableCalendars(manifest, serviceDate);
+  const inForce = new Map<string, ReadonlySet<string>>();
+  for (const line of manifest.lines) {
+    const available = matching.filter((slug) => Object.hasOwn(line.shards, slug));
+    const special = available.filter((slug) => manifest.calendars[slug]?.kind === "dates");
+    inForce.set(line.slug, new Set(special.length > 0 ? special : available));
+  }
+  return inForce;
+}
+
 const stationIndexes = new WeakMap<StationsShard, Map<string, StoredStation>>();
 
 function stationIndex(shard: StationsShard): Map<string, StoredStation> {
@@ -325,15 +343,18 @@ export async function tripsResponse(
   const origin = stations.get(from);
   if (!origin || !stations.has(to)) throw notFound("station_not_found", "That station is not in the timetable.");
 
-  const calendars = applicableCalendars(manifest, serviceDate);
+  const inForce = calendarsInForce(manifest, serviceDate);
   const shards = await reading(() => Promise.all(
-    origin.lines.flatMap((lineSlug) => calendars.map((calendarSlug) => reader.tripShard(manifest, lineSlug, calendarSlug)))
+    origin.lines.flatMap((lineSlug) => [...(inForce.get(lineSlug) ?? [])].map((calendarSlug) => reader.tripShard(manifest, lineSlug, calendarSlug)))
   ));
 
   const unique = new Map<string, TripMatch>();
   for (const shard of shards) {
     if (!shard) continue;
     for (const match of matchesInShard(shard, from, to, serviceDate, after)) {
+      // A through train is stored on every line it runs on but belongs to its first line, so
+      // that line's calendars decide whether it runs.
+      if (!inForce.get(match.trip.lines[0] ?? "")?.has(shard.calendar)) continue;
       if (!unique.has(match.trip.id)) unique.set(match.trip.id, match);
     }
   }
@@ -381,7 +402,7 @@ export async function tripResponse(
   const [lineSlug, calendarSlug] = id.split("~");
   const entry = manifest.lines.find((line) => line.slug === lineSlug)?.shards[calendarSlug ?? ""];
   if (!lineSlug || !calendarSlug || !entry) throw notFound("trip_not_found", "That train is not in the timetable.");
-  if (!applicableCalendars(manifest, serviceDate).includes(calendarSlug)) {
+  if (!calendarsInForce(manifest, serviceDate).get(lineSlug)?.has(calendarSlug)) {
     throw notFound("trip_not_running", "That train does not run on the requested date.");
   }
 

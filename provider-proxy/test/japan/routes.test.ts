@@ -289,25 +289,54 @@ describe("GET /v1/japan/trips", () => {
     expect(summary(tuesday.body)).toEqual(["1@06:00", "101@06:30", "3@07:00", "301@10:00", "99@23:20"]);
   });
 
-  it("adds trains that run only on explicitly listed dates", async () => {
+  it("runs a line's special-day trains instead of its regular trains on the dates its source lists", async () => {
     const s = await scenario();
     const listed = await s.request(`${TOKYO_TO_OSAKA}&date=2026-10-09`);
-    expect(summary(listed.body)).toEqual(["1@06:00", "101@06:30", "3@07:00", "301@10:00", "9001@12:00", "99@23:20"]);
-    expect(listed.body.data.trips[4].id).toBe(ID("Specific.Test.Extra", "9001"));
+    expect(summary(listed.body)).toEqual(["9001@12:00"]);
+    expect(listed.body.data.trips[0].id).toBe(ID("Specific.Test.Extra", "9001"));
 
     const unlisted = await s.request(`${TOKYO_TO_OSAKA}&date=2026-10-08`);
-    expect(summary(unlisted.body)).not.toContain("9001@12:00");
+    expect(summary(unlisted.body)).toEqual(["1@06:00", "101@06:30", "3@07:00", "301@10:00", "99@23:20"]);
+  });
+
+  it("leaves a line without a special-day timetable on its regular trains", async () => {
+    const s = await scenario();
+    const osakaToHakata = `/v1/japan/trips?from=${q(SHIN_OSAKA)}&to=${q(HAKATA)}`;
+
+    // Only Alpha has trains under the special calendar. Beta keeps its own train; the through
+    // train belongs to Alpha, so it stops running with Alpha's regular service.
+    const listed = await s.request(`${osakaToHakata}&date=2026-10-09`);
+    expect(summary(listed.body)).toEqual(["541@13:00"]);
+    const unlisted = await s.request(`${osakaToHakata}&date=2026-10-08`);
+    expect(summary(unlisted.body)).toEqual(["301@12:33", "541@13:00"]);
+  });
+
+  it("combines several special calendars that apply on one date", async () => {
+    const feed = fixtureFeed();
+    const second = "odpt.Calendar:Specific.Test.Second";
+    feed.calendars = { ...feed.calendars, [second]: { kind: "dates", dates: ["2026-10-09", "2026-10-10"] } };
+    feed.trips = [
+      ...feed.trips,
+      trip({ trainNumber: "9002", calendar: second, stops: [stop(TOKYO, null, "13:00"), stop(SHIN_OSAKA, "15:30", null)] })
+    ];
+    const s = await scenario({ feed });
+
+    const both = await s.request(`${TOKYO_TO_OSAKA}&date=2026-10-09`);
+    expect(summary(both.body)).toEqual(["9001@12:00", "9002@13:00"]);
+    // The Saturday only the second calendar lists replaces Saturday's regular trains too.
+    const saturday = await s.request(`${TOKYO_TO_OSAKA}&date=2026-10-10`);
+    expect(summary(saturday.body)).toEqual(["9002@13:00"]);
   });
 
   it("stops listing a train after the last date its source declares", async () => {
     const feed = fixtureFeed();
-    feed.trips = feed.trips.map((item) => item.trainNumber === "3" ? { ...item, validUntil: "2026-10-09" } : item);
+    feed.trips = feed.trips.map((item) => item.trainNumber === "3" ? { ...item, validUntil: "2026-10-14" } : item);
     const s = await scenario({ feed });
 
-    const friday = await s.request(`${TOKYO_TO_OSAKA}&date=2026-10-09`);
-    expect(summary(friday.body)).toContain("3@07:00");
-    const tuesday = await s.request(`${TOKYO_TO_OSAKA}&date=2026-10-13`);
-    expect(summary(tuesday.body)).not.toContain("3@07:00");
+    const lastDay = await s.request(`${TOKYO_TO_OSAKA}&date=2026-10-14`);
+    expect(summary(lastDay.body)).toContain("3@07:00");
+    const after = await s.request(`${TOKYO_TO_OSAKA}&date=2026-10-15`);
+    expect(summary(after.body)).not.toContain("3@07:00");
   });
 
   it("defaults to the current service date, which ends at 04:00 Japan time", async () => {
@@ -443,15 +472,23 @@ describe("GET /v1/japan/trips/{id}", () => {
     expect(listedDay.status).toBe(200);
     const otherDay = await s.request(`/v1/japan/trips/${ID("Specific.Test.Extra", "9001")}?date=2026-10-08`);
     expect(otherDay.body.error.code).toBe("trip_not_running");
+
+    // On a date the line runs a special timetable, its regular trains do not run, through
+    // trains included.
+    const replaced = await s.request(`/v1/japan/trips/${ID("Weekday", "1")}?date=2026-10-09`);
+    expect(replaced.body.error.code).toBe("trip_not_running");
+    const throughReplaced = await s.request(`/v1/japan/trips/${ID("Weekday", "301")}?date=2026-10-09`);
+    expect(throughReplaced.body.error.code).toBe("trip_not_running");
+    expect((await s.request(`/v1/japan/trips/${ID("Weekday", "301")}?date=2026-10-08`)).status).toBe(200);
   });
 
   it("answers 404 after the last date a train is declared valid", async () => {
     const feed = fixtureFeed();
-    feed.trips = feed.trips.map((item) => item.trainNumber === "3" ? { ...item, validUntil: "2026-10-09" } : item);
+    feed.trips = feed.trips.map((item) => item.trainNumber === "3" ? { ...item, validUntil: "2026-10-14" } : item);
     const s = await scenario({ feed });
 
-    expect((await s.request(`/v1/japan/trips/${ID("Weekday", "3")}?date=2026-10-09`)).status).toBe(200);
-    const after = await s.request(`/v1/japan/trips/${ID("Weekday", "3")}?date=2026-10-13`);
+    expect((await s.request(`/v1/japan/trips/${ID("Weekday", "3")}?date=2026-10-14`)).status).toBe(200);
+    const after = await s.request(`/v1/japan/trips/${ID("Weekday", "3")}?date=2026-10-15`);
     expect(after.status).toBe(404);
     expect(after.body.error.code).toBe("trip_not_running");
   });

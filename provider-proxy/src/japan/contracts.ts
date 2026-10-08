@@ -31,7 +31,12 @@ export interface SourceInfo {
   license: string;
 }
 
-/** Which service dates a calendar covers: by day class, or an explicit date list. */
+/**
+ * Which service dates a calendar covers: by day class, or an explicit date list. A `days` calendar
+ * is a line's regular service. A `dates` calendar is a special-day timetable: on its dates, the
+ * trains a line has under it replace that line's regular trains. A source that runs extra trains on
+ * a special day must therefore list the regular trains under the same calendar.
+ */
 export type CalendarRule =
   | { kind: "days"; dayClasses: DayClass[] }
   | { kind: "dates"; dates: string[] };
