@@ -143,8 +143,9 @@ chmod 600 TrainyIOS/Config/odpt.env
 ### Static Checks
 
 ```bash
-# JavaScript syntax check (browser prototype)
-node --check app.js
+# JavaScript syntax check (browser prototype in prototype/)
+node --check prototype/app.js
+node --check prototype/components.js
 
 # Shell syntax checks
 bash -n scripts/build-ios.sh
@@ -162,6 +163,13 @@ GitHub Actions workflow at `.github/workflows/swift.yml`:
 - Pins the Node 24 checkout action and setup-node to reviewed immutable commit SHAs, configures Node 24 for proxy gates, and keeps read-only contents permission with checkout credential persistence disabled
 - Runs the credential-neutral Workerd contract/type/bundle gate
 - Scans the built app for provider-secret values and NS upstream-only markers
+- Runs the `npm audit policy` check as its own Linux job (`scripts/npm-audit-policy.mjs`): production dependencies fail at high, development tooling at critical, with expiring exceptions in `scripts/npm-audit-policy.json`; an advisory never skips the iOS build and tests
+- Writes an `.xcresult` for the test step. `xcodebuild -quiet` names failed tests but not the failed assertion, so a failed test step runs `scripts/summarize-xcresult-failures.py`, which prints each failed test with its messages to the log and the job summary
+- Runs `TrainyAccessibilityAuditUITests` with the other UI tests. It fails on any Apple accessibility audit finding that is not listed in `TrainyIOS/TrainyUITests/TrainyAccessibilityAuditBaseline.swift`; fix the screen and delete its entries rather than adding new ones (see `docs/simulator-ui-automation.md`)
+
+The Release Archive workflow (`.github/workflows/release-archive.yml`) compiles the Release configuration unsigned with `scripts/archive-ios.sh` and runs `scripts/audit-ios-archive.py` on the archive. It always runs on pushes to main/master, `v*` tags, and manual dispatch; on pull requests it runs only when Swift, Xcode-project, package, archive-script, or workflow inputs changed, and the `Release archive audit` check still reports success when it is skipped. It is content proof only: the archive is unsigned and nothing is uploaded. The audit pins the Firebase version, so a Firebase bump needs `FIREBASE_PINNED_VERSION` updated in the same pull request.
+
+Dependabot groups version updates monthly. See `docs/dependency-policy.md` for the groups, the audit policy, the Firebase cadence, and what to do when a security update cannot be applied.
 
 The CodeQL workflow keeps full Swift analysis on main/master pushes and the weekly schedule. On pull requests, its expensive manual Xcode trace runs only when Swift, Xcode-project, package, workflow, or canonical build inputs changed; the stable `Analyze (swift)` check still reports success when the trace is intentionally skipped.
 

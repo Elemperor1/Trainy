@@ -16,6 +16,8 @@ both execute it.
   results.
 - NS loading state plus unavailable-to-retry recovery.
 - Light Mode, Dark Mode, and AX2XL interaction/semantics on the NS search flow.
+- Apple's accessibility audit on the screens riders reach first, plus the rail
+  map's VoiceOver structure (see [Accessibility audit](#accessibility-audit)).
 
 The tests launch the ordinary app screens. They set a documented launch
 configuration only to inject `TrainyAutomationScenario` dependencies: an
@@ -77,3 +79,98 @@ xcodebuild test \
   CODE_SIGNING_ALLOWED=NO \
   TRAINY_SOURCE_PACKAGES_DIR=/private/tmp/trainy-source-packages
 ```
+
+## Accessibility audit
+
+`TrainyAccessibilityAuditUITests` runs Apple's automated accessibility audit
+(`performAccessibilityAudit`) on the screens riders reach first: Trips, Search
+(empty and with results), Stations, NS station search, NS departures, History,
+Settings, onboarding, trip detail, and the rail map. The audit reports contrast,
+small hit regions, clipped text, Dynamic Type, traits, and elements without a
+description. It runs in the same `TrainyTests` scheme as the other UI tests, so
+Swift CI executes it on every pull request.
+
+### Known findings
+
+The app had findings when the audit was added. They are listed in
+`TrainyIOS/TrainyUITests/TrainyAccessibilityAuditBaseline.swift` as
+`screen | audit type | element`, grouped by screen. The audit fails on any
+finding that is **not** listed there, so a new screen or a regression cannot add
+problems silently while the old ones are fixed.
+
+- The element is its accessibility identifier when it has one. Otherwise it is
+  its label with counts, clock times, months, AM/PM, and "updated ... ago" text
+  masked (`Hayabusa #`, `#:# <am/pm>`), cut at 80 characters. An element with
+  neither is named by its type (`(unnamed Image)`), and a finding the audit
+  attaches to no element is `(no element)`.
+- When a screen is fixed, delete its entries. Each audit test attaches a
+  **Fixed accessibility findings** note to the result bundle that lists entries
+  the audit no longer reproduces, so stale entries are easy to spot. They do not
+  fail the test.
+- A new finding fails with a message like
+  `search | contrast | Fast station search` plus the audit's own text, the
+  element's type and frame, and an excerpt of its place in the hierarchy. Fix
+  the screen first. Add the key to the baseline only when the finding comes
+  from the system (for example the search field's Clear button) or the design
+  trade-off is deliberate, and say why in a comment next to it.
+- A finding that is not in the baseline fails the test only when a second audit,
+  a few seconds after the first, reports it again. A view caught mid-update can
+  show a contrast problem for a moment that the next look no longer sees.
+  Findings only one of the two audits saw are attached as **Accessibility
+  findings seen once**; if the same one keeps appearing there, treat it as real.
+- A contrast finding the audit ties to no element (`(no element)`) does not
+  fail the test, because no baseline key can name it and such findings came and
+  went between CI runs on unchanged code. It is attached as **Contrast findings
+  with no element**. If it appears on a screen after a change that touched
+  colors, treat it as real and find the text it describes.
+- An audit that reports "failed to complete in time" on a busy simulator is run
+  once more before that fails the test, and a tab tap that the tab bar ignores
+  while it is still settling is repeated up to three times.
+- Swift CI prints every failed test's messages in the **Report test failures**
+  step and in the job summary, so the keys can be copied from there without
+  downloading the result bundle. A navigation step that cannot find its element
+  fails with the visible accessibility hierarchy in the message.
+- To run only the audit locally, use the command above with
+  `-only-testing:TrainyUITests/TrainyAccessibilityAuditUITests`.
+- To cover a new screen, add a test that navigates to it and calls
+  `audit("<screen>")`. Its first run lists the screen's findings; fix them or
+  copy their keys into the baseline.
+
+### Rail map VoiceOver structure
+
+`testRailMapExposesLabelledStopsAndControls` opens the rail map from the active
+trip and asserts the structure VoiceOver relies on, on top of the audit:
+
+- the origin and destination stops are separate elements labelled
+  `<stop>, platform <platform>, <state>`;
+- the recenter control is a button named **Center map**;
+- the map marker is named **Route marker**, and nothing on the screen calls
+  itself a **Vehicle position**, because the starter catalog is schedule-only
+  and the app must not claim a live position it does not have.
+
+### Reduce Motion
+
+XCUITest cannot switch Reduce Motion on, so the suite does not test it. A static
+review on 2026-10-07 found every animation, transition, and shimmer under
+`Sources/TrainyCore` either skipped or replaced when `accessibilityReduceMotion`
+is on. To repeat the review after changing the UI, list the sites and check that
+each one reads `reduceMotion`:
+
+```bash
+grep -rnE 'withAnimation|\.animation\(|\.transition\(|matchedGeometryEffect|repeatForever' Sources/TrainyCore
+```
+
+Then check by hand before a release:
+
+1. On a simulator or device, turn on Settings > Accessibility > Motion >
+   Reduce Motion.
+2. Re-center the rail map, switch between Upcoming, Active, and Past on Trips,
+   type in the Search field, and watch a loading skeleton.
+3. Nothing should slide, spring, or shimmer. Fades are fine.
+
+### What the audit cannot cover
+
+The audit finds structural problems. It does not read screens the way VoiceOver
+does, so it cannot judge reading order, phrasing, Rotor behavior, Switch
+Control, or whether a custom control announces its state well. Check those by
+hand with VoiceOver on a device before a release.

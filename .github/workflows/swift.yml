@@ -37,22 +37,18 @@ jobs:
       - name: Show SDKs
         run: xcodebuild -showsdks
 
-      - name: Audit npm dependency locks
-        run: |
-          npm audit --prefix provider-proxy --audit-level=high
-          npm audit --prefix marketing/trainy-coming-soon --audit-level=high
-
       - name: Run static and provider smoke gates
         run: |
           DEVELOPER_DIR="$(xcode-select -p)"
           export DEVELOPER_DIR
           bash -n scripts/*.sh scripts/lib/*.sh
-          node --check app.js
-          node --check components.js
+          node --check prototype/app.js
+          node --check prototype/components.js
           bash scripts/check-design-system-bypass.sh --self-test
           bash scripts/check-design-system-bypass.sh
           scripts/test-provider-smoke-pattern.sh
           python3 scripts/test-provider-secret-boundary.py
+          python3 scripts/test-summarize-xcresult-failures.py
           scripts/smoke-source-provenance.sh
           scripts/smoke-provider-registry.sh
           scripts/smoke-shinkansen-provider.sh
@@ -74,7 +70,10 @@ jobs:
       - name: Check provider secret boundary
         run: scripts/check-provider-secret-boundary.py
 
+      # -quiet names the failing tests but not the assertion that failed, so the
+      # result bundle feeds the next step.
       - name: Test Trainy
+        id: tests
         env:
           ODPT_CONSUMER_KEY: ""
         run: |
@@ -90,5 +89,46 @@ jobs:
             -packageCachePath /private/tmp/trainy-swiftpm-cache \
             -disableAutomaticPackageResolution \
             -parallel-testing-enabled NO \
+            -resultBundlePath /private/tmp/trainy-test-results.xcresult \
             CODE_SIGNING_ALLOWED=NO \
             TRAINY_SOURCE_PACKAGES_DIR=/private/tmp/trainy-source-packages
+
+      - name: Report test failures
+        if: ${{ !cancelled() && steps.tests.conclusion == 'failure' }}
+        run: |
+          DEVELOPER_DIR="$(xcode-select -p)"
+          export DEVELOPER_DIR
+          bundle=/private/tmp/trainy-test-results.xcresult
+          report=/private/tmp/trainy-test-report
+          mkdir -p "$report"
+          if [ -d "$bundle" ]; then
+            xcrun xcresulttool get test-results summary --path "$bundle" > "$report/summary.json" || true
+            xcrun xcresulttool get test-results tests --path "$bundle" > "$report/tests.json" || true
+          fi
+          python3 scripts/summarize-xcresult-failures.py "$report" | tee -a "$GITHUB_STEP_SUMMARY"
+
+  # Its own job so a newly published advisory in a dev tool shows up as one red
+  # check instead of skipping the iOS build and tests behind it. The thresholds
+  # and the exception list live in scripts/npm-audit-policy.json; the rules are
+  # in docs/dependency-policy.md.
+  npm-audit:
+    name: npm audit policy
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          persist-credentials: false
+
+      - name: Configure Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 24
+
+      - name: Test the audit policy
+        run: node --test scripts/npm-audit-policy.test.mjs
+
+      - name: Audit npm dependencies against the policy
+        run: node scripts/npm-audit-policy.mjs

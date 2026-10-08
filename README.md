@@ -272,13 +272,20 @@ team, a new distribution-signed export, and a repeat of the signature,
 entitlement, privacy, provenance, and secret audit. Do not treat the Personal
 Team build or unsigned archive as distribution proof.
 
+The `Release Archive` workflow repeats the unsigned archive and content audit in
+CI on pushes to the default branch, on `v*` tags, and on pull requests that
+change app, Xcode, or archive inputs, so a Release-only compile error or an
+audit regression surfaces before anyone archives by hand. It uploads nothing and
+does not replace the signed-export audit.
+
 ## Other repository surfaces
 
 The native iOS app is the product. The repository also contains supporting
 surfaces:
 
-- `index.html`, `app.js`, `components.js`, and `styles.css`: a dependency-free
-  browser prototype. Run it with `python3 -m http.server 4173`.
+- `prototype/`: a dependency-free browser prototype (`index.html`, `app.js`,
+  `components.js`, `styles.css`). It is not part of the shipped product. Run it
+  with `python3 -m http.server 4173 --directory prototype`.
 - `marketing/trainy-coming-soon/`: a Next.js coming-soon site.
 - `marketing/trainy-launch-video/`: editable Remotion source and production
   notes for Trainy's Build Week launch film.
@@ -292,6 +299,7 @@ surfaces:
 | `Sources/TrainyCore/` | Reusable app models, providers, views, persistence, and design system |
 | `Tests/TrainyCoreTests/` | Unit, fixture, provider-contract, and design-system tests |
 | `provider-proxy/` | Credential-safe Netherlands NS Cloudflare Worker |
+| `prototype/` | Non-shipping browser prototype of the Japan-first flow |
 | `scripts/` | Canonical build, smoke, audit, archive, and policy gates |
 | `docs/` | Provider, design, automation, release, and distribution evidence |
 | `marketing/` | Coming-soon site and launch-film production source |
@@ -306,6 +314,8 @@ surfaces:
 - [Distribution-readiness audit](docs/distribution-readiness-2026-07-21.md)
 - [Release-readiness history](docs/release-readiness-2026-07-19.md)
 - [Design-system architecture](docs/design-system-architecture.md)
+- [Dependency policy](docs/dependency-policy.md)
+- [Security review and threat model](docs/security-review-2026-10-07.md)
 - [Build Week submission readiness](docs/devpost-build-week-2026-07-21.md)
 
 ## License
