@@ -323,7 +323,14 @@ approval.
 4. Review, then ship through the reviewed `versions upload` and
    `versions deploy` flow below. The first upload that includes `JAPAN_DATA`
    makes Wrangler provision the namespace.
-5. The next 03:10 (Japan) run publishes. Check `GET /v1/health/providers`:
+5. Apply the Cron Trigger. `versions upload` and `versions deploy` do not change
+   triggers, and a plain `wrangler deploy` is ruled out above, so run
+   `npx wrangler triggers deploy --name trainy-ns-provider-proxy` (Wrangler's
+   documentation marks it experimental). Confirm the Worker now lists the
+   `10 18 * * *` schedule in the dashboard or through the account API, as the
+   bootstrap record below did for zero triggers. Cloudflare says trigger
+   changes can take up to 15 minutes to propagate.
+6. The next 03:10 (Japan) run publishes. Check `GET /v1/health/providers`:
    `ok` means a fresh snapshot is served.
 
 ### Operating it

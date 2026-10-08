@@ -258,7 +258,7 @@ Under A the plan changes as follows:
 
 | # | Gap | How to close |
 | --- | --- | --- |
-| G1 | Does the logged-in Center expose any Shinkansen railway? | After registering, run `curl -s "https://api.odpt.org/api/v4/odpt:Operator?acl:consumerKey=$KEY"` and look for `JR-Central`, `JR-West`, `JR-Kyushu`, `JR-Hokkaido`; then `odpt:Railway?odpt:operator=odpt.Operator:JR-East` and look for `*Shinkansen`. Expected: none. If `odpt:Operator` is not served, use the `odpt:Railway` form for each operator. Keep the key out of chat and logs. The local check in `provider-proxy/README.md` does the same through the Worker's parser with the key in a mode-600 file |
+| G1 | Does the logged-in Center expose any Shinkansen railway? | After registering, run the local check in `provider-proxy/README.md`. It reads the key from a mode-600 file, so the key never sits on a command line (ODPT takes it in the URL, which a shell would expose to other local users) or in chat or logs. For each of the ten default Shinkansen railways (JR Central, West, Kyushu, Hokkaido and the five under JR East) it reports `found` and `timetables`. Expected: none found, or none with timetables |
 | G2 | Full text of the Basic License and current API guidelines: commercial use, redistribution, caching, attribution. This matters only if a Basic-licensed ODPT dataset is ever used, since the services research found no ODPT Shinkansen data | Read https://developer.odpt.org/terms after login |
 | G3 | May JR East's Challenge data be used after the contest? | Ask the ODPT secretariat (odpt-office@ubin.jp) |
 | G4 | Per-token rate limits | Developer site, or the secretariat |

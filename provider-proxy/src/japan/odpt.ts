@@ -452,6 +452,8 @@ export function rollPastMidnight(stops: FeedStop[]): boolean {
 
 const NORMAL_SERVICE = /平常|normal|on schedule/iu;
 const SUSPENDED = /見合わせ|運休|運転中止|不通|suspend|cancel|halt|stopp/iu;
+// Only read when a record has no status: its text may say "normal" while reporting a delay.
+const DELAYED = /遅れ|遅延|乱れ|delay|disrupt/iu;
 
 export function normalizeTrainInformation(value: unknown, railway: string, now: Date): PublicDisruption | null {
   const information = record(value);
@@ -468,7 +470,14 @@ export function normalizeTrainInformation(value: unknown, railway: string, now: 
   if (!status && !body) return null;
 
   const statusText = `${status?.ja ?? ""} ${status?.en ?? ""}`;
-  if (NORMAL_SERVICE.test(statusText) && !SUSPENDED.test(statusText)) return null;
+  const bodyText = `${body?.ja ?? ""} ${body?.en ?? ""}`;
+  // Operators often publish normal service as text alone ("現在、平常どおり運転しています。"), so
+  // with no status the text decides. It is free prose, unlike a status, so any word of delay or
+  // suspension keeps the notice.
+  const readsNormal = status
+    ? NORMAL_SERVICE.test(statusText) && !SUSPENDED.test(statusText)
+    : NORMAL_SERVICE.test(bodyText) && !SUSPENDED.test(bodyText) && !DELAYED.test(bodyText);
+  if (readsNormal) return null;
 
   const detailParts = [body?.en ?? body?.ja, cause ? `Cause: ${cause.en ?? cause.ja}` : undefined].filter(Boolean) as string[];
   const reportedValue = text(information["odpt:timeOfOrigin"], 64) ?? text(information["dc:date"], 64);
@@ -479,7 +488,7 @@ export function normalizeTrainInformation(value: unknown, railway: string, now: 
     lineId: railway,
     title,
     detail: (detailParts.join(" ") || "The operator reported a service disruption.").slice(0, 1_000),
-    severity: SUSPENDED.test(`${statusText} ${body?.ja ?? ""} ${body?.en ?? ""}`) ? "major" : "watch",
+    severity: SUSPENDED.test(`${statusText} ${bodyText}`) ? "major" : "watch",
     reportedAt: Number.isFinite(reportedMilliseconds) ? new Date(reportedMilliseconds).toISOString() : undefined,
     scope: "line"
   });

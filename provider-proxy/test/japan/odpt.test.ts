@@ -531,4 +531,30 @@ describe("line-level operation information", () => {
     }, ALPHA, now);
     expect(notice?.severity).toBe("major");
   });
+
+  it("drops a normal-service record that carries text and no status", () => {
+    expect(normalizeTrainInformation({
+      "odpt:trainInformationText": { ja: "現在、平常どおり運転しています。" }
+    }, ALPHA, now)).toBeNull();
+    expect(normalizeTrainInformation({
+      "odpt:trainInformationText": { ja: "現在、平常どおり運転しています。", en: "Services are operating normally." }
+    }, ALPHA, now)).toBeNull();
+  });
+
+  it("keeps a text-only notice that reports a delay or suspension even when it also says normal", () => {
+    const delay = normalizeTrainInformation({
+      "odpt:trainInformationText": { ja: "一部列車に遅れが出ています。平常運転に戻るまでお待ちください。" }
+    }, ALPHA, now);
+    expect(delay).toMatchObject({ title: "Service notice", severity: "watch" });
+
+    const suspension = normalizeTrainInformation({
+      "odpt:trainInformationText": { en: "Service is suspended. Normal service is expected tomorrow." }
+    }, ALPHA, now);
+    expect(suspension).toMatchObject({ title: "Service notice", severity: "major" });
+
+    // Text that does not mention normal service at all stays a notice.
+    expect(normalizeTrainInformation({
+      "odpt:trainInformationText": { ja: "ダイヤ改正のお知らせ" }
+    }, ALPHA, now)).toMatchObject({ severity: "watch" });
+  });
 });
