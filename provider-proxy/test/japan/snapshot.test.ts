@@ -1,8 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { addDays } from "../../src/japan/calendar";
 import type { SnapshotManifest, StationsShard, TripShard } from "../../src/japan/contracts";
-import { IngestFailure } from "../../src/japan/contracts";
+import { IngestFailure, MAX_COVERAGE_DAYS } from "../../src/japan/contracts";
 import { buildSnapshot, DEFAULT_HORIZON_DAYS, slugOf } from "../../src/japan/snapshot";
+import { SHARD_GRACE_DAYS, shardLifetimeSeconds } from "../../src/japan/store";
 import type { NormalizedFeed } from "../../src/japan/snapshot";
 import {
   ALPHA,
@@ -190,6 +191,15 @@ describe("snapshot builder", () => {
     expect(capped.manifest.coverage.until).toBe(addDays("2026-10-07", 400));
     const { tripShard } = parsed(capped);
     expect(tripShard(ALPHA_SLUG, "Weekday")!.trips[0]!.validUntil).toBe(addDays("2026-10-07", 400));
+  });
+
+  it("keeps its shards in storage past the longest coverage it can advertise", () => {
+    expect(MAX_COVERAGE_DAYS).toBe(400);
+    const built = buildSnapshot(feedWith([{ ...twoStops("1"), validUntil: "2099-12-31" }]), OPTIONS);
+    const coverageEnds = Date.parse(`${built.manifest.coverage.until}T00:00:00+09:00`);
+    const shardsExpire = GENERATED_AT.getTime() + shardLifetimeSeconds(built.manifest.coverage.until, GENERATED_AT) * 1_000;
+
+    expect(shardsExpire).toBeGreaterThanOrEqual(coverageEnds + SHARD_GRACE_DAYS * 86_400_000);
   });
 
   it("keeps each trip's own validity so a short-lived trip stops matching early", () => {

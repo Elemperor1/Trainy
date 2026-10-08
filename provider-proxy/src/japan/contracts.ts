@@ -4,6 +4,8 @@ import { currentServiceDate, isSupportedServiceDate, parseClockMinutes } from ".
 
 export const JAPAN_PROVIDER_ID = "japan";
 export const SNAPSHOT_SCHEMA = 1;
+/** The furthest ahead, in days, that a snapshot may claim to cover. Storage keeps its shards at least this long. */
+export const MAX_COVERAGE_DAYS = 400;
 
 /** Sources whose licence allows Trainy to republish normalized data in a paid app. */
 export const PUBLISHABLE_LICENSES: ReadonlySet<string> = new Set([
@@ -237,8 +239,10 @@ export interface JapanResponseMeta {
 // Input validation.
 // ---------------------------------------------------------------------------
 
-const STATION_ID = /^[A-Za-z0-9._:-]{1,120}$/u;
-const LINE_ID = /^[A-Za-z0-9._:-]{1,120}$/u;
+// Ingestion keeps source ids of up to 160 characters, so a request must be able to carry any id
+// that station search or the timetable returned.
+const STATION_ID = /^[A-Za-z0-9._:-]{1,160}$/u;
+const LINE_ID = /^[A-Za-z0-9._:-]{1,160}$/u;
 const TRIP_ID = /^[A-Za-z0-9._~-]{1,160}$/u;
 
 function invalid(code: string, message: string): ProxyFault {

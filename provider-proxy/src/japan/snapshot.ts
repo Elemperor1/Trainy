@@ -10,7 +10,7 @@ import type {
   StoredTrip,
   TripShard
 } from "./contracts";
-import { IngestFailure, SNAPSHOT_SCHEMA } from "./contracts";
+import { IngestFailure, MAX_COVERAGE_DAYS, SNAPSHOT_SCHEMA } from "./contracts";
 import { snapshotShardKey } from "./store";
 
 // ---------------------------------------------------------------------------
@@ -67,7 +67,6 @@ export interface NormalizedFeed {
 
 /** When a source does not say how long a trip is valid, claim only this many days. */
 export const DEFAULT_HORIZON_DAYS = 14;
-const MAX_HORIZON_DAYS = 400;
 const MAX_SHARD_BYTES = 20 * 1_024 * 1_024;
 const MAX_EXPLICIT_DATES = 400;
 
@@ -126,7 +125,7 @@ export function buildSnapshot(
 ): BuiltSnapshot {
   const coverageFrom = currentServiceDate(options.generatedAt);
   const defaultUntil = addDays(coverageFrom, DEFAULT_HORIZON_DAYS);
-  const maxUntil = addDays(coverageFrom, MAX_HORIZON_DAYS);
+  const maxUntil = addDays(coverageFrom, MAX_COVERAGE_DAYS);
 
   const lineSlugs = uniqueSlugs(feed.lines.map((line) => line.id), 60);
   const calendarRules = new Map<string, CalendarRule>();
@@ -156,6 +155,9 @@ export function buildSnapshot(
       || trip.stops.some((stop) => !stationsById.has(stop.stationId))
     ) continue;
 
+    // A calendar lists the days a train runs, not how long its timetable stays current, so only
+    // a declared validity lifts the default. Coverage is the union of trip validity, and one
+    // special-day calendar must not stretch it past what regular service claims.
     const declared = trip.validUntil !== undefined && isSupportedServiceDate(trip.validUntil)
       ? trip.validUntil
       : defaultUntil;

@@ -5,7 +5,7 @@
 // and none of them carries an upstream URL, response body, or the credential.
 
 import { ProxyFault } from "../contracts";
-import type { IngestOutcome, LastRunRecord, RailwayReport, SourceInfo } from "./contracts";
+import type { IngestOutcome, LastRunRecord, RailwayReport, SnapshotManifest, SourceInfo } from "./contracts";
 import { IngestFailure, PUBLISHABLE_LICENSES, REFUSED_LICENSES } from "./contracts";
 import { japanEnv } from "./env";
 import {
@@ -113,7 +113,14 @@ export async function runIngest(env: Env, overrides: Partial<IngestDependencies>
     progress.snapshotId = snapshotId;
     progress.counts = { ...built.manifest.counts, rejected };
 
-    const current = await readManifestUncached(config.kv).catch(() => null);
+    let current: SnapshotManifest | null;
+    try {
+      current = await readManifestUncached(config.kv);
+    } catch {
+      // The served snapshot may be healthy. Without its trip count the guard below cannot run,
+      // so publishing could replace a large snapshot with a small one.
+      throw new IngestFailure("storage_failed", "manifest_read_failed");
+    }
     if (current && built.manifest.counts.trips < current.counts.trips * MIN_RETAINED_RATIO) {
       throw new IngestFailure("regression", "trip_count_dropped");
     }

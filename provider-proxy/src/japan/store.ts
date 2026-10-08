@@ -5,7 +5,7 @@ import type {
   StationsShard,
   TripShard
 } from "./contracts";
-import { SNAPSHOT_SCHEMA } from "./contracts";
+import { MAX_COVERAGE_DAYS, SNAPSHOT_SCHEMA } from "./contracts";
 import { array, finiteNumber, record, text } from "./json";
 
 // Layout in the JAPAN_DATA KV namespace. Shards live under their snapshot id and
@@ -21,8 +21,9 @@ const MAX_MEMOIZED_SHARDS = 48;
 const MANIFEST_EDGE_CACHE_SECONDS = 60;
 const SHARD_EDGE_CACHE_SECONDS = 3_600;
 const MIN_SHARD_LIFETIME_DAYS = 3;
-const MAX_SHARD_LIFETIME_DAYS = 60;
-const SHARD_GRACE_DAYS = 8;
+export const SHARD_GRACE_DAYS = 8;
+// A manifest may advertise coverage up to MAX_COVERAGE_DAYS ahead, so the shards it names must last that long.
+const MAX_SHARD_LIFETIME_DAYS = MAX_COVERAGE_DAYS + SHARD_GRACE_DAYS;
 const WRITE_CONCURRENCY = 8;
 const LAST_RUN_LIFETIME_SECONDS = 30 * 86_400;
 
@@ -115,10 +116,22 @@ export function shardLifetimeSeconds(coverageUntil: string, now: Date): number {
   return days * 86_400;
 }
 
-/** Reads the served manifest without the isolate memo, for the ingestion regression guard. */
+/**
+ * Reads the served manifest without the isolate memo, for the ingestion regression guard.
+ *
+ * Null means nothing usable is served: no manifest yet, or one that is not JSON or not in
+ * this Worker's format. A new snapshot repairs all three. A failed KV read rejects instead,
+ * because the served manifest may be healthy and the caller cannot size a new snapshot
+ * against it.
+ */
 export async function readManifestUncached(kv: KVNamespace): Promise<SnapshotManifest | null> {
-  const raw = await kv.get(MANIFEST_KEY, "json");
-  return raw === null ? null : parseManifest(raw, MANIFEST_KEY);
+  const raw = await kv.get(MANIFEST_KEY);
+  if (raw === null) return null;
+  try {
+    return parseManifest(JSON.parse(raw), MANIFEST_KEY);
+  } catch {
+    return null;
+  }
 }
 
 export async function writeLastRun(kv: KVNamespace, run: LastRunRecord): Promise<void> {

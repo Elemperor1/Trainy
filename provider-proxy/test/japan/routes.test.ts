@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { handleRequest } from "../../src/handler";
 import type { LastRunRecord } from "../../src/japan/contracts";
+import { validatedLineID, validatedStationID } from "../../src/japan/contracts";
 import { tripIDFromPath } from "../../src/japan/routes";
 import type { NormalizedFeed } from "../../src/japan/snapshot";
 import { LAST_RUN_KEY, MANIFEST_KEY } from "../../src/japan/store";
@@ -355,6 +356,18 @@ describe("GET /v1/japan/trips", () => {
     const result = await s.request(path);
     expect(result.status).toBe(400);
     expect(result.body.error.code).toBe(code);
+  });
+});
+
+describe("identifier bounds", () => {
+  it("accepts every id that ingestion can publish, and nothing longer", () => {
+    const longest = `odpt.Station:${"A".repeat(147)}`;
+    expect(longest).toHaveLength(160);
+
+    expect(validatedStationID(longest)).toBe(longest);
+    expect(validatedLineID(longest)).toBe(longest);
+    expect(() => validatedStationID(`${longest}A`)).toThrow();
+    expect(() => validatedLineID(`${longest}A`)).toThrow();
   });
 });
 

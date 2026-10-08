@@ -204,7 +204,7 @@ once a night. It never throws, and every outcome leaves a record.
 | --- | --- | --- |
 | `japan/v1/manifest` | the served snapshot's index: source, licence, coverage, calendars, shard keys | until replaced |
 | `japan/v1/manifest-previous` | the snapshot served before it | until replaced |
-| `japan/v1/snap/<snapshotId>/stations` | stations that appear in a trip | days to coverage end plus 8, between 3 and 60 |
+| `japan/v1/snap/<snapshotId>/stations` | stations that appear in a trip | days to coverage end plus 8, between 3 and 408 |
 | `japan/v1/snap/<snapshotId>/<line>~<calendar>` | trips of one line on one calendar | same |
 | `japan/v1/last-run` | outcome, code, counts and per-railway report of the latest run | 30 days |
 
@@ -358,7 +358,10 @@ approval.
   railways has two ids and no merging is attempted. A through train appears on
   each line it runs on.
 - Year-end and New Year service, and other special days, are covered only when
-  the source publishes explicit calendars.
+  the source publishes explicit calendars. A trip with no declared validity is
+  claimed for 14 days, special days included, so it is not offered for a date
+  further out; if no trip declares a longer validity, that date answers
+  `date_out_of_range` until a nightly run brings it inside the window.
 - The attribution text is a placeholder until the licence text is read (gap G2
   in the decision record).
 - ODPT's per-key rate limit is undocumented (gap G4). A nightly run and one

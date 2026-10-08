@@ -299,6 +299,17 @@ describe("what a run refuses to do", () => {
     expect((await s.run({ fetcher: half.fetcher })).outcome).toBe("published");
     expect(manifestOf(kv).counts.trips).toBe(12);
   });
+
+  it("replaces a served manifest that is not JSON or not in this Worker's format", async () => {
+    for (const unreadable of ["{truncated", JSON.stringify({ schema: "someone-else/1" })]) {
+      const s = setup();
+      const kv = s.kv!;
+      kv.values.set(MANIFEST_KEY, { value: unreadable });
+
+      expect(await s.run()).toMatchObject({ outcome: "published", snapshotId: "snap-1" });
+      expect(manifestOf(kv).snapshotId).toBe("snap-1");
+    }
+  });
 });
 
 describe("failures", () => {
@@ -354,6 +365,30 @@ describe("failures", () => {
     expect(await s.run()).toMatchObject({ outcome: "storage_failed", code: "publish_failed" });
     expect(kv.values.get(MANIFEST_KEY)!.value).toBe(served);
     expect(snapshotKeys(kv, "snap-1")).toHaveLength(3);
+  });
+
+  it("holds back a run that cannot read the served manifest instead of skipping the regression guard", async () => {
+    const s = setup();
+    const kv = s.kv!;
+    await s.run(); // 24 trips are served
+    const served = kv.values.get(MANIFEST_KEY)!.value;
+    s.sleeps.length = 0;
+
+    // One transient failure. Publishing reads the manifest again after the settle delay and
+    // that read succeeds, so a guard that skipped itself here would let the small feed through.
+    let failures = 1;
+    kv.failGet = (key) => key === MANIFEST_KEY && failures-- > 0;
+    const shrunken = fakeOdpt(odptNetwork(5)); // 10 trips
+    const report = await s.run({ fetcher: shrunken.fetcher });
+
+    expect(report).toMatchObject({ outcome: "storage_failed", code: "manifest_read_failed", counts: { trips: 10 } });
+    expect(kv.values.get(MANIFEST_KEY)!.value).toBe(served);
+    expect(snapshotKeys(kv, "snap-2")).toEqual([]);
+    expect(s.sleeps).toEqual([]);
+    expect(lastRunOf(kv)).toMatchObject({ outcome: "storage_failed", code: "manifest_read_failed" });
+
+    // Once the read works again the guard decides, as it always did.
+    expect(await s.run({ fetcher: shrunken.fetcher })).toMatchObject({ outcome: "regression", code: "trip_count_dropped" });
   });
 
   it("does not delete a snapshot that a failed flip left as both current and previous", async () => {
