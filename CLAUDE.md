@@ -38,6 +38,13 @@ Trainy is a Flighty-style train tracking app scoped first to Japan Shinkansen jo
 - Is rider-available only when a validated proxy base URL is configured
 - Preserves truthful source and stale/fresh metadata from the proxy
 
+**Entitlements** (`Sources/TrainyCore/Entitlements/`) - Plus tier scaffolding (plan items 5.1 and 5.2), see `docs/storekit-entitlements.md`:
+
+- `PlusConfiguration.current` is the one place that names the App Store Connect product and holds the gating switch; `enforcesFeatureGates` stays `false` until Plus can be bought
+- `EntitlementService` is the seam; `StoreKitEntitlementService` is the only file that imports StoreKit, and `FakeEntitlementService` (Debug only) serves tests and previews
+- `EntitlementStore` publishes entitlement, offers, purchase, and restore state; `FeatureGate.isUnlocked(_:)` is the single choke point for Plus features
+- The entitlement is always re-derived from `Transaction.currentEntitlements`, verified transactions only, and a lapse never deletes rider data
+
 **Models** (`Sources/TrainyCore/TrainModels.swift`):
 
 - `TrainTrip` - Main UI model with `SourceProvenance` tracking
