@@ -17,6 +17,7 @@
 		9D0A10552C10000100A00001 /* ../Tests/TrainyCoreTests/RailClockTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D0A10542C10000100A00001 /* ../Tests/TrainyCoreTests/RailClockTests.swift */; };
 		9D0A106A2C10000100A00001 /* TrainyCriticalUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D0A10612C10000100A00001 /* TrainyCriticalUITests.swift */; };
 		9D0A10712C10000100A00001 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 9D0A10702C10000100A00001 /* PrivacyInfo.xcprivacy */; };
+		9D0A10E62C10000100A00001 /* ../Tests/TrainyCoreTests/EntitlementTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D0A10E52C10000100A00001 /* ../Tests/TrainyCoreTests/EntitlementTests.swift */; };
 		9D0A20002C10000100A00001 /* TrainyCore in Frameworks */ = {isa = PBXBuildFile; productRef = 9D0A20032C10000100A00001 /* TrainyCore */; };
 		9D0A20012C10000100A00001 /* TrainyCore in Frameworks */ = {isa = PBXBuildFile; productRef = 9D0A20032C10000100A00001 /* TrainyCore */; };
 		B6EEB5DDDD71F3C63D510D4C /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = 74E4105AC9E5411577F4B5F3 /* GoogleService-Info.plist */; };
@@ -55,6 +56,7 @@
 		9D0A10622C10000100A00001 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		9D0A10632C10000100A00001 /* TrainyUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = TrainyUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		9D0A10702C10000100A00001 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		9D0A10E52C10000100A00001 /* ../Tests/TrainyCoreTests/EntitlementTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ../Tests/TrainyCoreTests/EntitlementTests.swift; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -123,6 +125,7 @@
 			children = (
 				9D0A10432C10000100A00001 /* ../Tests/TrainyCoreTests/TrainyCoreTests.swift */,
 				9D0A10522C10000100A00001 /* ../Tests/TrainyCoreTests/NSProviderTests.swift */,
+				9D0A10E52C10000100A00001 /* ../Tests/TrainyCoreTests/EntitlementTests.swift */,
 				9D0A10532C10000100A00001 /* ../Tests/TrainyCoreTests/RailDesignSystemTests.swift */,
 				9D0A10542C10000100A00001 /* ../Tests/TrainyCoreTests/RailClockTests.swift */,
 				9D0A10452C10000100A00001 /* Info.plist */,
@@ -316,6 +319,7 @@
 			files = (
 				9D0A10462C10000100A00001 /* ../Tests/TrainyCoreTests/TrainyCoreTests.swift in Sources */,
 				9D0A10502C10000100A00001 /* ../Tests/TrainyCoreTests/NSProviderTests.swift in Sources */,
+				9D0A10E62C10000100A00001 /* ../Tests/TrainyCoreTests/EntitlementTests.swift in Sources */,
 				9D0A10512C10000100A00001 /* ../Tests/TrainyCoreTests/RailDesignSystemTests.swift in Sources */,
 				9D0A10552C10000100A00001 /* ../Tests/TrainyCoreTests/RailClockTests.swift in Sources */,
 			);

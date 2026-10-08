@@ -19,6 +19,7 @@ let package = Package(
             path: "Sources/TrainyCore",
             linkerSettings: [
                 .linkedFramework("MapKit", .when(platforms: [.iOS])),
+                .linkedFramework("StoreKit", .when(platforms: [.iOS])),
                 .linkedFramework("SwiftUI", .when(platforms: [.iOS])),
                 .linkedFramework("UIKit", .when(platforms: [.iOS]))
             ]
