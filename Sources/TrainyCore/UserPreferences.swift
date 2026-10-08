@@ -117,7 +117,7 @@ struct UserPreferences: @unchecked Sendable {
         // Create a date with today's date and the specified time
         var calendar = Calendar.current
         calendar.timeZone = timeZone
-        let now = Date()
+        let now = RailClock.system.now
         let components = calendar.dateComponents([.year, .month, .day], from: now)
 
         var dateComponents = DateComponents()

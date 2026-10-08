@@ -108,7 +108,7 @@ struct RailSource: Hashable, Codable, Identifiable, Sendable {
         self.sourceName = sourceName
         self.sourceKind = sourceKind
         self.confidence = confidence
-        self.freshness = freshness ?? FreshnessState.resolved(fetchedAt: fetchedAt, validUntil: validUntil, now: fetchedAt ?? Date())
+        self.freshness = freshness ?? FreshnessState.resolved(fetchedAt: fetchedAt, validUntil: validUntil, now: fetchedAt ?? RailClock.system.now)
         self.fetchedAt = fetchedAt
         self.publishedAt = publishedAt
         self.validUntil = validUntil
@@ -284,9 +284,9 @@ struct RailStopTime: Identifiable, Hashable, Codable, Sendable {
         case pending
     }
 
-    var state: StopState {
+    /// The stop's state relative to `now`; pass `clock.now` from a `RailClock` so tests can pin time.
+    func state(at now: Date) -> StopState {
         guard let scheduledTime else { return .pending }
-        let now = Date()
         return scheduledTime.timeIntervalSince(now) > 0 ? .pending : .done
     }
 
@@ -422,7 +422,7 @@ struct RealtimeTripOverlay: Identifiable, Hashable, Codable, Sendable {
         providerID: RailProviderID,
         delaySeconds: Int? = nil,
         status: TripStatus,
-        updatedAt: Date = Date(),
+        updatedAt: Date = RailClock.system.now,
         timeZone: TimeZone? = nil,
         source: RailSource,
         estimatedDeparture: Date? = nil,
@@ -500,7 +500,7 @@ struct RailVehiclePosition: Identifiable, Hashable, Codable, Sendable {
         longitude: Double,
         heading: Double? = nil,
         speed: Double? = nil,
-        recordedAt: Date = Date(),
+        recordedAt: Date = RailClock.system.now,
         timeZone: TimeZone? = nil,
         source: RailSource
     ) {
@@ -580,7 +580,7 @@ struct RailServiceAlert: Identifiable, Hashable, Codable, Sendable {
         affectedStations: [String] = [],
         effectiveFrom: Date? = nil,
         effectiveUntil: Date? = nil,
-        postedAt: Date = Date(),
+        postedAt: Date = RailClock.system.now,
         timeZone: TimeZone? = nil,
         source: RailSource,
         severity: AlertSeverity = .info

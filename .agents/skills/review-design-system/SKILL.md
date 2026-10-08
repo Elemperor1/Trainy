@@ -27,7 +27,8 @@ Discover the current structure instead of trusting a stale component list:
 ```bash
 rg -n "^(enum|struct|extension) |static (let|func)|func [A-Za-z]|var body" \
   Sources/TrainyCore/DesignSystem \
-  Sources/TrainyCore/ContentView.swift
+  Sources/TrainyCore/ContentView.swift \
+  Sources/TrainyCore/Screens
 rg -n "TrainyUI|function |--[a-z0-9-]+:" components.js app.js styles.css
 sed -n '1,280p' scripts/check-design-system-bypass.sh
 ```

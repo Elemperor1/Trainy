@@ -134,7 +134,7 @@ enum FreshnessState: String, Codable, CaseIterable, Sendable {
         }
     }
 
-    static func resolved(fetchedAt: Date?, validUntil: Date?, now: Date = Date()) -> FreshnessState {
+    static func resolved(fetchedAt: Date?, validUntil: Date?, now: Date = RailClock.system.now) -> FreshnessState {
         if let validUntil, validUntil < now {
             return .expired
         }
@@ -207,14 +207,15 @@ struct SourceProvenance: Hashable, Codable, Sendable {
         validUntil: Date? = nil,
         licenseName: String? = nil,
         attributionText: String? = nil,
-        sourceURL: URL? = nil
+        sourceURL: URL? = nil,
+        now: Date = RailClock.system.now
     ) {
         self.providerID = providerID
         self.providerName = providerName
         self.sourceName = sourceName
         self.sourceKind = sourceKind
         self.confidence = confidence
-        self.freshness = freshness ?? FreshnessState.resolved(fetchedAt: fetchedAt, validUntil: validUntil)
+        self.freshness = freshness ?? FreshnessState.resolved(fetchedAt: fetchedAt, validUntil: validUntil, now: now)
         self.fetchedAt = fetchedAt
         self.publishedAt = publishedAt
         self.validUntil = validUntil
@@ -316,7 +317,12 @@ struct SourceProvenance: Hashable, Codable, Sendable {
         )
     }
 
-    static func odptTimetable(fetchedAt: Date? = Date(), publishedAt: Date? = nil, validUntil: Date? = nil) -> SourceProvenance {
+    static func odptTimetable(
+        fetchedAt: Date? = RailClock.system.now,
+        publishedAt: Date? = nil,
+        validUntil: Date? = nil,
+        now: Date = RailClock.system.now
+    ) -> SourceProvenance {
         SourceProvenance(
             providerID: "odpt",
             providerName: "Open Data Public Transportation Council",
@@ -328,11 +334,17 @@ struct SourceProvenance: Hashable, Codable, Sendable {
             validUntil: validUntil,
             licenseName: "ODPT developer terms",
             attributionText: "Timetable data from ODPT TrainTimetable",
-            sourceURL: URL(string: "https://developer.odpt.org/")
+            sourceURL: URL(string: "https://developer.odpt.org/"),
+            now: now
         )
     }
 
-    static func jrEastTimetable(sourceName: String, sourceURL: URL?, fetchedAt: Date? = Date()) -> SourceProvenance {
+    static func jrEastTimetable(
+        sourceName: String,
+        sourceURL: URL?,
+        fetchedAt: Date? = RailClock.system.now,
+        now: Date = RailClock.system.now
+    ) -> SourceProvenance {
         SourceProvenance(
             providerID: "jr-east",
             providerName: "JR East",
@@ -341,7 +353,8 @@ struct SourceProvenance: Hashable, Codable, Sendable {
             confidence: .confirmed,
             fetchedAt: fetchedAt,
             attributionText: sourceName,
-            sourceURL: sourceURL
+            sourceURL: sourceURL,
+            now: now
         )
     }
 
@@ -555,20 +568,16 @@ struct StationStop: Identifiable, Hashable, Codable, Sendable {
         case pending
     }
 
-    let id = UUID()
     let name: String
     let time: String
     let platform: String
     let note: String
     let state: StopState
 
-    private enum CodingKeys: String, CodingKey {
-        case name
-        case time
-        case platform
-        case note
-        case state
-    }
+    /// A stop is identified by where and when it is scheduled, so the same stop
+    /// keeps its identity across decodes and refreshes while its note, platform,
+    /// and state change.
+    var id: String { "\(name)|\(time)" }
 
     /// Display platform name, showing "Not available" for TBD or missing values
     var displayPlatform: String {
@@ -656,16 +665,12 @@ struct RailSourceStateDisplayState: Hashable, Sendable {
 }
 
 struct TrainAlert: Identifiable, Hashable, Codable, Sendable {
-    let id = UUID()
     let title: String
     let detail: String
     let tone: TrainStatusTone
 
-    private enum CodingKeys: String, CodingKey {
-        case title
-        case detail
-        case tone
-    }
+    /// The same notice keeps its identity across decodes and refreshes.
+    var id: String { "\(title)|\(detail)|\(tone.rawValue)" }
 }
 
 struct TrainTrip: Identifiable, Hashable, Codable, Sendable {
