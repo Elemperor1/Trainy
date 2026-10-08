@@ -339,7 +339,8 @@ struct NSDepartureBoardView: View {
                     title: "Service alerts",
                     subtitle: alertSubtitle(count: viewModel.alerts.count)
                 )
-                ForEach(viewModel.alerts) { alert in
+                // Keyed by position: alert ids come from their text, so two alerts with the same text share an id.
+                ForEach(Array(viewModel.alerts.enumerated()), id: \.offset) { _, alert in
                     RailSurface(role: .status(alert.tone == .late ? RailDesign.Palette.danger : RailDesign.Palette.warning)) {
                         VStack(alignment: .leading, spacing: RailDesign.Spacing.xs) {
                             Label {

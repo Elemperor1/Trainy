@@ -19,7 +19,7 @@ styles, modifiers, or reusable controls locally.
 | Primitives | `RailDesignPrimitives.swift` | Surfaces, badges, icon badges, dividers, value rows, navigation cards, actions, search fields, segmented controls, list-row policy |
 | Patterns | `RailDesignLibrary.swift` | Section headers, metrics, trip tools, settings groups and rows, shared press behavior |
 | Domain adapters and states | `RailComponents.swift` | Trip, station, source, timeline, loading, empty, offline, success, and error UI built from the lower layers |
-| Screens | `ContentView.swift`, `RailJourneyMap.swift` | Feature composition, routing, local UI state, and feature-specific map geometry |
+| Screens | `ContentView.swift`, `Screens/`, `RailJourneyMap.swift` | Feature composition, routing, local UI state, and feature-specific map geometry |
 
 Dependency direction is one way:
 
@@ -30,8 +30,9 @@ Dependency direction is one way:
 - Only files under `DesignSystem/` may define `RailDesign` tokens, reusable
   `ViewModifier` or `ButtonStyle` types, or components shared by screens.
 - Components do not read `@AppStorage`, `UserDefaults`, notifications, or
-  `TrainStore`. `ContentView` owns persisted interface preferences and injects
-  `RailInterfacePreferences`; Settings is the only editor.
+  `TrainStore`. `ContentView.swift` owns persisted interface preferences and
+  injects `RailInterfacePreferences`; `Screens/Settings/SettingsScreen.swift` is
+  the only editor. The guardrail names both files.
 - Feature enums such as tabs, sheets, and trip buckets stay in feature code.
   Generic controls accept options and bindings instead.
 - Navigation events stay outside the Design System.
