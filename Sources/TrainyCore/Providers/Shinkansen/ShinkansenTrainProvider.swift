@@ -6,12 +6,10 @@ struct ShinkansenTrainProvider: ScheduleFeedProvider, RealtimeFeedProvider {
     let dataScope = "japan-shinkansen-v2"
     let region = ProviderRegion.japan
     private let odptClient: ODPTClient?
-    private let timetableClient: JREastTimetableClient
     private let clock: RailClock
 
     init(consumerKey: String? = TrainyAPIConfig.odptConsumerKey, session: URLSession = .shared, clock: RailClock = .system) {
         self.clock = clock
-        self.timetableClient = JREastTimetableClient(session: session)
         if let consumerKey = TrainyAPIConfig.cleanODPTKey(consumerKey) {
             self.odptClient = ODPTClient(consumerKey: consumerKey, session: session)
         } else {
@@ -30,15 +28,14 @@ struct ShinkansenTrainProvider: ScheduleFeedProvider, RealtimeFeedProvider {
     var requirements: Set<ProviderRequirement> {
         authStrategy.requirements.union([
             .networkAccess,
-            .attribution("ODPT developer terms and JR timetable attribution"),
-            .terms("ODPT developer terms and JR timetable terms")
+            .attribution("ODPT developer terms and attribution"),
+            .terms("ODPT developer terms")
         ])
     }
 
     var sourceLinks: [ProviderSourceLink] {
         [
-            ProviderSourceLink(title: "ODPT developer portal", url: URL(string: "https://developer.odpt.org/")!),
-            ProviderSourceLink(title: "JR East train timetable", url: URL(string: "https://www.jreast-timetable.jp/en/")!)
+            ProviderSourceLink(title: "ODPT developer portal", url: URL(string: "https://developer.odpt.org/")!)
         ]
     }
 
@@ -58,7 +55,7 @@ struct ShinkansenTrainProvider: ScheduleFeedProvider, RealtimeFeedProvider {
     }
 
     var feedLabel: String {
-        isODPTConfigured ? "Scheduled ODPT and JR timetable data" : "Japan Shinkansen starter catalog"
+        isODPTConfigured ? "Scheduled ODPT timetable data" : "Japan Shinkansen starter catalog"
     }
 
     var includesCatalogResultsInSearch: Bool {
@@ -112,31 +109,15 @@ struct ShinkansenTrainProvider: ScheduleFeedProvider, RealtimeFeedProvider {
             }
         }
 
-        if odptClient != nil && !routeMatches.isEmpty {
-            let timetableTrips: [TrainTrip]
-            do {
-                timetableTrips = try await fetchOfficialTimetableTrips(routes: routeMatches, starterMatches: sortedMatches, query: cleanQuery)
-            } catch {
-                if let odptError {
-                    throw TrainDataProviderError.sourceChainFailed(
-                        primary: TrainDataProviderError.userFacingDescription(for: odptError),
-                        fallback: TrainDataProviderError.userFacingDescription(for: error)
-                    )
-                }
-                throw error
+        if odptClient != nil {
+            // ODPT is the only live source. It is not expected to carry Shinkansen
+            // timetables (docs/japan-data-decision-record.md), so say so plainly
+            // instead of substituting starter data. That includes a query such as a
+            // train name and number, which matches no route but does match the catalog.
+            if let odptError {
+                throw odptError
             }
-            if !timetableTrips.isEmpty {
-                return Array(timetableTrips.prefix(16))
-            }
-            if !routeMatches.isEmpty {
-                if let odptError {
-                    throw TrainDataProviderError.sourceChainFailed(
-                        primary: TrainDataProviderError.userFacingDescription(for: odptError),
-                        fallback: TrainDataProviderError.noLiveTrips.errorDescription ?? "No fallback trips matched."
-                    )
-                }
-                throw TrainDataProviderError.noLiveTrips
-            }
+            throw TrainDataProviderError.noLiveTrips
         }
 
         if sortedMatches.isEmpty {
@@ -149,16 +130,18 @@ struct ShinkansenTrainProvider: ScheduleFeedProvider, RealtimeFeedProvider {
     func refresh(_ trip: TrainTrip, knownRoutes: [LiveTrainRoute]) async throws -> TrainTrip? {
         guard trip.providerID == providerID else { return nil }
         if let odptClient {
-            let route = knownRoutes.first { $0.id == trip.routeID } ?? Self.routes.first { $0.id == trip.routeID }
-            if let route {
-                let starterTrips = Self.allTrips.filter { $0.routeID == route.id }
-                let odptTrips = (try? await fetchODPTTrips(client: odptClient, routes: [route], starterMatches: starterTrips)) ?? []
-                if let refreshedTrip = odptTrips.first(where: { $0.liveTripID == trip.liveTripID }) ?? odptTrips.first {
-                    return refreshedTrip
-                }
-                let timetableTrips = try await fetchOfficialTimetableTrips(routes: [route], starterMatches: starterTrips, query: trip.train)
-                return timetableTrips.first { $0.liveTripID == trip.liveTripID } ?? timetableTrips.first
+            // ODPT is the only live source and is not expected to carry Shinkansen
+            // timetables (docs/japan-data-decision-record.md). Report that, or the ODPT
+            // failure itself, rather than return nil: the store answers nil by simulating
+            // progress and calling the refresh loaded.
+            let knownRoute = knownRoutes.first { $0.id == trip.routeID } ?? Self.routes.first { $0.id == trip.routeID }
+            guard let route = knownRoute else { throw TrainDataProviderError.noLiveUpdate }
+            let starterTrips = Self.allTrips.filter { $0.routeID == route.id }
+            let odptTrips = try await fetchODPTTrips(client: odptClient, routes: [route], starterMatches: starterTrips)
+            if let refreshedTrip = odptTrips.first(where: { $0.liveTripID == trip.liveTripID }) ?? odptTrips.first {
+                return refreshedTrip
             }
+            throw TrainDataProviderError.noLiveUpdate
         }
         var refreshedTrip = Self.allTrips.first { $0.id == trip.id } ?? trip
         refreshedTrip.updated = "just now"
@@ -229,33 +212,6 @@ struct ShinkansenTrainProvider: ScheduleFeedProvider, RealtimeFeedProvider {
         }
 
         return trips.sorted {
-            $0.origin.time.localizedStandardCompare($1.origin.time) == .orderedAscending
-        }
-    }
-
-    private func fetchOfficialTimetableTrips(routes: [LiveTrainRoute], starterMatches: [TrainTrip], query: String) async throws -> [TrainTrip] {
-        var trips: [TrainTrip] = []
-        var fetchedURLs: Set<URL> = []
-
-        for route in routes.prefix(4) {
-            guard let reference = Self.jrEastTimetableReferencesByRouteID[route.id] else { continue }
-            guard fetchedURLs.insert(reference.timetableURL).inserted else { continue }
-
-            let routeStarterTrips = starterMatches.filter { $0.routeID == route.id }
-            let timetables = try await timetableClient.fetchTrainTimetables(for: reference)
-            // Read after the response arrives so status and fetchedAt describe the data in hand.
-            let now = clock.now
-            let routeTrips = timetables.compactMap { timetable in
-                Self.trip(from: timetable, route: route, reference: reference, starterTrips: routeStarterTrips, now: now)
-            }
-            trips.append(contentsOf: routeTrips)
-        }
-
-        let filteredTrips = query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-            ? trips
-            : trips.filter { Self.tripMatches($0, query: query) }
-
-        return filteredTrips.sorted {
             $0.origin.time.localizedStandardCompare($1.origin.time) == .orderedAscending
         }
     }

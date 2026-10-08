@@ -79,80 +79,6 @@ extension ShinkansenTrainProvider {
         )
     }
 
-    static func trip(
-        from timetable: JREastTrainTimetable,
-        route: LiveTrainRoute,
-        reference: JREastTimetableReference,
-        starterTrips: [TrainTrip],
-        now: Date
-    ) -> TrainTrip? {
-        let timedStops = timetable.stops.compactMap { stop -> ODPTTimedStop? in
-            guard let time = stop.displayTime else { return nil }
-            return ODPTTimedStop(stationID: stop.stationName, time: time, platform: stop.platform)
-        }
-        guard let first = timedStops.first, let last = timedStops.last else { return nil }
-
-        let trainDisplayName = timetable.trainName
-        let origin = point(for: first.stationID, time: first.time)
-        let destination = point(for: last.stationID, time: last.time)
-        let currentIndex = currentStopIndex(in: timedStops, now: now)
-        let currentStop = timedStops[currentIndex]
-        let fallback = starterTrips.first { starter in
-            trainDisplayName.localizedCaseInsensitiveContains(starter.train) || starter.train.localizedCaseInsensitiveContains(trainDisplayName)
-        } ?? starterTrips.first
-        let liveTripID = timetable.trainNumber ?? timetable.sourceURL.absoluteString
-        let sourceProvenance = SourceProvenance.jrEastTimetable(
-            sourceName: reference.dataSource,
-            sourceURL: timetable.sourceURL,
-            fetchedAt: now,
-            now: now
-        )
-        let starterSource = fallback?.sourceProvenance ?? .starterCatalog()
-
-        return TrainTrip(
-            id: "jreast-\(route.id)-\(stableID(from: liveTripID))",
-            providerID: "shinkansen",
-            routeID: route.id,
-            liveTripID: liveTripID,
-            train: trainDisplayName,
-            operatorName: reference.operatorName,
-            service: route.name,
-            origin: origin,
-            destination: destination,
-            duration: durationText(from: first.time, to: last.time),
-            status: statusText(for: timedStops, now: now),
-            statusTone: .good,
-            category: .departing,
-            platform: currentStop.platform,
-            nextStop: stationName(from: currentStop.stationID),
-            eta: currentStop.time,
-            speed: "Timetable",
-            progress: progress(currentIndex: currentIndex, count: timedStops.count),
-            bestCar: fallback?.bestCar ?? 6,
-            cars: fallback?.cars ?? 10,
-            seat: fallback?.seat ?? "Reserved seat",
-            updated: "scheduled timetable",
-            callout: "Official timetable: \(trainDisplayName) toward \(destination.name). Next timetable stop \(stationName(from: currentStop.stationID)) at \(currentStop.time).",
-            signal: 90,
-            signalCopy: "Scheduled timetable, route, stop times, and platform tracks are loaded from JR East's timetable pages. ODPT metadata remains configured when available.",
-            stops: stationStops(from: timedStops, currentIndex: currentIndex),
-            alerts: [
-                TrainAlert(title: "Official timetable", detail: "Loaded from \(reference.dataSource). Check operating dates before travel.", tone: .good)
-            ],
-            pulse: "\(route.name) loaded from scheduled timetable",
-            vehicleLatitude: point(for: currentStop.stationID, time: currentStop.time).latitude,
-            vehicleLongitude: point(for: currentStop.stationID, time: currentStop.time).longitude,
-            distanceText: "\(timedStops.count) stops",
-            dataSource: reference.dataSource,
-            sourceProvenance: sourceProvenance,
-            factProvenance: FactProvenance.timetableFacts(
-                source: sourceProvenance,
-                starterSource: starterSource,
-                hasPlatform: currentStop.platform != "TBD"
-            )
-        )
-    }
-
     static func timedStops(from timetable: ODPTTrainTimetable) -> [ODPTTimedStop] {
         var stops: [ODPTTimedStop] = []
 
@@ -328,33 +254,6 @@ extension ShinkansenTrainProvider {
 
     static func normalizedStationKey(_ name: String) -> String {
         ProviderTextUtilities.normalizedStationKey(name)
-    }
-
-    static func tripMatches(_ trip: TrainTrip, query: String) -> Bool {
-        let tokens = searchTokens(from: query)
-        guard !tokens.isEmpty else { return true }
-
-        let route = routes.first { $0.id == trip.routeID }
-        let text = [
-            trip.id,
-            trip.train,
-            trip.operatorName,
-            trip.service,
-            trip.origin.name,
-            trip.destination.name,
-            trip.nextStop,
-            trip.status,
-            trip.dataSource ?? "",
-            route?.name ?? "",
-            route?.summary ?? "",
-            route?.destinations.joined(separator: " ") ?? "",
-            trip.stops.map(\.name).joined(separator: " ")
-        ].joined(separator: " ")
-        let collapsedText = collapsedSearchText(text)
-
-        return tokens.allSatisfy { token in
-            collapsedText.contains(token)
-        }
     }
 
     static func platformNumber(for object: ODPTTrainTimetableObject, stationID: String) -> String {

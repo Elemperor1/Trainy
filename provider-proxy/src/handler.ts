@@ -9,6 +9,16 @@ import {
   validatedSearchQuery,
   validatedStationCode
 } from "./contracts";
+import { errorResponse, jsonResponse } from "./http";
+import { JAPAN_PROVIDER_ID } from "./japan/contracts";
+import {
+  disruptionsResponse as japanDisruptionsResponse,
+  japanHealth,
+  stationsResponse as japanStationsResponse,
+  tripIDFromPath,
+  tripResponse as japanTripResponse,
+  tripsResponse as japanTripsResponse
+} from "./japan/routes";
 import { fetchDepartures, fetchDisruptions, fetchStations } from "./upstream";
 import type { NSQuotaDecision } from "./quota";
 
@@ -61,6 +71,7 @@ export async function handleRequest(
   const startedAt = runtime.now();
   const requestID = runtime.requestID();
   let route = "unmatched";
+  let providerID: string = PROVIDER_ID;
   let status = 500;
   let cacheStatus = "none";
   let errorCode = "internal_error";
@@ -68,6 +79,7 @@ export async function handleRequest(
   try {
     const url = new URL(request.url);
     route = routeName(url.pathname);
+    providerID = providerForPath(url.pathname);
     if (request.method !== "GET") {
       throw new ProxyFault("method_not_allowed", "invalidRequest", 405, "Only GET requests are supported.");
     }
@@ -92,12 +104,12 @@ export async function handleRequest(
       : new ProxyFault("internal_error", "offline", 500, "The provider proxy could not complete the request.");
     status = fault.httpStatus;
     errorCode = fault.code;
-    return errorResponse(fault, requestID);
+    return errorResponse(fault, requestID, providerID);
   } finally {
     runtime.log({
       event: "provider_proxy_request",
       requestId: requestID,
-      provider: PROVIDER_ID,
+      provider: providerID,
       route,
       method: request.method,
       status,
@@ -125,8 +137,19 @@ async function routeRequest(
       return { response: await departuresResponse(url, env, context, runtime, requestID), route: "departures" };
     case "/v1/ns/disruptions":
       return { response: await disruptionsResponse(url, env, context, runtime, requestID), route: "disruptions" };
-    default:
+    case "/v1/japan/stations":
+      return { response: await japanStationsResponse(url, env, runtime, requestID), route: "japan-stations" };
+    case "/v1/japan/trips":
+      return { response: await japanTripsResponse(url, env, runtime, requestID), route: "japan-trips" };
+    case "/v1/japan/disruptions":
+      return { response: await japanDisruptionsResponse(url, env, context, runtime, requestID), route: "japan-disruptions" };
+    default: {
+      const tripID = tripIDFromPath(url.pathname);
+      if (tripID !== null) {
+        return { response: await japanTripResponse(tripID, url, env, runtime, requestID), route: "japan-trip" };
+      }
       throw new ProxyFault("not_found", "notFound", 404, "The requested endpoint does not exist.");
+    }
   }
 }
 
@@ -359,7 +382,7 @@ async function healthResponse(env: Env, runtime: RuntimeDependencies, requestID:
       },
       checkedAt,
       message
-    }]
+    }, await japanHealth(env, runtime)]
   }, 200, requestID, "health");
 }
 
@@ -375,55 +398,21 @@ function recordHealth(cache: Cache, context: ExecutionContext, now: Date, fault?
   writeCached(cache, HEALTH_KEY, { status, checkedAt: now.toISOString() }, now, 86_400, 86_400, context);
 }
 
-function jsonResponse(
-  body: unknown,
-  status: number,
-  requestID: string,
-  cacheStatus: string,
-  extraHeaders: HeadersInit = {}
-): Response {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: {
-      "content-type": "application/json; charset=utf-8",
-      "cache-control": "private, no-store",
-      "content-security-policy": "default-src 'none'; frame-ancestors 'none'",
-      "cross-origin-resource-policy": "same-origin",
-      "permissions-policy": "camera=(), geolocation=(), microphone=()",
-      "x-content-type-options": "nosniff",
-      "referrer-policy": "no-referrer",
-      "x-request-id": requestID,
-      "x-trainy-cache": cacheStatus,
-      ...extraHeaders
-    }
-  });
-}
-
-function errorResponse(fault: ProxyFault, requestID: string): Response {
-  const retry = fault.retryAfterSeconds;
-  return jsonResponse({
-    provider_id: PROVIDER_ID,
-    status: fault.publicStatus,
-    error: {
-      code: fault.code,
-      message: fault.publicMessage,
-      ...(retry ? { retryAfterSeconds: retry } : {})
-    },
-    requestId: requestID
-  }, fault.httpStatus, requestID, "none", {
-    ...(retry ? { "retry-after": String(retry) } : {}),
-    ...(fault.httpStatus === 405 ? { allow: "GET" } : {})
-  });
-}
-
 function routeName(pathname: string): string {
   switch (pathname) {
     case "/v1/health/providers": return "health";
     case "/v1/ns/stations": return "station-search";
     case "/v1/ns/departures": return "departures";
     case "/v1/ns/disruptions": return "disruptions";
-    default: return "unmatched";
+    case "/v1/japan/stations": return "japan-stations";
+    case "/v1/japan/trips": return "japan-trips";
+    case "/v1/japan/disruptions": return "japan-disruptions";
+    default: return tripIDFromPath(pathname) === null ? "unmatched" : "japan-trip";
   }
+}
+
+function providerForPath(pathname: string): string {
+  return pathname.startsWith("/v1/japan/") ? JAPAN_PROVIDER_ID : PROVIDER_ID;
 }
 
 function healthMessage(status: string): string {

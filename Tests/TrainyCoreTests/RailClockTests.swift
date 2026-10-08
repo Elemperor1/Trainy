@@ -215,6 +215,66 @@ final class RailClockTests: XCTestCase {
         XCTAssertEqual(trip.sourceProvenance.fetchedAt, start.addingTimeInterval(60))
     }
 
+    func testConfiguredProviderReportsNoLiveTripsInsteadOfStarterTripsForATrainQuery() async throws {
+        let configuration = URLSessionConfiguration.ephemeral
+        configuration.protocolClasses = [ODPTFixtureURLProtocol.self]
+        let session = URLSession(configuration: configuration)
+        defer { session.invalidateAndCancel() }
+
+        // "Nozomi 231" names a starter-catalog train but matches no route, so no ODPT
+        // request is made. A configured build must still not answer from the catalog.
+        let provider = ShinkansenTrainProvider(consumerKey: "fixture-consumer-key", session: session)
+        XCTAssertTrue(provider.catalog.contains { $0.train == "Nozomi 231" })
+
+        do {
+            let trips = try await provider.fetchTrips(matching: "Nozomi 231", knownRoutes: ShinkansenTrainProvider.routes)
+            XCTFail("Expected no live trips, got \(trips.map(\.id)).")
+        } catch let error as TrainDataProviderError {
+            guard case .noLiveTrips = error else {
+                return XCTFail("Expected noLiveTrips, got \(error).")
+            }
+        }
+    }
+
+    func testConfiguredProviderRefreshReportsNoLiveUpdateInsteadOfSimulatingProgress() async throws {
+        let configuration = URLSessionConfiguration.ephemeral
+        configuration.protocolClasses = [ODPTNoDataURLProtocol.self]
+        let session = URLSession(configuration: configuration)
+        defer { session.invalidateAndCancel() }
+
+        // ODPT answers but carries no Shinkansen timetables, which is what the decision record
+        // expects. A nil result would make the store advance the saved train and call the
+        // refresh loaded.
+        let provider = ShinkansenTrainProvider(consumerKey: "fixture-consumer-key", session: session)
+        let tracked = try XCTUnwrap(provider.catalog.first { $0.routeID == "tokaido" })
+
+        do {
+            let refreshed = try await provider.refresh(tracked, knownRoutes: ShinkansenTrainProvider.routes)
+            XCTFail("Expected no live update, got \(String(describing: refreshed?.id)).")
+        } catch let error as TrainDataProviderError {
+            guard case .noLiveUpdate = error else {
+                return XCTFail("Expected noLiveUpdate, got \(error).")
+            }
+        }
+    }
+
+    func testConfiguredProviderRefreshSurfacesTheODPTFailure() async throws {
+        let configuration = URLSessionConfiguration.ephemeral
+        configuration.protocolClasses = [ODPTOfflineURLProtocol.self]
+        let session = URLSession(configuration: configuration)
+        defer { session.invalidateAndCancel() }
+
+        let provider = ShinkansenTrainProvider(consumerKey: "fixture-consumer-key", session: session)
+        let tracked = try XCTUnwrap(provider.catalog.first { $0.routeID == "tokaido" })
+
+        do {
+            let refreshed = try await provider.refresh(tracked, knownRoutes: ShinkansenTrainProvider.routes)
+            XCTFail("Expected the ODPT failure, got \(String(describing: refreshed?.id)).")
+        } catch let error as URLError {
+            XCTAssertEqual(error.code, .notConnectedToInternet)
+        }
+    }
+
     func testStoreMeasuresLiveRefreshAgeWithItsClock() async throws {
         let suiteName = "RailClockTests-\(UUID().uuidString)"
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
@@ -419,6 +479,49 @@ private final class ODPTFixtureURLProtocol: URLProtocol, @unchecked Sendable {
         client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
         client?.urlProtocol(self, didLoad: data)
         client?.urlProtocolDidFinishLoading(self)
+    }
+
+    override func stopLoading() {}
+}
+
+/// Answers every api.odpt.org request with 404, which the client reads as an empty dataset.
+private final class ODPTNoDataURLProtocol: URLProtocol, @unchecked Sendable {
+    override class func canInit(with request: URLRequest) -> Bool {
+        request.url?.host == "api.odpt.org"
+    }
+
+    override class func canonicalRequest(for request: URLRequest) -> URLRequest {
+        request
+    }
+
+    override func startLoading() {
+        guard
+            let url = request.url,
+            let response = HTTPURLResponse(url: url, statusCode: 404, httpVersion: "HTTP/1.1", headerFields: nil)
+        else {
+            client?.urlProtocol(self, didFailWithError: URLError(.badURL))
+            return
+        }
+
+        client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
+        client?.urlProtocolDidFinishLoading(self)
+    }
+
+    override func stopLoading() {}
+}
+
+/// Fails every api.odpt.org request as if the device were offline.
+private final class ODPTOfflineURLProtocol: URLProtocol, @unchecked Sendable {
+    override class func canInit(with request: URLRequest) -> Bool {
+        request.url?.host == "api.odpt.org"
+    }
+
+    override class func canonicalRequest(for request: URLRequest) -> URLRequest {
+        request
+    }
+
+    override func startLoading() {
+        client?.urlProtocol(self, didFailWithError: URLError(.notConnectedToInternet))
     }
 
     override func stopLoading() {}

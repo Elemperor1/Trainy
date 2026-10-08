@@ -366,41 +366,6 @@ final class TrainyTests: XCTestCase {
         XCTAssertEqual(trip.sourceProvenance.freshness, .fresh)
     }
 
-    func testJREastHTMLFixtureMapsToTimetableTrip() throws {
-        let html = try fixtureString("jr_east_train_timetable_tohoku", fileExtension: "html")
-        let sourceURL = URL(string: "https://timetables.jreast.co.jp/en/train/fixture-hayabusa-17.html")!
-        let timetable = try XCTUnwrap(JREastTimetableClient.trainTimetable(from: html, sourceURL: sourceURL))
-        let route = try XCTUnwrap(ShinkansenTrainProvider.routes.first { $0.id == "tohoku" })
-        let reference = try XCTUnwrap(ShinkansenTrainProvider.jrEastTimetableReferencesByRouteID["tohoku"])
-        let starterTrips = ShinkansenTrainProvider.allTrips.filter { $0.routeID == route.id }
-        let now = try XCTUnwrap(ISO8601DateFormatter().date(from: "2026-06-20T00:30:00Z"))
-        let trip = try XCTUnwrap(
-            ShinkansenTrainProvider.trip(
-                from: timetable,
-                route: route,
-                reference: reference,
-                starterTrips: starterTrips,
-                now: now
-            )
-        )
-
-        XCTAssertEqual(timetable.trainName, "Hayabusa 17")
-        XCTAssertEqual(timetable.trainNumber, "17B")
-        XCTAssertEqual(timetable.stops.map(\.stationName), ["Tokyo", "Omiya", "Sendai", "Morioka", "Shin-Aomori"])
-        XCTAssertEqual(trip.providerID, "shinkansen")
-        XCTAssertEqual(trip.routeID, "tohoku")
-        XCTAssertEqual(trip.liveTripID, "17B")
-        XCTAssertEqual(trip.train, "Hayabusa 17")
-        XCTAssertEqual(trip.origin.name, "Tokyo")
-        XCTAssertEqual(trip.destination.name, "Shin-Aomori")
-        XCTAssertEqual(trip.duration, "3h 13m")
-        XCTAssertEqual(trip.sourceProvenance.providerID, "jr-east")
-        XCTAssertEqual(trip.sourceProvenance.sourceKind, .officialTimetable)
-        XCTAssertEqual(trip.sourceProvenance.fetchedAt, now)
-        XCTAssertEqual(trip.sourceProvenance.freshness, .fresh)
-        XCTAssertEqual(trip.factProvenance.first { $0.fact == .schedule }?.confidence, .confirmed)
-    }
-
     func testStarterCatalogExpectationFixtureMatchesFallbackWithoutNetwork() async throws {
         let expectationData = try fixtureData("starter_catalog_expectations", fileExtension: "json")
         let expectation = try JSONDecoder().decode(StarterCatalogExpectation.self, from: expectationData)
@@ -636,10 +601,10 @@ final class TrainyTests: XCTestCase {
         XCTAssertTrue(metadata.capabilities.contains(.schedule))
         XCTAssertFalse(metadata.capabilities.contains(.serviceAlerts))
         XCTAssertTrue(metadata.requirements.contains(.localKey("ODPT_CONSUMER_KEY")))
-        XCTAssertTrue(metadata.requirements.contains(.attribution("ODPT developer terms and JR timetable attribution")))
-        XCTAssertTrue(metadata.requirements.contains(.terms("ODPT developer terms and JR timetable terms")))
+        XCTAssertTrue(metadata.requirements.contains(.attribution("ODPT developer terms and attribution")))
+        XCTAssertTrue(metadata.requirements.contains(.terms("ODPT developer terms")))
         XCTAssertTrue(metadata.sourceLinks.contains { $0.title.localizedCaseInsensitiveContains("ODPT") })
-        XCTAssertTrue(metadata.sourceLinks.contains { $0.title.localizedCaseInsensitiveContains("JR East") })
+        XCTAssertFalse(metadata.sourceLinks.contains { $0.title.localizedCaseInsensitiveContains("JR East") })
     }
 
     func testPlannedProvidersRemainUnavailableForSettingsSelection() throws {
@@ -1044,14 +1009,6 @@ final class TrainyTests: XCTestCase {
 
     private func fixtureData(_ name: String, fileExtension: String) throws -> Data {
         try Data(contentsOf: fixtureURL("\(name).\(fileExtension)"))
-    }
-
-    private func fixtureString(_ name: String, fileExtension: String) throws -> String {
-        try fixtureString("\(name).\(fileExtension)")
-    }
-
-    private func fixtureString(_ fileName: String) throws -> String {
-        try String(contentsOf: fixtureURL(fileName), encoding: .utf8)
     }
 
     private func fixtureURL(_ fileName: String) -> URL {

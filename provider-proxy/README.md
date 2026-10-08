@@ -1,9 +1,15 @@
 # Trainy NS provider proxy
 
 This Cloudflare Worker is Trainy's credential boundary for the Netherlands NS
-MVP. It is deliberately not a generic relay: callers can only use the four
-fixed `GET` routes below, and every upstream host, path, method, header, input,
+MVP. It is deliberately not a generic relay: callers can only use the fixed
+`GET` routes below, and every upstream host, path, method, header, input,
 response field, timeout, and cache policy is owned by the Worker.
+
+It also hosts the Japan timetable service (`/v1/japan/*`, described in
+[Japan timetable routes](#japan-timetable-routes-odpt)). The service keeps its
+NS-only name because renaming a Worker would change its endpoint and strand its
+Durable Object state. The Japan service is built but switched off until a
+source licence is declared.
 
 ## Trust boundary
 
@@ -14,6 +20,11 @@ Trainy iOS app
   -> fixed gateway.apiportal.ns.nl operation (Worker secret added here only)
   -> normalized Trainy JSON (raw NS payload and headers stop here)
 ```
+
+The Japan routes follow the same rule with a different shape: the Worker reads
+ODPT on a schedule, validates and stores a timetable snapshot in Workers KV, and
+answers app requests from that snapshot. The app never contacts ODPT and never
+sees `ODPT_CONSUMER_KEY`.
 
 The app receives a proxy base URL, normalized rail facts, freshness metadata,
 public attribution, and compact errors. `NS_SUBSCRIPTION_KEY` exists only as a
@@ -108,6 +119,279 @@ The app preserves the last same-query station results or same-board departures
 when possible, labels stale data, and presents offline, rate-limit, empty,
 no-match, and retry states without implying live availability.
 
+## Japan timetable routes (ODPT)
+
+**Status: built and switched off.** The Worker ships with no source licence
+declared and no ODPT key. Every Japan route then answers a retryable `503`, the
+Cron Trigger records `not_configured` and does nothing else, and
+`GET /v1/health/providers` reports `japan` as `unsupported`. The NS routes are
+unaffected.
+
+Public ODPT documentation indicates that ODPT carries no Shinkansen timetables
+and that JR East's data is limited to the Challenge contest (see
+[the decision record](../docs/japan-data-decision-record.md)). This service is
+therefore built to answer that question with a real run, to refuse data it may
+not publish, and to take a licensed source later without changing the routes.
+
+### Routes
+
+| Route | Validated input | Response |
+| --- | --- | --- |
+| `GET /v1/japan/stations?query=…&limit=…` | 2–80 visible characters; limit 1–25 (default 20) | stations: id, Japanese and English name, coordinates, code, line ids |
+| `GET /v1/japan/trips?from=…&to=…&date=…&after=…&limit=…` | two different station ids; `date` as `YYYY-MM-DD`; `after` as `HH:MM` from `00:00` to `29:59`; limit 1–25 (default 10) | scheduled trains that call at both stations in that order, with times |
+| `GET /v1/japan/trips/{id}?date=…` | an id from trip search | the train and every stop |
+| `GET /v1/japan/disruptions?line=…&limit=…` | optional line id (an `odpt.Railway:` id); limit 1–25 (default 10) | line-level operator notices |
+
+- **Times** are `YYYY-MM-DDTHH:MM:00+09:00` and come only from the published
+  timetable. They are scheduled times: no delays, no platform changes, and no
+  vehicle positions.
+- **Service date.** The Japanese service day runs from 04:00 to 03:59, so a
+  train that leaves at 00:30 belongs to the previous date. A `date` names a
+  service date, a stop after midnight carries the next calendar day in its
+  timestamp, and leaving `date` out means the service date in effect now.
+- **Calendars.** Each train runs on weekdays, Saturdays, Sundays and holidays,
+  or on dates the source lists. Japanese national holidays (including
+  substitute and citizens' holidays) are computed from the statutory rules for
+  2022 through 2099. A calendar the source lists by date is a special-day
+  timetable, as the ODPT specification defines its `Specific` calendars: on
+  those dates, the trains a line has under it replace that line's regular
+  trains, and several special calendars on one date combine. A line with no
+  trains under one keeps its regular service, and a through train follows its
+  first line.
+- **`meta`** names the provider, source, attribution text, licence,
+  `snapshotId`, `fetchedAt`, `expiresAt` (`fetchedAt` plus 36 hours),
+  `freshness` (`fresh`, or `stale` after 36 hours), `cacheStatus` (`hit` or
+  `stale-fallback`) and `coverage` (`from` and `until` service dates). A stale
+  snapshot still answers for the dates it covers. A date outside `coverage`
+  gets `400 date_out_of_range`.
+- **Line status** (`disruptions`) reads the operator feed itself through a
+  60-second fresh and 10-minute stale cache. It does not depend on a timetable
+  snapshot. Notices are per line, not per train, and an empty list means no
+  notice was published, not that service is normal.
+- **Errors** use the NS shape with `provider_id: "japan"`: `400` for invalid
+  input and `date_out_of_range`; `404` for `station_not_found`,
+  `trip_not_found`, `trip_not_running` and `line_not_found`; `429` for the
+  client or upstream limiters; `503` for `snapshot_unavailable` (retry hint 300
+  seconds when nothing is published, 60 when storage cannot be read),
+  `line_status_unavailable`, `missing_credential` and upstream outages.
+
+### How timetable data gets in
+
+A Cron Trigger (`10 18 * * *`, which is 03:10 in Japan) runs the ingestion
+once a night. It never throws, and every outcome leaves a record.
+
+1. **Check configuration.** It needs the `JAPAN_DATA` namespace, the key, and a
+   publishable licence declaration. `JAPAN_SOURCE_LICENSE` must be
+   `odpt-basic`, `commercial-agreement` or `cc-by-4.0`. An empty value, an
+   unknown value, or `odpt-challenge` (the contest licence, which forbids
+   passing data to third parties) stops the run before any request is made.
+2. **Fetch.** One request for calendars, then a railway and a station request
+   per configured railway, then one timetable request per railway, one at a
+   time to bound memory. Requests are fixed `GET`s to
+   `api.odpt.org/api/v4` with redirects off, a 30-second deadline and an
+   8 MiB body ceiling.
+3. **Validate.** Each timetable must name a known railway, operator, train
+   number and calendar, have at least two stops at known stations, and have
+   times that rise (a time that falls is read as crossing midnight; anything
+   under 04:00 is read as after midnight; gaps over 12 hours or spans over 30
+   hours are rejected).
+4. **Guard.** The run is held back, and the served snapshot left alone, when
+   more than 25% of fetched timetables are rejected (`too_many_rejected`),
+   when fewer than 10 trips remain after expired trips are dropped (`no_data`),
+   when the new snapshot has under half the trips of the one being served, or
+   when a configured line that had at least 10 trips loses more than half of
+   them (`regression`). If a line has really gone, remove it from
+   `JAPAN_ODPT_RAILWAYS` so the next run is no longer held back.
+5. **Build and publish.** Trips are grouped into shards by line and calendar.
+   A through train that runs on several lines is stored on each. The job
+   writes every shard, waits 65 seconds for Workers KV to propagate them, then
+   points the manifest at the new snapshot. Readers see the whole old snapshot
+   or the whole new one.
+
+| KV key | Content | Lifetime |
+| --- | --- | --- |
+| `japan/v1/manifest` | the served snapshot's index: source, licence, coverage, calendars, shard keys | until replaced |
+| `japan/v1/manifest-previous` | the snapshot served before it | until replaced |
+| `japan/v1/snap/<snapshotId>/stations` | stations that appear in a trip | days to coverage end plus 8, between 3 and 408 |
+| `japan/v1/snap/<snapshotId>/<line>~<calendar>` | trips of one line on one calendar | same |
+| `japan/v1/last-run` | outcome, code, counts and per-railway report of the latest run | 30 days |
+
+Two snapshots are kept. After a publish, the snapshot that fell out of the
+window is deleted; a failed cleanup is left to expire. Shards are never
+modified, so a reader holding an older manifest still finds its shards.
+Readers cache the manifest for 30 seconds and each parsed shard for the life
+of the isolate.
+
+Outcomes recorded in `last-run` and in the `japan_ingest` event:
+`published`, `not_configured`, `license_blocked`, `no_data`,
+`too_many_rejected`, `regression`, `upstream_failed`, `storage_failed` and
+`internal_error`. Only `published` changes what riders see.
+
+### Cost and plan requirements
+
+A run for the default ten Shinkansen railways makes 31 ODPT requests. Each KV
+read, write and delete is also a subrequest, so in the busiest run of the cycle
+(the one that also retires the oldest snapshot) the test fixture's ten lines
+with two calendars each come to 48 KV operations and 79 subrequests in all.
+Workers Free allows 10 ms of CPU and 50 subrequests per invocation, including
+Cron Triggers, and parsing multi-megabyte timetables cannot fit in 10 ms.
+**Running ingestion needs the Workers Paid plan.** The production account is on
+Free with zero Cron Triggers today. Without Paid, nothing breaks: the job
+simply cannot complete, and the routes stay switched off.
+
+Line status costs up to one request per configured railway (ten by default) per
+cache refresh, at most once a minute while riders ask, behind the shared
+`UPSTREAM_RATE_LIMITER` under its own `japan:odpt` key.
+
+### Configuration
+
+| Name | Kind | Meaning | Shipped value |
+| --- | --- | --- | --- |
+| `ODPT_CONSUMER_KEY` | Worker secret | ODPT API key. Sent only to `api.odpt.org`. | not set |
+| `JAPAN_SOURCE_LICENSE` | variable in `wrangler.jsonc` | licence the key's data may be republished under (list above) | `""` |
+| `JAPAN_ODPT_RAILWAYS` | variable in `wrangler.jsonc` | comma-separated `odpt.Railway:` ids (up to 40) replacing the default ten Shinkansen railways | `""` |
+| `JAPAN_DATA` | KV namespace binding | snapshots and run records | provisioned by Wrangler on the first upload that includes it |
+
+`ODPT_CONSUMER_KEY` is deliberately not in `secrets.required`. A required secret
+blocks every upload until it exists, and this Worker must keep deploying NS
+changes before anyone has an ODPT key. Two consequences: use the
+`versions upload` and `versions deploy` flow this README already requires,
+which keeps existing secrets, and do not run a plain `wrangler deploy`, which
+may drop an undeclared secret. For local runs, a secret that is not declared is
+read from `.dev.vars` only if a variable of the same name is also supplied (see
+below).
+
+### Operator steps
+
+#### 1. Check what ODPT returns, locally
+
+This needs only an ODPT consumer key and deploys nothing. It answers whether
+ODPT has any Shinkansen timetable data, which is the open question in the
+decision record.
+
+1. Register at https://developer.odpt.org/ and request a consumer key. Read the
+   terms that apply to it before you declare a licence (step 3 under
+   [Put it in production](#2-put-it-in-production)).
+2. Install the pinned tools once, with Node 24 as in CI:
+   `npm ci --prefix provider-proxy`.
+3. Create `provider-proxy/.dev.vars` at mode `600` (it is git-ignored):
+
+   ```text
+   NS_SUBSCRIPTION_KEY=local-unused
+   ODPT_CONSUMER_KEY=<your consumer key>
+   ```
+
+4. Start the Worker in test-scheduled mode. The `--var` values are a licence
+   needed only to let the local simulator run (it republishes nothing, since
+   nobody can reach the simulator) and a placeholder that makes Wrangler load
+   the real key from `.dev.vars`. They are not a production declaration:
+
+   ```bash
+   cd provider-proxy
+   npx wrangler dev --test-scheduled \
+     --var JAPAN_SOURCE_LICENSE:odpt-basic \
+     --var ODPT_CONSUMER_KEY:from-dev-vars
+   ```
+
+5. In a second terminal, trigger a run and read the result:
+
+   ```bash
+   curl -s "http://127.0.0.1:8787/__scheduled?cron=10+18+*+*+*"
+   # wait about two minutes: the run pauses 65 seconds before publishing
+   curl -s http://127.0.0.1:8787/v1/health/providers
+   ```
+
+   The Wrangler console prints one `japan_ingest` line and one
+   `japan_ingest_railway` line per railway. In each, `found` says whether ODPT
+   knows the railway, and `stations`, `timetables`, `trips` and `rejected` are
+   counts. If `timetables` is `0` for every Shinkansen railway, ODPT has no
+   Shinkansen timetables for this key. That is the expected result, and the
+   health status will read `unsupported`. If timetables exist, `trips` and
+   `rejected` show how many survived validation, and the same simulator serves
+   `/v1/japan/stations?query=tokyo` and the other routes once the run publishes.
+
+6. Delete `.dev.vars` and the `.wrangler` state when finished.
+
+#### 2. Put it in production
+
+Only if step 1 found usable data **and** the key's terms allow a paid app to
+republish it. Each step below is a production change that needs the owner's
+approval.
+
+1. Move the account to Workers Paid.
+2. Add the key without printing it:
+   `npx wrangler versions secret put ODPT_CONSUMER_KEY --name trainy-ns-provider-proxy`.
+3. Set `JAPAN_SOURCE_LICENSE` in `wrangler.jsonc` to the licence that applies
+   (`odpt-basic` or `commercial-agreement`) and add the attribution wording the
+   terms require to `ODPT_ATTRIBUTION` in `src/japan/odpt.ts`. Do not set it
+   until the terms are read; it is the switch that turns serving on.
+4. Review, then ship through the reviewed `versions upload` and
+   `versions deploy` flow below. The first upload that includes `JAPAN_DATA`
+   makes Wrangler provision the namespace.
+5. Apply the Cron Trigger. `versions upload` and `versions deploy` do not change
+   triggers, and a plain `wrangler deploy` is ruled out above, so run
+   `npx wrangler triggers deploy --name trainy-ns-provider-proxy` (Wrangler's
+   documentation marks it experimental). Confirm the Worker now lists the
+   `10 18 * * *` schedule in the dashboard or through the account API, as the
+   bootstrap record below did for zero triggers. Cloudflare says trigger
+   changes can take up to 15 minutes to propagate.
+6. The next 03:10 (Japan) run publishes. Check `GET /v1/health/providers`:
+   `ok` means a fresh snapshot is served.
+
+### Operating it
+
+| Health status (`japan`) | Meaning |
+| --- | --- |
+| `ok` | a snapshot under 36 hours old is served; the message gives its coverage |
+| `stale` | the snapshot is over 36 hours old but still answers for its covered dates |
+| `offline` | the latest run failed and no snapshot is published |
+| `missingCredential` | no `ODPT_CONSUMER_KEY` |
+| `unsupported` | no storage, no publishable licence declared, or the source published no usable data |
+| `unknown` | configured, waiting for the first run |
+
+- **Read a run.** `japan/v1/last-run` holds the outcome and the per-railway
+  report. Find the namespace id with `npx wrangler kv namespace list`, then
+  `npx wrangler kv key get japan/v1/last-run --namespace-id <id> --remote`.
+  Workers Logs carry the same counts as `japan_ingest` events.
+- **Turn it off.** Set `JAPAN_SOURCE_LICENSE` back to `""` and ship that
+  version. Timetable and line-status routes answer `503` immediately and health
+  reads `unsupported`. Stored shards stay until they expire; to remove them
+  sooner, delete the keys under `japan/`.
+- **Undo a bad snapshot.** While `manifest-previous` still names the last good
+  snapshot, copy its value over `japan/v1/manifest`. The next nightly run
+  replaces it again, so fix the cause first.
+- **Each February,** compare `nationalHolidays` in `src/japan/calendar.ts`
+  with the Cabinet Office list for the coming year. The rules cover the
+  statutory holidays; a one-off special holiday is not predicted.
+- **Keep the Cron Trigger after 03:00 and before 04:00 Japan time.** Coverage
+  starts at the service date in effect when the snapshot is generated, so a
+  rider asking at 03:30 still finds the previous service day.
+
+### Known limits
+
+- ODPT gives each railway its own station ids, so a station served by two
+  railways has two ids and no merging is attempted. A through train appears on
+  each line it runs on.
+- The calendar model has the day classes weekday, Saturday and holiday (Sunday
+  and national holidays), plus explicit dates. ODPT's single-day calendars
+  (`odpt.Calendar:Monday` to `Friday`, and `Sunday`) are therefore not
+  recognised: a Sunday-only timetable cannot be told apart from the holiday
+  one without a day-of-week rule. Timetables that use them are rejected as
+  `unsupported_calendar`, listed by id in the run report, and counted toward
+  the rejection threshold that holds a run back. Add a day-of-week rule if a
+  source needs them.
+- Year-end and New Year service, and other special days, are covered only when
+  the source publishes explicit calendars, and a special-day timetable has to
+  list every train that runs, not only the extra ones. A trip with no declared
+  validity is claimed for 14 days, special days included, so it is not offered
+  for a date further out; if no trip declares a longer validity, that date
+  answers `date_out_of_range` until a nightly run brings it inside the window.
+- The attribution text is a placeholder until the licence text is read (gap G2
+  in the decision record).
+- ODPT's per-key rate limit is undocumented (gap G4). A nightly run and one
+  line-status refresh a minute are small, but confirm before marketing.
+- There are no vehicle positions, delays, or train-level status.
+
 ## Credential-safe observability
 
 Persisted automatic invocation logs are disabled. One custom structured request
@@ -117,6 +401,13 @@ event records only:
 - provider and fixed route family;
 - request method, public status, cache status, and latency bucket;
 - normalized error code.
+
+The Japan ingestion job adds two events, both limited to counts and configured
+railway ids: `japan_ingest` (outcome, code, duration, and trip, station, line,
+and rejected-timetable counts) and `japan_ingest_railway` (railway id, whether
+the source knew it, and its station, timetable, trip, and rejected counts).
+ODPT carries its key in the request URL, so the Worker never logs an upstream
+URL and never reports upstream error text.
 
 Do not add request URLs, query strings, arbitrary headers, response bodies, or
 exception messages to custom logs. Automatic traces are disabled because span
@@ -150,6 +441,11 @@ npm run check --prefix provider-proxy
 The gate supplies a literal non-secret fixture binding, runs generated-type
 validation, both TypeScript checks, Workerd contract tests, and a Wrangler
 dry-run bundle. CI never needs an NS credential.
+
+The Japan tests run in the same gate. They use an in-memory KV that enforces
+the real KV limits, plus one file that runs against the Workers KV simulator and
+the shipped configuration. Running a Japan ingestion locally is covered in
+[Check what ODPT returns, locally](#1-check-what-odpt-returns-locally).
 
 For the authorized local live path, keep the existing key only in
 `TrainyIOS/Config/ns.env` at mode `600`, then run:
@@ -256,6 +552,22 @@ enabled at 100%, traces disabled, and one active account member. In response to
 the numeric NS quota, the hardened production version uses the shared
 48/minute fast guard plus the global rolling 240-per-five-minute Durable Object
 budget described above.
+
+Japan verification record (2026-10-07): the credential-neutral gate passed
+294/294 Workerd tests, which is the 35 NS tests unchanged plus 259 Japan tests,
+and the dry-run bundle (103.19 KiB, 26.19 KiB gzip) lists the `JAPAN_DATA`
+binding and the two empty Japan variables. The Japan tests cover the calendar
+and holiday rules, ODPT normalization and rejection, snapshot building, the
+ingestion guards and the order of their writes, every route, and a publish and
+read cycle against the Workers KV simulator with the shipped configuration. The
+local scheduled run from "Check what ODPT returns, locally" was exercised with a
+placeholder key from a sandbox that could not reach `api.odpt.org`: Wrangler
+loaded the key from `.dev.vars` through the placeholder variable, the run
+recorded `upstream_failed` with `upstream_network_error`, health reported
+`japan` as `offline`, and neither the key nor an ODPT URL appeared in the
+console output. No real ODPT response has been observed yet, so gaps G1 to G4 in
+the decision record are still open. Nothing was deployed, and the production
+Worker is unchanged.
 
 ## Production deployment record and operating guardrails
 

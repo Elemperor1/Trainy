@@ -9,6 +9,18 @@
   "secrets": {
     "required": ["NS_SUBSCRIPTION_KEY"]
   },
+  "kv_namespaces": [
+    {
+      "binding": "JAPAN_DATA"
+    }
+  ],
+  "triggers": {
+    "crons": ["10 18 * * *"]
+  },
+  "vars": {
+    "JAPAN_SOURCE_LICENSE": "",
+    "JAPAN_ODPT_RAILWAYS": ""
+  },
   "durable_objects": {
     "bindings": [
       {

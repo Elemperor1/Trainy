@@ -48,7 +48,7 @@ struct ProviderRegistrySmoke {
         try require(activeMetadata.authStrategy.requiresLocalKey, "Shinkansen should declare a local-key auth strategy.")
         try require(activeMetadata.capabilities == [.schedule], "No-key Shinkansen should declare schedule-only capability.")
         try require(activeMetadata.implementationStatus == .active, "Shinkansen should be active.")
-        try require(activeMetadata.sourceLinks.count >= 2, "Shinkansen metadata should expose source links.")
+        try require(!activeMetadata.sourceLinks.isEmpty, "Shinkansen metadata should expose source links.")
         try require(activeMetadata.isSearchable, "Shinkansen active metadata should be searchable.")
 
         let nsMetadata = try unwrap(registry.metadata(id: "netherlands-ns"), "NS adapter metadata is missing.")

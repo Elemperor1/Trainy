@@ -6,7 +6,6 @@ These fixtures are intentionally reduced samples for offline tests. They preserv
 
 - `odpt_train_timetable_tokaido.json`: Synthetic ODPT TrainTimetable-shaped sample for a Tokaido Shinkansen Nozomi trip. The stop sequence, service labels, and public identifier shapes mirror Trainy's supported ODPT mapping.
 - `odpt_train_information_tokaido.json`: Synthetic ODPT TrainInformation-shaped service notice used to verify localized text decoding for Shinkansen alerts.
-- `jr_east_train_timetable_tohoku.html`: Minimal JR East timetable-shaped train-detail page that keeps only the selectors used by `JREastTimetableClient`.
 - `starter_catalog_expectations.json`: Expected offline starter-catalog behavior derived from the in-repo Shinkansen starter catalog.
 
 ## Future Provider Fixture Backlog

@@ -26,9 +26,9 @@ Trainy is a Flighty-style train tracking app scoped first to Japan Shinkansen jo
 
 **ShinkansenTrainProvider** - Primary provider implementation:
 
-- Attempts ODPT API first (requires `ODPT_CONSUMER_KEY`)
-- Falls back to JR East official timetable pages
-- Uses curated starter catalog as final fallback without key
+- Attempts ODPT API when `ODPT_CONSUMER_KEY` is configured; ODPT is not expected to publish Shinkansen timetables (see `docs/japan-data-decision-record.md`), so a configured build reports no live trips instead of substituting starter data
+- Uses the curated starter catalog without a key
+- The JR East HTML scraper was removed; the planned live path is the Worker's `/v1/japan/*` timetable routes (`provider-proxy/src/japan/`), which are built but switched off until a source licence is declared. The Swift provider does not call them yet
 - Implements both `ScheduleFeedProvider` and `RealtimeFeedProvider`
 
 **NSTrainProvider** - Station-board provider implementation:
@@ -76,8 +76,6 @@ Providers/
 │   ├── ShinkansenRouteCatalog.swift         # Route metadata and coordinates
 │   ├── ShinkansenStarterCatalog.swift       # Curated fallback trips
 │   └── ShinkansenTrainTripMapper.swift        # Trip mapping and conversion
-├── JREast/
-    └── JREastTimetableClient.swift            # JR East HTML timetable parser
 └── NS/
     ├── NSClient.swift                         # Credential-free proxy client
     ├── NSModels.swift                         # Normalized proxy response models
@@ -177,7 +175,7 @@ Providers declare their capabilities; the UI adapts accordingly. A provider may 
 
 ### Fallback Behavior
 
-The Shinkansen provider demonstrates the pattern: ODPT live → JR East timetable → starter catalog. All providers should implement similar graceful degradation.
+The Shinkansen provider demonstrates the pattern: ODPT live → starter catalog without a key. A configured build never silently substitutes starter data for missing live data. All providers should degrade gracefully and say plainly what source a fact came from.
 
 ### Provider Regions
 
@@ -191,7 +189,7 @@ Japan is the initial region; planned providers span Taiwan, Hong Kong, Germany, 
 
 ### Credential Safety
 
-No production provider secret may ship in a distribution binary. The legacy ODPT developer path can inject a local development key, so CI and release-proof builds must set `ODPT_ENV_FILE=/dev/null` until ODPT also moves behind a production credential boundary. NS is stricter: `scripts/build-ios.sh` never loads `ns.env`, the app knows only an HTTPS proxy base URL, and `NS_SUBSCRIPTION_KEY` stays in Worker secret storage or the ignored mode-600 local smoke file.
+No production provider secret may ship in a distribution binary. The legacy ODPT developer path can inject a local development key, so CI and release-proof builds must set `ODPT_ENV_FILE=/dev/null` until ODPT also moves behind a production credential boundary. That boundary now exists in the Worker (`ODPT_CONSUMER_KEY` is a Worker secret, unset today and never sent to the app), but the app keeps the legacy path until the Swift provider calls `/v1/japan/*`. NS is stricter: `scripts/build-ios.sh` never loads `ns.env`, the app knows only an HTTPS proxy base URL, and `NS_SUBSCRIPTION_KEY` stays in Worker secret storage or the ignored mode-600 local smoke file.
 
 ## Data Flow
 

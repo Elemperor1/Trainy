@@ -83,57 +83,10 @@ enum ShinkansenRouteCatalog {
             ODPTRailwayReference(railwayID: "odpt.Railway:JR-East.YamagataShinkansen", operatorID: "odpt.Operator:JR-East")
         ]
     ]
-
-    static let jrEastTimetableReferencesByRouteID: [String: JREastTimetableReference] = [
-        "tokaido": JREastTimetableReference(
-            timetableURL: URL(string: "https://timetables.jreast.co.jp/en/2607/timetable/tt1039/1039010.html")!,
-            operatorName: "JR Central",
-            dataSource: "JR East official timetable, Jul 2026 JR JIKOKUHYO",
-            trainLinkLimit: 18
-        ),
-        "tohoku": JREastTimetableReference(
-            timetableURL: URL(string: "https://timetables.jreast.co.jp/en/2607/timetable/tt1039/1039020.html")!,
-            operatorName: "JR East",
-            dataSource: "JR East official timetable, Jul 2026 JR JIKOKUHYO",
-            trainLinkLimit: 18
-        ),
-        "hokuriku": JREastTimetableReference(
-            timetableURL: URL(string: "https://timetables.jreast.co.jp/en/2607/timetable/tt1039/1039060.html")!,
-            operatorName: "JR East / JR West",
-            dataSource: "JR East official timetable, Jul 2026 JR JIKOKUHYO",
-            trainLinkLimit: 18
-        ),
-        "joetsu": JREastTimetableReference(
-            timetableURL: URL(string: "https://timetables.jreast.co.jp/en/2607/timetable/tt1039/1039050.html")!,
-            operatorName: "JR East",
-            dataSource: "JR East official timetable, Jul 2026 JR JIKOKUHYO",
-            trainLinkLimit: 18
-        ),
-        "hokkaido": JREastTimetableReference(
-            timetableURL: URL(string: "https://timetables.jreast.co.jp/en/2607/timetable/tt1039/1039020.html")!,
-            operatorName: "JR East / JR Hokkaido",
-            dataSource: "JR East official timetable, Jul 2026 JR JIKOKUHYO",
-            trainLinkLimit: 18
-        ),
-        "akita": JREastTimetableReference(
-            timetableURL: URL(string: "https://timetables.jreast.co.jp/en/2607/timetable/tt1039/1039020.html")!,
-            operatorName: "JR East",
-            dataSource: "JR East official timetable, Jul 2026 JR JIKOKUHYO",
-            trainLinkLimit: 18
-        ),
-        "yamagata": JREastTimetableReference(
-            timetableURL: URL(string: "https://timetables.jreast.co.jp/en/2607/timetable/tt1039/1039020.html")!,
-            operatorName: "JR East",
-            dataSource: "JR East official timetable, Jul 2026 JR JIKOKUHYO",
-            trainLinkLimit: 18
-        )
-    ]
-
 }
 
 extension ShinkansenTrainProvider {
     static var routes: [LiveTrainRoute] { ShinkansenRouteCatalog.routes }
     static var routeRank: [String: Int] { ShinkansenRouteCatalog.routeRank }
     static var odptRailwaysByRouteID: [String: [ODPTRailwayReference]] { ShinkansenRouteCatalog.odptRailwaysByRouteID }
-    static var jrEastTimetableReferencesByRouteID: [String: JREastTimetableReference] { ShinkansenRouteCatalog.jrEastTimetableReferencesByRouteID }
 }

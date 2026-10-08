@@ -44,6 +44,7 @@ struct ODPTSmoke {
             print("Timetable smoke passed: Tokyo to Shin-Osaka and JR East searches returned real timetable trips.")
         } catch {
             fputs("ODPT smoke failed: \(error.localizedDescription)\n", stderr)
+            fputs("ODPT is not expected to publish Shinkansen timetables; see docs/japan-data-decision-record.md.\n", stderr)
             exit(1)
         }
     }
@@ -60,7 +61,7 @@ struct ODPTSmoke {
         }
         guard trips.allSatisfy({ trip in
             trip.sourceProvenance.sourceKind == .officialTimetable &&
-                (trip.dataSource == "ODPT TrainTimetable API" || trip.dataSource?.localizedCaseInsensitiveContains("official timetable") == true)
+                trip.dataSource == "ODPT TrainTimetable API"
         }) else {
             throw ODPTSmokeError.starterDataReturned(query: query)
         }
