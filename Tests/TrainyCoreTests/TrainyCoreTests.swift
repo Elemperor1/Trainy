@@ -331,13 +331,15 @@ final class TrainyTests: XCTestCase {
             )
         ]
 
+        let now = try XCTUnwrap(ISO8601DateFormatter().date(from: "2026-06-20T00:30:00Z"))
         let trips = timetables.compactMap { timetable in
             ShinkansenTrainProvider.trip(
                 from: timetable,
                 route: route,
                 railwayRef: railwayRef,
                 starterTrips: starterTrips,
-                alerts: alerts
+                alerts: alerts,
+                now: now
             )
         }
         let trip = try XCTUnwrap(trips.first)
@@ -355,6 +357,13 @@ final class TrainyTests: XCTestCase {
         XCTAssertEqual(trip.stops.map(\.name), ["Tokyo", "Shin-Yokohama", "Nagoya", "Kyoto", "Shin-Osaka"])
         XCTAssertEqual(trip.stops.map(\.time), ["09:21", "09:39", "10:59", "11:35", "11:48"])
         XCTAssertTrue(trip.alerts.contains { $0.title == "Normal service" })
+
+        // At 09:30 in Tokyo the train has left Tokyo and Shin-Yokohama is next.
+        XCTAssertEqual(trip.status, "In timetable")
+        XCTAssertEqual(trip.nextStop, "Shin-Yokohama")
+        XCTAssertEqual(trip.stops.map(\.state), [.done, .current, .pending, .pending, .pending])
+        XCTAssertEqual(trip.sourceProvenance.fetchedAt, now)
+        XCTAssertEqual(trip.sourceProvenance.freshness, .fresh)
     }
 
     func testStarterCatalogExpectationFixtureMatchesFallbackWithoutNetwork() async throws {

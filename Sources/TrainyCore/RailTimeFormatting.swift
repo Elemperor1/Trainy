@@ -2,16 +2,19 @@ import Foundation
 
 extension String {
     /// Formats a HH:MM time string according to an explicit interface preference.
+    ///
+    /// `now` only picks the calendar day the time is placed on, which matters on
+    /// daylight-saving changeover days.
     func formattedAsTime(
         in timeZone: TimeZone,
-        format: UserPreferences.TimeFormat
+        format: UserPreferences.TimeFormat,
+        now: Date = RailClock.system.now
     ) -> String {
         let pieces = split(separator: ":").compactMap { Int($0) }
         guard pieces.count >= 2 else { return self }
 
         var calendar = Calendar.current
         calendar.timeZone = timeZone
-        let now = Date()
         let components = calendar.dateComponents([.year, .month, .day], from: now)
 
         var dateComponents = DateComponents()

@@ -10,6 +10,7 @@ configure_trainy_swift_smoke_sources() {
   local core_dir="$1"
 
   TRAINY_PROVIDER_SMOKE_SOURCES=(
+    "$core_dir/RailClock.swift"
     "$core_dir/TrainModels.swift"
     "$core_dir/Providers/ProviderCapabilities.swift"
     "$core_dir/Providers/ProviderErrors.swift"

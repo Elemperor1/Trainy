@@ -26,8 +26,9 @@
 #   * no direct system font aliases, Font.system, shadow, material, or animation construction
 #   * no new token namespaces or custom style/modifier types outside the library
 #   * no redefinition of a component name owned by an approved library file
-#   * persistent interface preferences are owned by ContentView/Settings and
-#     injected through RailInterfacePreferences; components do not read storage
+#   * persistent interface preferences are owned by ContentView.swift and
+#     Screens/Settings/SettingsScreen.swift (the editor) and injected through
+#     RailInterfacePreferences; no other screen or component reads storage
 #
 # Design System dependency rules:
 #   * no AppStorage, UserDefaults, NotificationCenter, TrainStore, MapKit, or
@@ -89,6 +90,14 @@ run_self_test() {
         ;;
       *.content-view.swift.fixture)
         cp "$fixture" "$case_root/Sources/TrainyCore/ContentView.swift"
+        ;;
+      *.settings-screen.swift.fixture)
+        mkdir -p "$case_root/Sources/TrainyCore/Screens/Settings"
+        cp "$fixture" "$case_root/Sources/TrainyCore/Screens/Settings/SettingsScreen.swift"
+        ;;
+      *.nested-screen.swift.fixture)
+        mkdir -p "$case_root/Sources/TrainyCore/Screens/Trips"
+        cp "$fixture" "$case_root/Sources/TrainyCore/Screens/Trips/FixtureNestedScreen.swift"
         ;;
       *.design-system.swift.fixture)
         cp "$fixture" "$case_root/Sources/TrainyCore/DesignSystem/Forbidden.swift"
@@ -182,36 +191,47 @@ is_comment_line() {
   [[ "$content" == //* ]]
 }
 
-PREFERENCE_TIME_FORMAT=0
-PREFERENCE_UNIT_SYSTEM=0
-PREFERENCE_SOURCE_VERBOSITY=0
-PREFERENCE_DIAGNOSTICS_CONSENT=0
+# Persistent interface preferences. ContentView.swift declares each key once and
+# injects RailInterfacePreferences; SettingsScreen.swift is the only editor and
+# re-declares the two keys it edits. Any other file, key, or repeated declaration
+# is hidden persistent UI state.
+CONTENT_VIEW_FILE="Sources/TrainyCore/ContentView.swift"
+SETTINGS_SCREEN_FILE="Sources/TrainyCore/Screens/Settings/SettingsScreen.swift"
+APP_STORAGE_CLAIMS=""
+
+app_storage_key_owned_by() {
+  case "$1|$2" in
+    "$CONTENT_VIEW_FILE|trainy.timeFormat" | \
+    "$CONTENT_VIEW_FILE|trainy.unitSystem" | \
+    "$CONTENT_VIEW_FILE|trainy.sourceLabelVerbosity" | \
+    "$CONTENT_VIEW_FILE|trainy.diagnosticsConsent" | \
+    "$SETTINGS_SCREEN_FILE|trainy.timeFormat" | \
+    "$SETTINGS_SCREEN_FILE|trainy.unitSystem")
+      return 0
+      ;;
+  esac
+  return 1
+}
 
 consume_owned_app_storage() {
   local rel="$1"
   local content
+  local key
   content="$(trim_leading_space "$2")"
 
-  [ "$rel" = "Sources/TrainyCore/ContentView.swift" ] || return 1
+  [[ "$content" == '@AppStorage("'* ]] || return 1
+  key="${content#@AppStorage(\"}"
+  key="${key%%\"*}"
 
-  if [[ "$content" == '@AppStorage("trainy.timeFormat")'* ]] && [ "$PREFERENCE_TIME_FORMAT" -lt 2 ]; then
-    PREFERENCE_TIME_FORMAT=$((PREFERENCE_TIME_FORMAT + 1))
-    return 0
-  fi
-  if [[ "$content" == '@AppStorage("trainy.unitSystem")'* ]] && [ "$PREFERENCE_UNIT_SYSTEM" -lt 2 ]; then
-    PREFERENCE_UNIT_SYSTEM=$((PREFERENCE_UNIT_SYSTEM + 1))
-    return 0
-  fi
-  if [[ "$content" == '@AppStorage("trainy.sourceLabelVerbosity")'* ]] && [ "$PREFERENCE_SOURCE_VERBOSITY" -lt 1 ]; then
-    PREFERENCE_SOURCE_VERBOSITY=$((PREFERENCE_SOURCE_VERBOSITY + 1))
-    return 0
-  fi
-  if [[ "$content" == '@AppStorage("trainy.diagnosticsConsent")'* ]] && [ "$PREFERENCE_DIAGNOSTICS_CONSENT" -lt 1 ]; then
-    PREFERENCE_DIAGNOSTICS_CONSENT=$((PREFERENCE_DIAGNOSTICS_CONSENT + 1))
-    return 0
-  fi
+  app_storage_key_owned_by "$rel" "$key" || return 1
+  case "$APP_STORAGE_CLAIMS" in
+    *"|$rel|$key|"*)
+      return 1
+      ;;
+  esac
 
-  return 1
+  APP_STORAGE_CLAIMS="$APP_STORAGE_CLAIMS|$rel|$key|"
+  return 0
 }
 
 scan_ios_rule() {
@@ -287,7 +307,7 @@ for file in "${ios_files[@]}"; do
     lineno="${line%%:*}"
     content="${line#*:}"
     if ! consume_owned_app_storage "$rel" "$content"; then
-      add_violation "$rel:$lineno: hidden persistent UI state; own AppStorage at ContentView/Settings and inject RailInterfacePreferences — $content"
+      add_violation "$rel:$lineno: hidden persistent UI state; own AppStorage in ContentView.swift or Screens/Settings/SettingsScreen.swift and inject RailInterfacePreferences — $content"
     fi
   done < <(grep -n '@AppStorage' "$file" || true)
 

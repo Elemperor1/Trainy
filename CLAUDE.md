@@ -52,9 +52,11 @@ Trainy is a Flighty-style train tracking app scoped first to Japan Shinkansen jo
 - `ScheduledRailTrip`, `RealtimeTripOverlay`, `RailVehiclePosition`, `RailServiceAlert`
 - `RailBoardEntry`, `RailTripCandidate` - Foundation for global provider expansion
 
-**ContentView** (`Sources/TrainyCore/ContentView.swift`):
+**ContentView** (`Sources/TrainyCore/ContentView.swift`) and **Screens** (`Sources/TrainyCore/Screens/`):
 
 - Five-tab SwiftUI interface: Trips, Search, Stations, History, Settings
+- `ContentView.swift` is only the root: the tab shell, first-run sheet routing, and the persisted interface preferences it injects
+- Each tab has its own folder under `Screens/`, next to `FirstRun/`, `TrainDetail/`, and `Support/` (presentation-only `TrainStore` and `TrainTrip` extensions shared by several screens)
 - Uses `RailDesign` system for styling (see `RailDesignSystem.swift`)
 
 ### Provider Directory Structure
@@ -178,6 +180,12 @@ The Shinkansen provider demonstrates the pattern: ODPT live → starter catalog 
 ### Provider Regions
 
 Japan is the initial region; planned providers span Taiwan, Hong Kong, Germany, Switzerland, UK, Australia/NSW, US (MTA), Netherlands, South Korea, and France.
+
+### Clock Seam and Stable Ids
+
+`RailClock` (`Sources/TrainyCore/RailClock.swift`) is the one place Trainy reads the wall clock. Stores and providers take `clock: RailClock = .system` at their initializer, read `clock.now` once per operation (after any network response the result describes, not before the request), and pass the resulting `Date` into pure functions such as `ShinkansenTrainProvider.statusText(for:now:)` and `RailStopTime.state(at:)`. Tests pin time with `RailClock.fixed(_:)`. New time-dependent code should follow that shape instead of calling `Date()` inline. The NS view models keep their own `now` closure, which has the same shape.
+
+`StationStop` and `TrainAlert` derive `id` from their content (`name|time`, and `title|detail|tone`), so identities survive decoding and refreshes. Persisted JSON does not carry an `id` key.
 
 ### Credential Safety
 

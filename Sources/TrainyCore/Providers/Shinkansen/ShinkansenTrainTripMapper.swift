@@ -10,7 +10,8 @@ extension ShinkansenTrainProvider {
         route: LiveTrainRoute,
         railwayRef: ODPTRailwayReference,
         starterTrips: [TrainTrip],
-        alerts: [TrainAlert]
+        alerts: [TrainAlert],
+        now: Date
     ) -> TrainTrip? {
         let timedStops = timedStops(from: timetable)
         guard let first = timedStops.first, let last = timedStops.last else { return nil }
@@ -18,7 +19,7 @@ extension ShinkansenTrainProvider {
         let trainDisplayName = trainName(from: timetable, route: route)
         let origin = point(for: first.stationID, time: first.time)
         let destination = point(for: last.stationID, time: last.time)
-        let currentIndex = currentStopIndex(in: timedStops)
+        let currentIndex = currentStopIndex(in: timedStops, now: now)
         let currentStop = timedStops[currentIndex]
         let statusTone = alerts.map(\.tone).maxBySeverity ?? .good
         let fallback = starterTrips.first { starter in
@@ -29,8 +30,10 @@ extension ShinkansenTrainProvider {
             ? [TrainAlert(title: "ODPT timetable", detail: "Trainy loaded this trip from the ODPT TrainTimetable API.", tone: .good)]
             : alerts
         let sourceProvenance = SourceProvenance.odptTimetable(
+            fetchedAt: now,
             publishedAt: SourceProvenance.date(from: timetable.updatedAt),
-            validUntil: SourceProvenance.date(from: timetable.valid)
+            validUntil: SourceProvenance.date(from: timetable.valid),
+            now: now
         )
         let starterSource = fallback?.sourceProvenance ?? .starterCatalog()
 
@@ -45,7 +48,7 @@ extension ShinkansenTrainProvider {
             origin: origin,
             destination: destination,
             duration: durationText(from: first.time, to: last.time),
-            status: statusText(for: timedStops),
+            status: statusText(for: timedStops, now: now),
             statusTone: statusTone,
             category: statusTone == .good ? .departing : .attention,
             platform: currentStop.platform,
@@ -135,9 +138,9 @@ extension ShinkansenTrainProvider {
             .replacingOccurrences(of: " Chuo", with: "-Chuo")
     }
 
-    static func statusText(for timedStops: [ODPTTimedStop]) -> String {
+    static func statusText(for timedStops: [ODPTTimedStop], now: Date) -> String {
         guard let first = timedStops.first, let last = timedStops.last else { return "ODPT timetable" }
-        let now = currentTokyoMinutes()
+        let now = tokyoMinutes(at: now)
         let firstMinutes = minutes(from: first.time)
         let lastMinutes = minutes(from: last.time, allowingNextDayAfter: firstMinutes)
 
@@ -150,9 +153,9 @@ extension ShinkansenTrainProvider {
         return "Completed"
     }
 
-    static func currentStopIndex(in timedStops: [ODPTTimedStop]) -> Int {
+    static func currentStopIndex(in timedStops: [ODPTTimedStop], now: Date) -> Int {
         guard !timedStops.isEmpty else { return 0 }
-        let now = currentTokyoMinutes()
+        let now = tokyoMinutes(at: now)
         let firstMinutes = minutes(from: timedStops[0].time)
         return timedStops.firstIndex { stop in
             minutes(from: stop.time, allowingNextDayAfter: firstMinutes) >= now
@@ -194,10 +197,10 @@ extension ShinkansenTrainProvider {
         return "\(duration)m"
     }
 
-    static func currentTokyoMinutes() -> Int {
+    static func tokyoMinutes(at date: Date) -> Int {
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = TimeZone(identifier: "Asia/Tokyo") ?? .current
-        let components = calendar.dateComponents([.hour, .minute], from: Date())
+        let components = calendar.dateComponents([.hour, .minute], from: date)
         return (components.hour ?? 0) * 60 + (components.minute ?? 0)
     }
 

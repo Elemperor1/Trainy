@@ -1,0 +1,12 @@
+import SwiftUI
+
+struct SettingsScreen: View {
+    @AppStorage("trainy.timeFormat") private var timeFormatRaw = "12h"
+    @AppStorage("trainy.unitSystem") private var unitSystemRaw = "metric"
+
+    var body: some View {
+        Text(timeFormatRaw + unitSystemRaw)
+            .font(RailDesign.Typography.body)
+            .foregroundStyle(RailDesign.Palette.ink)
+    }
+}

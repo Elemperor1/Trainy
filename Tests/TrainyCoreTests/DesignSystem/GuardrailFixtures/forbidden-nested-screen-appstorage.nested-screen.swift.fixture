@@ -1,0 +1,11 @@
+import SwiftUI
+
+struct FixtureNestedScreen: View {
+    @AppStorage("trainy.timeFormat") private var timeFormatRaw = "12h"
+
+    var body: some View {
+        Text(timeFormatRaw)
+            .font(RailDesign.Typography.body)
+            .foregroundStyle(RailDesign.Palette.ink)
+    }
+}

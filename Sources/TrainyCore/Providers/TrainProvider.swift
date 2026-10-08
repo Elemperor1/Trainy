@@ -122,7 +122,7 @@ struct StationBoard: Identifiable, Hashable, Sendable {
         providerID: String,
         stationID: String,
         stationName: String,
-        generatedAt: Date? = Date(),
+        generatedAt: Date? = RailClock.system.now,
         departures: [StationBoardDeparture],
         sourceProvenance: SourceProvenance? = nil
     ) {

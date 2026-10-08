@@ -844,7 +844,7 @@ private actor SupersedingNSRiderProvider: NSRiderDataProviding {
     }
 }
 
-private final class LockedTestClock: @unchecked Sendable {
+final class LockedTestClock: @unchecked Sendable {
     private let lock = NSLock()
     private var value: Date
 

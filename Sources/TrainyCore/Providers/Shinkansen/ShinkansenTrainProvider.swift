@@ -6,8 +6,10 @@ struct ShinkansenTrainProvider: ScheduleFeedProvider, RealtimeFeedProvider {
     let dataScope = "japan-shinkansen-v2"
     let region = ProviderRegion.japan
     private let odptClient: ODPTClient?
+    private let clock: RailClock
 
-    init(consumerKey: String? = TrainyAPIConfig.odptConsumerKey, session: URLSession = .shared) {
+    init(consumerKey: String? = TrainyAPIConfig.odptConsumerKey, session: URLSession = .shared, clock: RailClock = .system) {
+        self.clock = clock
         if let consumerKey = TrainyAPIConfig.cleanODPTKey(consumerKey) {
             self.odptClient = ODPTClient(consumerKey: consumerKey, session: session)
         } else {
@@ -196,8 +198,10 @@ struct ShinkansenTrainProvider: ScheduleFeedProvider, RealtimeFeedProvider {
 
             for railwayRef in railwayRefs {
                 let timetables = try await client.fetchTrainTimetables(for: railwayRef)
+                // Read after the response arrives so status and fetchedAt describe the data in hand.
+                let now = clock.now
                 let routeTrips = timetables.prefix(10).compactMap { timetable in
-                    Self.trip(from: timetable, route: route, railwayRef: railwayRef, starterTrips: routeStarterTrips, alerts: alerts)
+                    Self.trip(from: timetable, route: route, railwayRef: railwayRef, starterTrips: routeStarterTrips, alerts: alerts, now: now)
                 }
                 trips.append(contentsOf: routeTrips)
             }
