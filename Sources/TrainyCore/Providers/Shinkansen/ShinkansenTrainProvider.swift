@@ -109,10 +109,11 @@ struct ShinkansenTrainProvider: ScheduleFeedProvider, RealtimeFeedProvider {
             }
         }
 
-        if odptClient != nil && !routeMatches.isEmpty {
+        if odptClient != nil {
             // ODPT is the only live source. It is not expected to carry Shinkansen
             // timetables (docs/japan-data-decision-record.md), so say so plainly
-            // instead of substituting starter data.
+            // instead of substituting starter data. That includes a query such as a
+            // train name and number, which matches no route but does match the catalog.
             if let odptError {
                 throw odptError
             }

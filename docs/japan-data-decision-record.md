@@ -288,8 +288,8 @@ ships with no licence declared and no ODPT key. Four behaviours encode this reco
   an earlier declaration. Challenge data cannot be published through the public
   routes.
 - **No empty overwrite.** A run with fewer than 10 trips, more than 25% rejected
-  timetables, or under half the trips of the served snapshot never replaces a
-  good snapshot.
+  timetables, under half the trips of the served snapshot, or a configured line
+  that lost more than half of its trips never replaces a good snapshot.
 - **Honest absence.** Without a snapshot the routes answer `503`, never sample
   data, and health reports `japan` as `unsupported`, `offline` or
   `missingCredential` as the case may be.

@@ -215,6 +215,27 @@ final class RailClockTests: XCTestCase {
         XCTAssertEqual(trip.sourceProvenance.fetchedAt, start.addingTimeInterval(60))
     }
 
+    func testConfiguredProviderReportsNoLiveTripsInsteadOfStarterTripsForATrainQuery() async throws {
+        let configuration = URLSessionConfiguration.ephemeral
+        configuration.protocolClasses = [ODPTFixtureURLProtocol.self]
+        let session = URLSession(configuration: configuration)
+        defer { session.invalidateAndCancel() }
+
+        // "Nozomi 231" names a starter-catalog train but matches no route, so no ODPT
+        // request is made. A configured build must still not answer from the catalog.
+        let provider = ShinkansenTrainProvider(consumerKey: "fixture-consumer-key", session: session)
+        XCTAssertTrue(provider.catalog.contains { $0.train == "Nozomi 231" })
+
+        do {
+            let trips = try await provider.fetchTrips(matching: "Nozomi 231", knownRoutes: ShinkansenTrainProvider.routes)
+            XCTFail("Expected no live trips, got \(trips.map(\.id)).")
+        } catch let error as TrainDataProviderError {
+            guard case .noLiveTrips = error else {
+                return XCTFail("Expected noLiveTrips, got \(error).")
+            }
+        }
+    }
+
     func testStoreMeasuresLiveRefreshAgeWithItsClock() async throws {
         let suiteName = "RailClockTests-\(UUID().uuidString)"
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))

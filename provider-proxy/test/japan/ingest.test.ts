@@ -261,6 +261,24 @@ describe("what a run refuses to do", () => {
     expect((await enough.run()).outcome).toBe("published");
   });
 
+  it("applies the minimum to the trips that survive building, not to the records fetched", async () => {
+    const expiring = (survivors: number) => {
+      const data = odptNetwork(12); // 24 timetables
+      const all = [...data.timetables![ALPHA]!, ...data.timetables![BETA]!] as Array<Record<string, unknown>>;
+      all.slice(survivors).forEach((timetable) => {
+        timetable["dct:valid"] = "2026-09-01T00:00:00+09:00";
+      });
+      return data;
+    };
+
+    const nineLeft = setup({ data: expiring(9) });
+    expect(await nineLeft.run()).toMatchObject({ outcome: "no_data", code: "insufficient_trips", counts: { trips: 9 } });
+    expect(nineLeft.kv!.keys()).toEqual([LAST_RUN_KEY]);
+
+    const tenLeft = setup({ data: expiring(10) });
+    expect(await tenLeft.run()).toMatchObject({ outcome: "published", counts: { trips: 10 } });
+  });
+
   it("fails the run when more than a quarter of the timetables are invalid", async () => {
     expect(MAX_REJECTED_RATIO).toBe(0.25);
     const withRejected = (count: number) => {
@@ -298,6 +316,43 @@ describe("what a run refuses to do", () => {
     const half = fakeOdpt(odptNetwork(6)); // 12 trips: exactly half
     expect((await s.run({ fetcher: half.fetcher })).outcome).toBe("published");
     expect(manifestOf(kv).counts.trips).toBe(12);
+  });
+
+  it("holds back a run in which a configured line has lost more than half of its trips", async () => {
+    const s = setup();
+    const kv = s.kv!;
+    await s.run(); // 12 trips on each of two lines
+    const served = kv.values.get(MANIFEST_KEY)!.value;
+
+    // 12 of 24 is exactly half in total, so only the per-line check can catch this.
+    const network = odptNetwork(12);
+    const betaMissing = fakeOdpt({ ...network, timetables: { ...network.timetables, [BETA]: [] } });
+    const report = await s.run({ fetcher: betaMissing.fetcher });
+
+    expect(report).toMatchObject({ outcome: "regression", code: "line_trip_count_dropped", counts: { trips: 12 } });
+    expect(kv.values.get(MANIFEST_KEY)!.value).toBe(served);
+    expect(snapshotKeys(kv, "snap-2")).toEqual([]);
+  });
+
+  it("does not hold back a line that was removed from the configuration", async () => {
+    const first = setup();
+    const kv = first.kv!;
+    await first.run(); // both lines served
+
+    // The same dataset fetched for one railway only: 12 of 24 trips, and the other line is gone on purpose.
+    const alphaOnly = setup({ kv, railways: ALPHA });
+    expect(await alphaOnly.run({ snapshotId: () => "snap-2" })).toMatchObject({ outcome: "published", counts: { trips: 12 } });
+    expect(manifestOf(kv).lines.map((line) => line.id)).toEqual([ALPHA]);
+  });
+
+  it("does not treat a line with fewer than the minimum number of trips as a baseline", async () => {
+    const network = odptNetwork(12);
+    const small = { ...network, timetables: { ...network.timetables, [BETA]: network.timetables![BETA]!.slice(0, 4) } };
+    const s = setup({ data: small });
+    await s.run(); // 12 trips on one line and 4 on the other
+
+    const withoutSmallLine = fakeOdpt({ ...network, timetables: { ...network.timetables, [BETA]: [] } });
+    expect(await s.run({ fetcher: withoutSmallLine.fetcher })).toMatchObject({ outcome: "published", counts: { trips: 12 } });
   });
 
   it("replaces a served manifest that is not JSON or not in this Worker's format", async () => {

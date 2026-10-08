@@ -5,7 +5,7 @@
 // and none of them carries an upstream URL, response body, or the credential.
 
 import { ProxyFault } from "../contracts";
-import type { IngestOutcome, LastRunRecord, RailwayReport, SnapshotManifest, SourceInfo } from "./contracts";
+import type { IngestOutcome, LastRunRecord, ManifestLine, RailwayReport, SnapshotManifest, SourceInfo } from "./contracts";
 import { IngestFailure, PUBLISHABLE_LICENSES, REFUSED_LICENSES } from "./contracts";
 import { japanEnv } from "./env";
 import {
@@ -66,6 +66,25 @@ function flattenRejections(railways: RailwayReport[]): number {
   );
 }
 
+function tripsOnLine(line: ManifestLine): number {
+  return Object.values(line.shards).reduce((total, shard) => total + shard.trips, 0);
+}
+
+/**
+ * True when a line the run was asked to fetch, and that the served snapshot carried with a real
+ * timetable, would lose more than the allowed share of its trips. The total-only check lets a
+ * whole railway vanish from a large snapshot; a railway removed from the configuration is not
+ * in `configured`, so dropping it on purpose is never held back.
+ */
+function lostConfiguredLine(served: SnapshotManifest, next: SnapshotManifest, configured: ReadonlySet<string>): boolean {
+  const nextTrips = new Map(next.lines.map((line) => [line.id, tripsOnLine(line)]));
+  return served.lines.some((line) => {
+    if (!configured.has(line.id)) return false;
+    const before = tripsOnLine(line);
+    return before >= MIN_TRIPS && (nextTrips.get(line.id) ?? 0) < before * MIN_RETAINED_RATIO;
+  });
+}
+
 export async function runIngest(env: Env, overrides: Partial<IngestDependencies> = {}): Promise<IngestReport> {
   const dependencies: IngestDependencies = { ...defaults(), ...overrides };
   const config = japanEnv(env);
@@ -112,6 +131,9 @@ export async function runIngest(env: Env, overrides: Partial<IngestDependencies>
     const built = buildSnapshot({ source, ...fetched.feed }, { snapshotId, generatedAt: startedAt });
     progress.snapshotId = snapshotId;
     progress.counts = { ...built.manifest.counts, rejected };
+    // Building drops expired trips and trips that name an unknown station, line or calendar, so
+    // the minimum has to hold for what the snapshot would actually serve.
+    if (built.manifest.counts.trips < MIN_TRIPS) throw new IngestFailure("no_data", "insufficient_trips");
 
     let current: SnapshotManifest | null;
     try {
@@ -123,6 +145,9 @@ export async function runIngest(env: Env, overrides: Partial<IngestDependencies>
     }
     if (current && built.manifest.counts.trips < current.counts.trips * MIN_RETAINED_RATIO) {
       throw new IngestFailure("regression", "trip_count_dropped");
+    }
+    if (current && lostConfiguredLine(current, built.manifest, new Set(fetched.feed.lines.map((line) => line.id)))) {
+      throw new IngestFailure("regression", "line_trip_count_dropped");
     }
 
     try {

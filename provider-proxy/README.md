@@ -192,8 +192,11 @@ once a night. It never throws, and every outcome leaves a record.
    hours are rejected).
 4. **Guard.** The run is held back, and the served snapshot left alone, when
    more than 25% of fetched timetables are rejected (`too_many_rejected`),
-   when fewer than 10 trips remain (`no_data`), or when the new snapshot has
-   under half the trips of the one being served (`regression`).
+   when fewer than 10 trips remain after expired trips are dropped (`no_data`),
+   when the new snapshot has under half the trips of the one being served, or
+   when a configured line that had at least 10 trips loses more than half of
+   them (`regression`). If a line has really gone, remove it from
+   `JAPAN_ODPT_RAILWAYS` so the next run is no longer held back.
 5. **Build and publish.** Trips are grouped into shards by line and calendar.
    A through train that runs on several lines is stored on each. The job
    writes every shard, waits 65 seconds for Workers KV to propagate them, then
