@@ -14,6 +14,7 @@ enum TrainDataProviderError: LocalizedError, Sendable {
     case unreadableSourceResponse(source: String)
     case sourceChainFailed(primary: String, fallback: String)
     case noLiveTrips
+    case noLiveUpdate
 
     var errorDescription: String? {
         switch self {
@@ -32,6 +33,8 @@ enum TrainDataProviderError: LocalizedError, Sendable {
             return "Scheduled Shinkansen lookup failed. Primary source: \(primary) Fallback source: \(fallback)"
         case .noLiveTrips:
             return "No scheduled Shinkansen departures matched that search."
+        case .noLiveUpdate:
+            return "The live source has no timetable data to refresh this train from."
         }
     }
 

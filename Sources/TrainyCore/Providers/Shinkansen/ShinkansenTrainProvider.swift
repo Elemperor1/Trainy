@@ -130,15 +130,18 @@ struct ShinkansenTrainProvider: ScheduleFeedProvider, RealtimeFeedProvider {
     func refresh(_ trip: TrainTrip, knownRoutes: [LiveTrainRoute]) async throws -> TrainTrip? {
         guard trip.providerID == providerID else { return nil }
         if let odptClient {
-            let route = knownRoutes.first { $0.id == trip.routeID } ?? Self.routes.first { $0.id == trip.routeID }
-            if let route {
-                let starterTrips = Self.allTrips.filter { $0.routeID == route.id }
-                let odptTrips = (try? await fetchODPTTrips(client: odptClient, routes: [route], starterMatches: starterTrips)) ?? []
-                if let refreshedTrip = odptTrips.first(where: { $0.liveTripID == trip.liveTripID }) ?? odptTrips.first {
-                    return refreshedTrip
-                }
-                return nil
+            // ODPT is the only live source and is not expected to carry Shinkansen
+            // timetables (docs/japan-data-decision-record.md). Report that, or the ODPT
+            // failure itself, rather than return nil: the store answers nil by simulating
+            // progress and calling the refresh loaded.
+            let knownRoute = knownRoutes.first { $0.id == trip.routeID } ?? Self.routes.first { $0.id == trip.routeID }
+            guard let route = knownRoute else { throw TrainDataProviderError.noLiveUpdate }
+            let starterTrips = Self.allTrips.filter { $0.routeID == route.id }
+            let odptTrips = try await fetchODPTTrips(client: odptClient, routes: [route], starterMatches: starterTrips)
+            if let refreshedTrip = odptTrips.first(where: { $0.liveTripID == trip.liveTripID }) ?? odptTrips.first {
+                return refreshedTrip
             }
+            throw TrainDataProviderError.noLiveUpdate
         }
         var refreshedTrip = Self.allTrips.first { $0.id == trip.id } ?? trip
         refreshedTrip.updated = "just now"
