@@ -81,7 +81,7 @@ final class TrainyAccessibilityAuditUITests: XCTestCase {
         try require(field, "the search field")
         field.tap()
         field.typeText("Tokyo to Shin-Osaka")
-        try require(element("search.result.nozomi-231"), "the Nozomi 231 search result")
+        try requireSettledSearchResults()
         let keyboardSearch = app.keyboards.firstMatch.buttons["Search"]
         if keyboardSearch.waitForExistence(timeout: 5) {
             keyboardSearch.tap()
@@ -135,6 +135,8 @@ final class TrainyAccessibilityAuditUITests: XCTestCase {
         launch("fixture")
         app.tabBars.buttons["Settings"].tap()
         try require(app.navigationBars["Settings"], "the Settings navigation bar")
+        // The provider health row reads "Configured" or "Checking" until the fixture answers.
+        try require(label("Healthy"), "the loaded provider health")
         try audit("settings")
     }
 
@@ -248,6 +250,27 @@ final class TrainyAccessibilityAuditUITests: XCTestCase {
         try require(app.navigationBars["Hayabusa 17"], "the Hayabusa 17 detail screen")
     }
 
+    /// The field searches each prefix while a test types, and the list keeps the
+    /// rows of the last finished search until the finished query's results
+    /// replace them. Only the trip that matches the whole route belongs on the
+    /// screen the audit sees, so wait until it is listed alone and stays that way.
+    private func requireSettledSearchResults() throws {
+        let rows = app.descendants(matching: .any)
+            .matching(NSPredicate(format: "identifier BEGINSWITH 'search.result.'"))
+        let strays = rows.matching(NSPredicate(format: "identifier != 'search.result.nozomi-231'"))
+        var steadyChecks = 0
+        let deadline = Date().addingTimeInterval(20)
+        while steadyChecks < 3 && Date() < deadline {
+            let listedAlone = rows.count > 0 && strays.count == 0
+            steadyChecks = listedAlone ? steadyChecks + 1 : 0
+            RunLoop.current.run(until: Date().addingTimeInterval(0.5))
+        }
+        guard steadyChecks >= 3 else {
+            XCTFail("Expected the search results to narrow to the Nozomi 231 trip. Visible hierarchy:\n\(String(app.debugDescription.prefix(6000)))")
+            throw AuditStop()
+        }
+    }
+
     private func require(_ element: XCUIElement, _ name: String, timeout: TimeInterval = 5) throws {
         guard element.waitForExistence(timeout: timeout) else {
             XCTFail("Expected \(name) to exist. Visible hierarchy:\n\(String(app.debugDescription.prefix(6000)))")
@@ -272,5 +295,11 @@ final class TrainyAccessibilityAuditUITests: XCTestCase {
 
     private func element(_ identifier: String) -> XCUIElement {
         app.descendants(matching: .any)[identifier]
+    }
+
+    private func label(_ text: String) -> XCUIElement {
+        app.descendants(matching: .any)
+            .matching(NSPredicate(format: "label == %@", text))
+            .firstMatch
     }
 }
