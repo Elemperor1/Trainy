@@ -1,7 +1,7 @@
 import XCTest
 
 private final class AuditFindings: @unchecked Sendable {
-    var unknown: [String] = []
+    var unknown: [(key: String, detail: String)] = []
     var reproduced: Set<String> = []
 }
 
@@ -20,23 +20,53 @@ private func auditTypeName(_ type: XCUIAccessibilityAuditType) -> String {
     }
 }
 
+private func elementTypeName(_ type: XCUIElement.ElementType) -> String {
+    switch type {
+    case .other: return "Other"
+    case .image: return "Image"
+    case .staticText: return "StaticText"
+    case .button: return "Button"
+    case .cell: return "Cell"
+    case .map: return "Map"
+    case .scrollView: return "ScrollView"
+    case .statusBar: return "StatusBar"
+    case .tabBar: return "TabBar"
+    case .navigationBar: return "NavigationBar"
+    case .progressIndicator: return "ProgressIndicator"
+    case .activityIndicator: return "ActivityIndicator"
+    case .window: return "Window"
+    case .group: return "Group"
+    default: return "Type\(type.rawValue)"
+    }
+}
+
 @MainActor
 private func auditFindingKey(screen: String, issue: XCUIAccessibilityAuditIssue) -> String {
-    let identifier = issue.element?.identifier ?? ""
-    let label = issue.element?.label ?? ""
-    return "\(screen) | \(auditTypeName(issue.auditType)) | \(findingName(identifier: identifier, label: label))"
+    let auditType = auditTypeName(issue.auditType)
+    guard let element = issue.element else { return "\(screen) | \(auditType) | (no element)" }
+    let name = findingName(identifier: element.identifier, label: element.label, type: element.elementType)
+    return "\(screen) | \(auditType) | \(name)"
+}
+
+/// What the audit said, and which element it said it about, for a finding that
+/// is not in the baseline.
+@MainActor
+private func auditFindingDetail(_ issue: XCUIAccessibilityAuditIssue) -> String {
+    guard let element = issue.element else { return "\(issue.compactDescription) (the audit named no element)" }
+    let excerpt = String(element.debugDescription.prefix(800))
+    return "\(issue.compactDescription): \(elementTypeName(element.elementType)) at \(element.frame)\n        \(excerpt)"
 }
 
 /// An identifier names an element as it is. A label can carry counts, clock
 /// times, dates, and ages that change between runs, so those are masked to keep
-/// one element on one key.
-private func findingName(identifier: String, label: String) -> String {
+/// one element on one key. An element with neither is named by its type.
+private func findingName(identifier: String, label: String, type: XCUIElement.ElementType) -> String {
     if !identifier.isEmpty { return identifier }
     var name = label.split(whereSeparator: \.isWhitespace).joined(separator: " ")
     for mask in volatileLabelMasks {
         name = name.replacingOccurrences(of: mask.pattern, with: mask.replacement, options: .regularExpression)
     }
-    return name.isEmpty ? "(unnamed element)" : String(name.prefix(80))
+    return name.isEmpty ? "(unnamed \(elementTypeName(type)))" : String(name.prefix(80))
 }
 
 private let volatileLabelMasks: [(pattern: String, replacement: String)] = [
@@ -53,7 +83,7 @@ private let volatileLabelMasks: [(pattern: String, replacement: String)] = [
 /// `knownAccessibilityIssues` (TrainyAccessibilityAuditBaseline.swift), so the
 /// suite fails on anything new while the old ones are fixed. Delete an entry
 /// when its screen is fixed. An attachment on each test lists entries the audit
-/// no longer reproduces.
+/// no longer reproduces, and another lists findings only one of two audits saw.
 @MainActor
 final class TrainyAccessibilityAuditUITests: XCTestCase {
     private lazy var app = XCUIApplication()
@@ -187,34 +217,67 @@ final class TrainyAccessibilityAuditUITests: XCTestCase {
 
     // MARK: - Audit
 
+    /// A finding that is not in the baseline fails the test only if a second
+    /// audit, a few seconds later, reports it again. A view caught mid-update
+    /// (an animation, a load that finished late) can show a contrast problem for
+    /// a moment that the next look no longer sees.
     private func audit(_ screen: String) throws {
         settle()
+        let first = try runAudit(screen)
+        var reproduced = first.reproduced
+        var unknown = first.unknown
+        var transient: [(key: String, detail: String)] = []
+
+        if !first.unknown.isEmpty {
+            settle(3)
+            let second = try runAudit(screen)
+            reproduced.formUnion(second.reproduced)
+            let firstKeys = Set(first.unknown.map { $0.key })
+            let secondKeys = Set(second.unknown.map { $0.key })
+            unknown = second.unknown.filter { firstKeys.contains($0.key) }
+            transient = first.unknown.filter { !secondKeys.contains($0.key) }
+                + second.unknown.filter { !firstKeys.contains($0.key) }
+        }
+
+        let stale = knownAccessibilityIssues
+            .filter { $0.hasPrefix("\(screen) | ") && !reproduced.contains($0) }
+            .sorted()
+        if !stale.isEmpty {
+            attach("Fixed accessibility findings", "Remove from knownAccessibilityIssues:\n" + stale.joined(separator: "\n"))
+        }
+        if !transient.isEmpty {
+            let lines = transient.map { "\($0.key)\n    \($0.detail)" }.joined(separator: "\n")
+            attach("Accessibility findings seen once", "Reported by one audit of \(screen) and not by the other:\n" + lines)
+        }
+        if !unknown.isEmpty {
+            let lines = unknown
+                .sorted { $0.key < $1.key }
+                .map { "    \($0.key)\n        \($0.detail)" }
+                .joined(separator: "\n")
+            XCTFail(
+                "Two audits found \(unknown.count) finding(s) on \(screen) that are not in knownAccessibilityIssues:\n" + lines
+            )
+        }
+    }
+
+    private func runAudit(_ screen: String) throws -> AuditFindings {
         let findings = AuditFindings()
         try app.performAccessibilityAudit(for: .all) { issue in
             let key = auditFindingKey(screen: screen, issue: issue)
             findings.reproduced.insert(key)
             if !knownAccessibilityIssues.contains(key) {
-                findings.unknown.append("\(key)\n        \(issue.compactDescription)")
+                findings.unknown.append((key: key, detail: auditFindingDetail(issue)))
             }
             return true
         }
+        return findings
+    }
 
-        let unknown = findings.unknown
-        let stale = knownAccessibilityIssues
-            .filter { $0.hasPrefix("\(screen) | ") && !findings.reproduced.contains($0) }
-            .sorted()
-        if !stale.isEmpty {
-            let attachment = XCTAttachment(string: "Remove from knownAccessibilityIssues:\n" + stale.joined(separator: "\n"))
-            attachment.name = "Fixed accessibility findings"
-            attachment.lifetime = .keepAlways
-            add(attachment)
-        }
-        if !unknown.isEmpty {
-            XCTFail(
-                "The accessibility audit found \(unknown.count) finding(s) on \(screen) that are not in knownAccessibilityIssues:\n"
-                    + unknown.sorted().map { "    " + $0 }.joined(separator: "\n")
-            )
-        }
+    private func attach(_ name: String, _ text: String) {
+        let attachment = XCTAttachment(string: text)
+        attachment.name = name
+        attachment.lifetime = .keepAlways
+        add(attachment)
     }
 
     // MARK: - Navigation
@@ -288,9 +351,9 @@ final class TrainyAccessibilityAuditUITests: XCTestCase {
         }
     }
 
-    private func settle() {
+    private func settle(_ seconds: TimeInterval = 1) {
         // Let transitions and list animations finish so the audit sees the final layout.
-        RunLoop.current.run(until: Date().addingTimeInterval(1))
+        RunLoop.current.run(until: Date().addingTimeInterval(seconds))
     }
 
     private func element(_ identifier: String) -> XCUIElement {

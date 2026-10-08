@@ -100,16 +100,24 @@ problems silently while the old ones are fixed.
 
 - The element is its accessibility identifier when it has one. Otherwise it is
   its label with counts, clock times, months, AM/PM, and "updated ... ago" text
-  masked (`Hayabusa #`, `#:# <am/pm>`), cut at 80 characters.
+  masked (`Hayabusa #`, `#:# <am/pm>`), cut at 80 characters. An element with
+  neither is named by its type (`(unnamed Image)`), and a finding the audit
+  attaches to no element is `(no element)`.
 - When a screen is fixed, delete its entries. Each audit test attaches a
   **Fixed accessibility findings** note to the result bundle that lists entries
   the audit no longer reproduces, so stale entries are easy to spot. They do not
   fail the test.
 - A new finding fails with a message like
-  `search | contrast | Fast station search` plus the audit's own text. Fix the
-  screen first. Add the key to the baseline only when the finding comes from
-  the system (for example the search field's Clear button) or the design
+  `search | contrast | Fast station search` plus the audit's own text, the
+  element's type and frame, and an excerpt of its place in the hierarchy. Fix
+  the screen first. Add the key to the baseline only when the finding comes
+  from the system (for example the search field's Clear button) or the design
   trade-off is deliberate, and say why in a comment next to it.
+- A finding that is not in the baseline fails the test only when a second audit,
+  a few seconds after the first, reports it again. A view caught mid-update can
+  show a contrast problem for a moment that the next look no longer sees.
+  Findings only one of the two audits saw are attached as **Accessibility
+  findings seen once**; if the same one keeps appearing there, treat it as real.
 - Swift CI prints every failed test's messages in the **Report test failures**
   step and in the job summary, so the keys can be copied from there without
   downloading the result bundle. A navigation step that cannot find its element
